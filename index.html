@@ -335,6 +335,10 @@
        4. APPLICATION JAVASCRIPT LOGIC
   ======================================================================== -->
   <script>
+    // SETUP: Paste the deployed Google Apps Script Web App URL here (must end with /exec).
+    // Example: https://script.google.com/macros/s/AKfycb.../exec
+    const GTT_APPS_SCRIPT_URL = 'PASTE_WEB_APP_URL_HERE';
+
     // ------------------------------------------------------------------------
     // INITIAL SEED DATA & DEFAULT TEMPLATES
     // ------------------------------------------------------------------------
@@ -415,8 +419,8 @@
       clientSearch: '',
       showArchived: false,
       workspaceSearch: '',
-      apiEndpoint:'https://script.google.com/macros/s/AKfycbyc6Z1VAd1SH713nMSPXqwePfLNEk-injD6K2XU43cHEJqFlNS_VNXY9nA6N0qTcvPCDQ/exec',
-      apiSecret: localStorage.getItem('gtt_gas_api_secret') || '',
+      apiEndpoint: (GTT_APPS_SCRIPT_URL.startsWith('https://script.google.com/macros/s/') && GTT_APPS_SCRIPT_URL.endsWith('/exec')) ? GTT_APPS_SCRIPT_URL : '',
+      apiSecret: '',
       workspaceKey: localStorage.getItem('gtt_workspace_key') || 'GTT2026',
       clients: JSON.parse(localStorage.getItem('gtt_clients') || 'null') || SEED_CLIENTS,
       workspaces: JSON.parse(localStorage.getItem('gtt_workspaces') || 'null') || SEED_WORKSPACES,
@@ -513,7 +517,8 @@
         if (!result.success) throw new Error(result.error || 'Apps Script Error');
         return result.data;
       } catch (err) {
-        showToast('Connection error: ' + err.message, 'error');
+        window.gttLastApiError = err && err.message ? err.message : String(err);
+        showToast('Apps Script: ' + window.gttLastApiError, 'error');
         return null;
       }
     }
@@ -565,7 +570,7 @@
     document.getElementById('login-form').addEventListener('submit', async function (e) {
       e.preventDefault();
       const username = document.getElementById('login-username').value.trim().toLowerCase();
-      const passcode = document.getElementById('login-passcode').value;
+      const password = document.getElementById('login-passcode').value;
       const errBox = document.getElementById('login-error');
       const errText = document.getElementById('login-error-text');
       const submitBtn = document.getElementById('login-submit-btn');
@@ -573,39 +578,26 @@
       errBox.classList.add('hidden');
       submitBtn.disabled = true;
       submitBtn.classList.add('opacity-60');
+      window.gttLastApiError = '';
 
       try {
-        if (state.apiEndpoint) {
-          const authResult = await callAppsScript('authenticateUser', { username, password: passcode });
-          if (!authResult || !authResult.user || !authResult.session_token) {
-            errText.textContent = 'Sign-in failed. Check your username, password, and Apps Script connection.';
-            errBox.classList.remove('hidden');
-            return;
-          }
-
-          sessionStorage.setItem('gtt_session_token', authResult.session_token);
-          state.currentUser = authResult.user;
-          sessionStorage.setItem('gtt_current_user', JSON.stringify(authResult.user));
-          await initWorkspace();
-          return;
-        }
-
-        // Local preview is available only when no Google Apps Script URL is configured.
-        const matched = state.users.find(u => String(u.username || String(u.email || '').split('@')[0]).toLowerCase() === username && u.active !== false);
-        if (!matched) {
-          errText.textContent = 'This username is not registered in GO TO TARGET.';
+        if (!state.apiEndpoint) {
+          errText.textContent = 'ยังไม่ได้ตั้งค่า Web App URL กรุณาใส่ URL ใน GTT_APPS_SCRIPT_URL ในไฟล์ index.html แล้ว Deploy เว็บไซต์ใหม่';
           errBox.classList.remove('hidden');
           return;
         }
-        if (passcode !== state.workspaceKey) {
-          errText.textContent = 'Invalid username or password.';
+
+        const authResult = await callAppsScript('authenticateUser', { username, password });
+        if (!authResult || !authResult.user || !authResult.session_token) {
+          errText.textContent = window.gttLastApiError || 'เข้าสู่ระบบไม่สำเร็จ กรุณาตรวจสอบ Username และ Password';
           errBox.classList.remove('hidden');
           return;
         }
-        state.currentUser = matched;
-        sessionStorage.setItem('gtt_current_user', JSON.stringify(matched));
-        showToast('Local preview mode — connect Google Sheets for shared team access.');
-        initWorkspace();
+
+        sessionStorage.setItem('gtt_session_token', authResult.session_token);
+        state.currentUser = authResult.user;
+        sessionStorage.setItem('gtt_current_user', JSON.stringify(authResult.user));
+        await initWorkspace();
       } finally {
         submitBtn.disabled = false;
         submitBtn.classList.remove('opacity-60');
@@ -674,7 +666,11 @@
     // MAIN RENDER CONTROLLER
     // ------------------------------------------------------------------------
     async function initWorkspace() {
-      if (state.apiEndpoint) {
+      if (!state.apiEndpoint) {
+        state.currentUser = null;
+        sessionStorage.removeItem('gtt_current_user');
+        sessionStorage.removeItem('gtt_session_token');
+      } else {
         const sessionToken = sessionStorage.getItem('gtt_session_token') || '';
         if (!sessionToken) {
           state.currentUser = null;
@@ -1117,22 +1113,17 @@
               </div>
               <div>
                 <h2 class="text-base font-bold text-[#061D42]">Google Sheets Backend Connection</h2>
-                <p class="text-xs text-slate-500">Connect your deployed Google Apps Script Web App URL for permanent cloud persistence.</p>
+                <p class="text-xs text-slate-500">ระบบใช้ URL ที่กำหนดไว้ในตัวไฟล์ HTML โดยตรง เพื่อเชื่อม Google Sheets อัตโนมัติ</p>
               </div>
             </div>
 
             <div>
-              <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Google Apps Script Web App URL</label>
-              <input id="cfg-api-url" type="url" placeholder="https://script.google.com/macros/s/AKfycb.../exec" value="${escapeHtml(state.apiEndpoint)}"
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Google Apps Script Web App URL (แก้ในไฟล์ index.html)</label>
+              <input id="cfg-api-url" type="url" readonly placeholder="Set GTT_APPS_SCRIPT_URL in index.html" value="${escapeHtml(state.apiEndpoint)}"
                 class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm text-[#061D42] focus:outline-none focus:ring-2 focus:ring-[#2585E8]" />
             </div>
 
-            <div>
-              <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Optional API Token (only if configured in Script Properties)</label>
-              <input id="cfg-api-secret" type="password" placeholder="Leave blank unless API_SECRET_TOKEN is configured" value="${escapeHtml(state.apiSecret)}"
-                class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm text-[#061D42] focus:outline-none focus:ring-2 focus:ring-[#2585E8]" />
-              <p class="text-xs text-slate-400 mt-2">Every team member uses an individual password. Use the key icon beside a member to generate a new temporary password. Leave the API token blank unless you configured it in Apps Script.</p>
-            </div>
+            <p class="text-xs text-slate-400">ไม่ต้องกรอก API Token เพิ่มเติม เปลี่ยน URL ได้ที่ตัวแปร GTT_APPS_SCRIPT_URL ในไฟล์ index.html เท่านั้น</p>
 
             <div class="pt-2 flex flex-wrap items-center justify-between gap-3">
               <span class="text-xs text-slate-400">Changes save in this browser. Sign in again if you change the Web App URL.</span>
@@ -1504,9 +1495,9 @@
       const previousEndpoint = state.apiEndpoint;
       const nextEndpoint = document.getElementById('cfg-api-url').value.trim();
       state.apiEndpoint = nextEndpoint;
-      state.apiSecret = document.getElementById('cfg-api-secret').value.trim();
+      state.apiSecret = '';
       localStorage.setItem('gtt_gas_api_url', state.apiEndpoint);
-      localStorage.setItem('gtt_gas_api_secret', state.apiSecret);
+      localStorage.removeItem('gtt_gas_api_secret');
 
       if (previousEndpoint !== nextEndpoint) {
         sessionStorage.removeItem('gtt_session_token');
@@ -1517,7 +1508,7 @@
         if (state.apiEndpoint) {
           showToast('Connection URL saved. Sign in again using your individual password.');
         } else {
-          showToast('Google Sheets disconnected. Local preview mode is active.');
+          showToast('ยังไม่ได้กำหนด Web App URL ใน GTT_APPS_SCRIPT_URL ของ index.html', 'error');
         }
         document.getElementById('app-shell').classList.add('hidden');
         document.getElementById('login-view').classList.remove('hidden');
@@ -1525,7 +1516,7 @@
       }
 
       if (!state.apiEndpoint) {
-        showToast('Local preview settings saved. Google Sheets is disconnected.');
+        showToast('กรุณากำหนด Web App URL ใน GTT_APPS_SCRIPT_URL ของ index.html', 'error');
         renderApp();
         return;
       }
