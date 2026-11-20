@@ -235,28 +235,10 @@
             class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm text-[#061D42] focus:outline-none focus:ring-2 focus:ring-[#2585E8]" />
         </div>
         <div>
-          <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Client Logo (Optional)</label>
-          <input id="client-form-logo" type="hidden" value="" />
-          <input id="client-form-logo-file" type="file" accept="image/png,image/jpeg,image/webp" class="hidden" />
-          <div class="flex items-center gap-4 p-3 rounded-xl border border-slate-200 bg-slate-50">
-            <div class="w-20 h-20 rounded-xl border border-slate-200 bg-white flex items-center justify-center overflow-hidden flex-shrink-0">
-              <img id="client-logo-preview-image" class="hidden w-full h-full object-contain" alt="Client logo preview" />
-              <div id="client-logo-preview-placeholder" class="flex flex-col items-center justify-center text-slate-300">
-                <i data-lucide="image" class="w-7 h-7"></i>
-                <span class="text-[9px] mt-1">No logo</span>
-              </div>
-            </div>
-            <div class="min-w-0 flex-1">
-              <div class="flex flex-wrap gap-2">
-                <button type="button" id="client-logo-upload-btn" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-[#061D42] hover:bg-[#0d2d63] text-white text-xs font-semibold cursor-pointer">
-                  <i data-lucide="upload" class="w-3.5 h-3.5"></i> Upload logo
-                </button>
-                <button type="button" id="client-logo-remove-btn" class="px-3 py-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-600 text-xs font-semibold cursor-pointer">Remove</button>
-              </div>
-              <p id="client-logo-file-name" class="text-xs text-slate-600 mt-2 truncate">ยังไม่ได้เลือกรูป</p>
-              <p class="text-[10px] text-slate-400 mt-1">รองรับ JPG, PNG, WEBP ขนาดไม่เกิน 2 MB รูปจะถูกเก็บใน Google Drive</p>
-            </div>
-          </div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Client Logo URL (Optional)</label>
+          <input id="client-form-logo" type="url" placeholder="https://..."
+            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm text-[#061D42] focus:outline-none focus:ring-2 focus:ring-[#2585E8]" />
+          <p class="text-[11px] text-slate-400 mt-1">Leave blank to generate a clean branded monogram badge automatically.</p>
         </div>
         <div>
           <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Description (Optional)</label>
@@ -437,9 +419,7 @@
       clientSearch: '',
       showArchived: false,
       workspaceSearch: '',
-      apiEndpoint: (GTT_APPS_SCRIPT_URL.startsWith('https://script.google.com/macros/s/') && GTT_APPS_SCRIPT_URL.endsWith('/exec'))
-        ? GTT_APPS_SCRIPT_URL
-        : (localStorage.getItem('gtt_gas_api_url') || ''),
+      apiEndpoint: (GTT_APPS_SCRIPT_URL.startsWith('https://script.google.com/macros/s/') && GTT_APPS_SCRIPT_URL.endsWith('/exec')) ? GTT_APPS_SCRIPT_URL : '',
       apiSecret: '',
       workspaceKey: localStorage.getItem('gtt_workspace_key') || 'GTT2026',
       clients: JSON.parse(localStorage.getItem('gtt_clients') || 'null') || SEED_CLIENTS,
@@ -1113,10 +1093,9 @@
             </div>
 
             <form onsubmit="handleAddTeamMember(event)" class="grid grid-cols-1 sm:grid-cols-12 gap-3 bg-[#F5F7FA] p-4 rounded-xl">
-              <input id="new-member-name" type="text" required placeholder="Full Name" class="sm:col-span-3 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#2585E8]" />
-              <input id="new-member-username" type="text" required minlength="3" maxlength="30" pattern="[A-Za-z0-9][A-Za-z0-9._-]{2,29}" autocomplete="off" placeholder="Username" class="sm:col-span-3 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#2585E8]" />
-              <input id="new-member-password" type="password" required minlength="8" autocomplete="new-password" placeholder="Password (8+ characters)" class="sm:col-span-3 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#2585E8]" />
-              <select id="new-member-role" class="sm:col-span-1 px-3 py-2 rounded-xl bg-white border border-slate-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#2585E8]">
+              <input id="new-member-name" type="text" required placeholder="Full Name" class="sm:col-span-4 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#2585E8]" />
+              <input id="new-member-username" type="text" required minlength="3" maxlength="30" pattern="[A-Za-z0-9][A-Za-z0-9._-]{2,29}" autocomplete="off" placeholder="Username" class="sm:col-span-4 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#2585E8]" />
+              <select id="new-member-role" class="sm:col-span-2 px-3 py-2 rounded-xl bg-white border border-slate-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#2585E8]">
                 <option value="STAFF">STAFF</option>
                 <option value="ADMIN">ADMIN</option>
               </select>
@@ -1157,94 +1136,15 @@
     // ------------------------------------------------------------------------
     // CRUD HANDLERS: CLIENTS
     // ------------------------------------------------------------------------
-    let selectedClientLogoFile = null;
-    let clientLogoPreviewObjectUrl = null;
-
-    function revokeClientLogoPreviewUrl() {
-      if (clientLogoPreviewObjectUrl) {
-        URL.revokeObjectURL(clientLogoPreviewObjectUrl);
-        clientLogoPreviewObjectUrl = null;
-      }
-    }
-
-    function setClientLogoPreview(url, fileName) {
-      const image = document.getElementById('client-logo-preview-image');
-      const placeholder = document.getElementById('client-logo-preview-placeholder');
-      const nameLabel = document.getElementById('client-logo-file-name');
-      if (url) {
-        image.src = url;
-        image.classList.remove('hidden');
-        placeholder.classList.add('hidden');
-      } else {
-        image.removeAttribute('src');
-        image.classList.add('hidden');
-        placeholder.classList.remove('hidden');
-      }
-      nameLabel.textContent = fileName || (url ? 'มีโลโก้ใช้งานอยู่' : 'ยังไม่ได้เลือกรูป');
-    }
-
-    function resetClientLogoPicker(existingUrl = '') {
-      selectedClientLogoFile = null;
-      revokeClientLogoPreviewUrl();
-      document.getElementById('client-form-logo-file').value = '';
-      document.getElementById('client-form-logo').value = existingUrl || '';
-      setClientLogoPreview(existingUrl || '', existingUrl ? 'โลโก้ปัจจุบัน' : 'ยังไม่ได้เลือกรูป');
-    }
-
-    function fileToBase64(file) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const result = String(reader.result || '');
-          const comma = result.indexOf(',');
-          if (comma < 0) return reject(new Error('อ่านไฟล์รูปภาพไม่สำเร็จ'));
-          resolve(result.slice(comma + 1));
-        };
-        reader.onerror = () => reject(new Error('ไม่สามารถอ่านไฟล์รูปภาพได้'));
-        reader.readAsDataURL(file);
-      });
-    }
-
-    document.getElementById('client-logo-upload-btn').addEventListener('click', () => {
-      document.getElementById('client-form-logo-file').click();
-    });
-
-    document.getElementById('client-form-logo-file').addEventListener('change', event => {
-      const file = event.target.files && event.target.files[0];
-      if (!file) return;
-      const allowedTypes = ['image/png', 'image/jpeg', 'image/webp'];
-      if (!allowedTypes.includes(file.type)) {
-        showToast('กรุณาเลือกรูป JPG, PNG หรือ WEBP เท่านั้น', 'error');
-        event.target.value = '';
-        return;
-      }
-      if (file.size > 2 * 1024 * 1024) {
-        showToast('ไฟล์รูปต้องมีขนาดไม่เกิน 2 MB', 'error');
-        event.target.value = '';
-        return;
-      }
-      selectedClientLogoFile = file;
-      revokeClientLogoPreviewUrl();
-      clientLogoPreviewObjectUrl = URL.createObjectURL(file);
-      document.getElementById('client-form-logo').value = '';
-      setClientLogoPreview(clientLogoPreviewObjectUrl, file.name);
-    });
-
-    document.getElementById('client-logo-remove-btn').addEventListener('click', () => {
-      resetClientLogoPicker('');
-      showToast('ลบโลโก้ออกจากแบบฟอร์มแล้ว');
-    });
-
     function openCreateClientModal() {
       document.getElementById('client-modal-title').textContent = 'Add New Client';
       document.getElementById('client-form-submit').textContent = 'Create Client';
       document.getElementById('client-form-id').value = '';
       document.getElementById('client-form-name').value = '';
+      document.getElementById('client-form-logo').value = '';
       document.getElementById('client-form-desc').value = '';
-      resetClientLogoPicker('');
       document.getElementById('client-auto-setup-note').classList.remove('hidden');
       document.getElementById('client-modal').classList.remove('hidden');
-      lucide.createIcons();
     }
 
     function openEditClientModal(clientId) {
@@ -1254,115 +1154,74 @@
       document.getElementById('client-form-submit').textContent = 'Save Changes';
       document.getElementById('client-form-id').value = client.client_id;
       document.getElementById('client-form-name').value = client.client_name;
+      document.getElementById('client-form-logo').value = client.logo_url || '';
       document.getElementById('client-form-desc').value = client.description || '';
-      resetClientLogoPicker(client.logo_url || '');
       document.getElementById('client-auto-setup-note').classList.add('hidden');
       document.getElementById('client-modal').classList.remove('hidden');
-      lucide.createIcons();
     }
 
     function closeClientModal() {
       document.getElementById('client-modal').classList.add('hidden');
-      selectedClientLogoFile = null;
-      revokeClientLogoPreviewUrl();
     }
 
     document.getElementById('client-form').addEventListener('submit', async function (e) {
       e.preventDefault();
-      const submitButton = document.getElementById('client-form-submit');
       const id = document.getElementById('client-form-id').value;
       const name = document.getElementById('client-form-name').value.trim();
-      let logo = document.getElementById('client-form-logo').value.trim();
+      const logo = document.getElementById('client-form-logo').value.trim();
       const desc = document.getElementById('client-form-desc').value.trim();
       const today = new Date().toISOString().split('T')[0];
 
-      if (!name) {
-        showToast('กรุณากรอกชื่อลูกค้า', 'error');
-        return;
-      }
+      if (!id) {
+        const newClientId = 'cli_' + Date.now();
+        const newClient = {
+          client_id: newClientId,
+          client_name: name,
+          logo_url: logo,
+          description: desc,
+          archived: false,
+          created_at: today
+        };
+        const defaultWorkspaces = DEFAULT_WORKSPACE_TEMPLATES.map((tpl, idx) => ({
+          workspace_id: `ws_${Date.now()}_${idx}`,
+          client_id: newClientId,
+          workspace_name: tpl.workspace_name,
+          description: tpl.description,
+          icon: tpl.icon,
+          color: tpl.color,
+          external_url: '',
+          created_at: today,
+          updated_at: today
+        }));
 
-      const originalButtonText = submitButton.textContent;
-      submitButton.disabled = true;
-      submitButton.classList.add('opacity-60', 'cursor-not-allowed');
-
-      try {
-        if (selectedClientLogoFile) {
-          if (!state.apiEndpoint) {
-            showToast('ต้องเชื่อมต่อ Google Apps Script ก่อนอัปโหลดโลโก้', 'error');
-            return;
-          }
-          submitButton.textContent = 'Uploading logo...';
-          const base64 = await fileToBase64(selectedClientLogoFile);
-          const uploaded = await callAppsScript('uploadClientLogo', {
-            file_name: selectedClientLogoFile.name,
-            mime_type: selectedClientLogoFile.type,
-            base64: base64
-          });
-          if (!uploaded || !uploaded.logo_url) return;
-          logo = uploaded.logo_url;
-          document.getElementById('client-form-logo').value = logo;
-          selectedClientLogoFile = null;
-          revokeClientLogoPreviewUrl();
-          setClientLogoPreview(logo, 'อัปโหลดโลโก้แล้ว');
+        if (state.apiEndpoint) {
+          const savedClient = await callAppsScript('createClient', { client: newClient, defaultWorkspaces });
+          if (!savedClient) return;
         }
-
-        submitButton.textContent = id ? 'Saving...' : 'Creating...';
-        if (!id) {
-          const newClientId = 'cli_' + Date.now();
-          const newClient = {
-            client_id: newClientId,
-            client_name: name,
-            logo_url: logo,
-            description: desc,
-            archived: false,
-            created_at: today
-          };
-          const defaultWorkspaces = DEFAULT_WORKSPACE_TEMPLATES.map((tpl, idx) => ({
-            workspace_id: `ws_${Date.now()}_${idx}`,
-            client_id: newClientId,
-            workspace_name: tpl.workspace_name,
-            description: tpl.description,
-            icon: tpl.icon,
-            color: tpl.color,
-            external_url: '',
-            created_at: today,
-            updated_at: today
-          }));
-
+        state.clients.unshift(newClient);
+        state.workspaces.push(...defaultWorkspaces);
+        saveState();
+        closeClientModal();
+        state.selectedClientId = newClientId;
+        renderApp();
+        showToast(`Created "${name}" with 4 default workspaces`);
+      } else {
+        const idx = state.clients.findIndex(c => c.client_id === id);
+        if (idx !== -1) {
+          const updatedClient = { ...state.clients[idx], client_name: name, logo_url: logo, description: desc };
           if (state.apiEndpoint) {
-            const savedClient = await callAppsScript('createClient', { client: newClient, defaultWorkspaces });
+            const savedClient = await callAppsScript('updateClient', updatedClient);
             if (!savedClient) return;
           }
-          state.clients.unshift(newClient);
-          state.workspaces.push(...defaultWorkspaces);
+          state.clients[idx] = updatedClient;
           saveState();
           closeClientModal();
-          state.selectedClientId = newClientId;
           renderApp();
-          showToast(`Created "${name}" with 4 default workspaces`);
-        } else {
-          const idx = state.clients.findIndex(c => c.client_id === id);
-          if (idx !== -1) {
-            const updatedClient = { ...state.clients[idx], client_name: name, logo_url: logo, description: desc };
-            if (state.apiEndpoint) {
-              const savedClient = await callAppsScript('updateClient', updatedClient);
-              if (!savedClient) return;
-            }
-            state.clients[idx] = updatedClient;
-            saveState();
-            closeClientModal();
-            renderApp();
-            showToast(`Updated "${name}"`);
-          }
+          showToast(`Updated "${name}"`);
         }
-      } catch (err) {
-        showToast(err && err.message ? err.message : 'ไม่สามารถบันทึกโลโก้ได้', 'error');
-      } finally {
-        submitButton.disabled = false;
-        submitButton.classList.remove('opacity-60', 'cursor-not-allowed');
-        submitButton.textContent = originalButtonText;
       }
     });
+
     async function toggleArchiveClient(clientId) {
       const idx = state.clients.findIndex(c => c.client_id === clientId);
       if (idx === -1) return;
@@ -1540,17 +1399,8 @@
       e.preventDefault();
       const name = document.getElementById('new-member-name').value.trim();
       const username = document.getElementById('new-member-username').value.trim().toLowerCase();
-      const password = document.getElementById('new-member-password').value;
       const role = document.getElementById('new-member-role').value;
 
-      if (password.length < 8) {
-        showToast('Password must be at least 8 characters.', 'error');
-        return;
-      }
-      if (!state.apiEndpoint) {
-        showToast('Connect Google Sheets first. User accounts must be saved to the backend.', 'error');
-        return;
-      }
       if (!/^[a-z0-9][a-z0-9._-]{2,29}$/.test(username)) {
         showToast('Username must be 3–30 characters using letters, numbers, dots, underscores or hyphens.', 'error');
         return;
@@ -1564,19 +1414,25 @@
         user_id: 'usr_' + Date.now(),
         name,
         username,
-        password,
         role,
         active: true
       };
 
-      const created = await callAppsScript('createUser', newUser);
-      if (!created || !created.user) return;
-      state.users.push(created.user);
+      let temporaryPassword = '';
+      if (state.apiEndpoint) {
+        const created = await callAppsScript('createUser', newUser);
+        if (!created || !created.user) return;
+        state.users.push(created.user);
+        temporaryPassword = created.temporary_password || '';
+      } else {
+        state.users.push(newUser);
+      }
       saveState();
       renderApp();
       showToast(`Added ${name} (${role})`);
-      e.target.reset();
-      window.alert(`Account created successfully.\n\nUsername: ${username}\nPassword: (the password you entered)\n\nPlease share credentials securely.`);
+      if (temporaryPassword) {
+        window.alert(`New account created for ${name}.\n\nUsername: ${username}\nTemporary password: ${temporaryPassword}\n\nSend these credentials securely to the team member. The password will not be shown again.`);
+      }
     }
 
     async function toggleUserRole(userId) {
