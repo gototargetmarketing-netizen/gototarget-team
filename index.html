@@ -343,7 +343,7 @@
     // Open DevTools Console and run: localStorage.setItem('gtt_web_app_url', 'https://script.google.com/macros/s/.../exec')
     // Remove the override with: localStorage.removeItem('gtt_web_app_url'). Only /macros/s/.../exec URLs are accepted.
     const GTT_APPS_SCRIPT_URL = (() => {
-      const DEFAULT_URL = 'PASTE_WEB_APP_URL_HERE';
+      const DEFAULT_URL = 'https://script.google.com/macros/s/AKfycbyc6Z1VAd1SH713nMSPXqwePfLNEk-injD6K2XU43cHEJqFlNS_VNXY9nA6N0qTcvPCDQ/exec';
       try {
         const override = localStorage.getItem('gtt_web_app_url');
         if (override && /^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec$/.test(override)) {
