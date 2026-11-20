@@ -68,14 +68,14 @@
       <!-- Login Form -->
       <form id="login-form" class="p-8 space-y-5">
         <div>
-          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Company Email</label>
-          <input id="login-email" type="email" required placeholder="name@gototarget.co"
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Username</label>
+          <input id="login-username" type="text" required autocomplete="username" minlength="3" maxlength="30" placeholder="Enter your username"
             class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-[#F5F7FA]/60 text-[#061D42] text-sm focus:outline-none focus:ring-2 focus:ring-[#2585E8] focus:bg-white transition" />
         </div>
 
         <div>
-          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Personal Password</label>
-          <input id="login-passcode" type="password" required placeholder="Enter your personal password"
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Password</label>
+          <input id="login-passcode" type="password" required autocomplete="current-password" placeholder="Enter your password"
             class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-[#F5F7FA]/60 text-[#061D42] text-sm focus:outline-none focus:ring-2 focus:ring-[#2585E8] focus:bg-white transition" />
         </div>
 
@@ -346,9 +346,9 @@
     ];
 
     const SEED_USERS = [
-      { user_id: 'usr_admin_01', name: 'Narin Srisai', email: 'admin@gototarget.co', role: 'ADMIN', active: true },
-      { user_id: 'usr_staff_01', name: 'Ploypailin K.', email: 'staff@gototarget.co', role: 'STAFF', active: true },
-      { user_id: 'usr_staff_02', name: 'Thanawat M.', email: 'creative@gototarget.co', role: 'STAFF', active: true }
+      { user_id: 'usr_admin_01', name: 'Narin Srisai', username: 'admin', email: 'admin@gototarget.co', role: 'ADMIN', active: true },
+      { user_id: 'usr_staff_01', name: 'Ploypailin K.', username: 'staff', email: 'staff@gototarget.co', role: 'STAFF', active: true },
+      { user_id: 'usr_staff_02', name: 'Thanawat M.', username: 'creative', email: 'creative@gototarget.co', role: 'STAFF', active: true }
     ];
 
     const SEED_CLIENTS = [
@@ -564,8 +564,8 @@
     // ------------------------------------------------------------------------
     document.getElementById('login-form').addEventListener('submit', async function (e) {
       e.preventDefault();
-      const email = document.getElementById('login-email').value.trim().toLowerCase();
-      const passcode = document.getElementById('login-passcode').value.trim();
+      const username = document.getElementById('login-username').value.trim().toLowerCase();
+      const passcode = document.getElementById('login-passcode').value;
       const errBox = document.getElementById('login-error');
       const errText = document.getElementById('login-error-text');
       const submitBtn = document.getElementById('login-submit-btn');
@@ -576,9 +576,9 @@
 
       try {
         if (state.apiEndpoint) {
-          const authResult = await callAppsScript('authenticateUser', { email, passcode });
+          const authResult = await callAppsScript('authenticateUser', { username, password: passcode });
           if (!authResult || !authResult.user || !authResult.session_token) {
-            errText.textContent = 'Sign-in failed. Check your email, access key, and Apps Script connection.';
+            errText.textContent = 'Sign-in failed. Check your username, password, and Apps Script connection.';
             errBox.classList.remove('hidden');
             return;
           }
@@ -591,14 +591,14 @@
         }
 
         // Local preview is available only when no Google Apps Script URL is configured.
-        const matched = state.users.find(u => u.email.toLowerCase() === email && u.active !== false);
+        const matched = state.users.find(u => String(u.username || String(u.email || '').split('@')[0]).toLowerCase() === username && u.active !== false);
         if (!matched) {
-          errText.textContent = 'Access denied. This email is not registered in GO TO TARGET.';
+          errText.textContent = 'This username is not registered in GO TO TARGET.';
           errBox.classList.remove('hidden');
           return;
         }
         if (passcode !== state.workspaceKey) {
-          errText.textContent = 'Invalid company workspace access code.';
+          errText.textContent = 'Invalid username or password.';
           errBox.classList.remove('hidden');
           return;
         }
@@ -1060,7 +1060,7 @@
             <div class="w-9 h-9 rounded-full bg-[#061D42] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">${getInitials(u.name)}</div>
             <div class="min-w-0">
               <p class="text-sm font-semibold text-[#061D42] truncate">${escapeHtml(u.name)}</p>
-              <p class="text-xs text-slate-500 truncate">${escapeHtml(u.email)}</p>
+              <p class="text-xs text-slate-500 truncate">@${escapeHtml(u.username || String(u.email || '').split('@')[0])}</p>
             </div>
           </div>
           <div class="flex items-center gap-2.5">
@@ -1098,7 +1098,7 @@
 
             <form onsubmit="handleAddTeamMember(event)" class="grid grid-cols-1 sm:grid-cols-12 gap-3 bg-[#F5F7FA] p-4 rounded-xl">
               <input id="new-member-name" type="text" required placeholder="Full Name" class="sm:col-span-4 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#2585E8]" />
-              <input id="new-member-email" type="email" required placeholder="staff@gototarget.co" class="sm:col-span-4 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#2585E8]" />
+              <input id="new-member-username" type="text" required minlength="3" maxlength="30" pattern="[A-Za-z0-9][A-Za-z0-9._-]{2,29}" autocomplete="off" placeholder="Username" class="sm:col-span-4 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#2585E8]" />
               <select id="new-member-role" class="sm:col-span-2 px-3 py-2 rounded-xl bg-white border border-slate-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#2585E8]">
                 <option value="STAFF">STAFF</option>
                 <option value="ADMIN">ADMIN</option>
@@ -1407,18 +1407,22 @@
     async function handleAddTeamMember(e) {
       e.preventDefault();
       const name = document.getElementById('new-member-name').value.trim();
-      const email = document.getElementById('new-member-email').value.trim().toLowerCase();
+      const username = document.getElementById('new-member-username').value.trim().toLowerCase();
       const role = document.getElementById('new-member-role').value;
 
-      if (state.users.some(u => u.email.toLowerCase() === email)) {
-        showToast('This email is already registered.', 'error');
+      if (!/^[a-z0-9][a-z0-9._-]{2,29}$/.test(username)) {
+        showToast('Username must be 3–30 characters using letters, numbers, dots, underscores or hyphens.', 'error');
+        return;
+      }
+      if (state.users.some(u => String(u.username || String(u.email || '').split('@')[0]).toLowerCase() === username)) {
+        showToast('This username is already registered.', 'error');
         return;
       }
 
       const newUser = {
         user_id: 'usr_' + Date.now(),
         name,
-        email,
+        username,
         role,
         active: true
       };
@@ -1436,7 +1440,7 @@
       renderApp();
       showToast(`Added ${name} (${role})`);
       if (temporaryPassword) {
-        window.alert(`New account created for ${name} (${email}).\n\nTemporary password:\n${temporaryPassword}\n\nSend this password to the team member. It will not be shown again.`);
+        window.alert(`New account created for ${name}.\n\nUsername: ${username}\nTemporary password: ${temporaryPassword}\n\nSend these credentials securely to the team member. The password will not be shown again.`);
       }
     }
 
@@ -1467,7 +1471,7 @@
       if (!window.confirm(`Generate a new password for ${target.name}? Their current password will stop working.`)) return;
       const result = await callAppsScript('resetUserPassword', { user_id: userId });
       if (!result || !result.temporary_password) return;
-      window.alert(`New temporary password for ${target.name} (${target.email}):\n\n${result.temporary_password}\n\nSend it securely to the team member. It will not be shown again.`);
+      window.alert(`New temporary password for ${target.name} (@${target.username || String(target.email || '').split('@')[0]}):\n\n${result.temporary_password}\n\nSend it securely to the team member. It will not be shown again.`);
       if (state.currentUser && state.currentUser.user_id === userId) {
         logout();
       }
