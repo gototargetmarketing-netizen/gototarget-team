@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- Internal team tool: keep it out of search results -->
+  <meta name="robots" content="noindex, nofollow" />
   <title>GO TO TARGET — Internal Client Workspace</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -337,7 +339,20 @@
   <script>
     // SETUP: Paste the deployed Google Apps Script Web App URL here (must end with /exec).
     // Example: https://script.google.com/macros/s/AKfycb.../exec
-    const GTT_APPS_SCRIPT_URL = 'PASTE_WEB_APP_URL_HERE';
+    // TESTING: point this browser at your own test Apps Script without editing the URL above.
+    // Open DevTools Console and run: localStorage.setItem('gtt_web_app_url', 'https://script.google.com/macros/s/.../exec')
+    // Remove the override with: localStorage.removeItem('gtt_web_app_url'). Only /macros/s/.../exec URLs are accepted.
+    const GTT_APPS_SCRIPT_URL = (() => {
+      const DEFAULT_URL = 'PASTE_WEB_APP_URL_HERE';
+      try {
+        const override = localStorage.getItem('gtt_web_app_url');
+        if (override && /^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec$/.test(override)) {
+          console.info('[GTT] Using test Apps Script from localStorage:', override);
+          return override;
+        }
+      } catch (e) {}
+      return DEFAULT_URL;
+    })();
 
     // ------------------------------------------------------------------------
     // INITIAL SEED DATA & DEFAULT TEMPLATES

@@ -85,6 +85,54 @@ function setupDatabaseSheets() {
   return 'Database ready';
 }
 
+/**
+ * Press Run on this function first: it triggers the permission prompt and
+ * checks that the script can reach the Sheet. Read-only — it never writes,
+ * so it is safe to run on the live Sheet. Results appear in the Execution log.
+ */
+function testSetup() {
+  const lines = [];
+  let ss;
+  try {
+    ss = getDatabaseSpreadsheet_();
+    lines.push('OK  Spreadsheet: ' + ss.getName() + ' (' + ss.getUrl() + ')');
+  } catch (err) {
+    Logger.log('FAIL Cannot open spreadsheet: ' + (err && err.message ? err.message : err));
+    return 'FAIL';
+  }
+
+  let allSheetsOk = true;
+  GTT_SCHEMAS.forEach(schema => {
+    const sheet = ss.getSheetByName(schema.name);
+    if (!sheet) {
+      allSheetsOk = false;
+      lines.push('MISSING sheet "' + schema.name + '" -> run setupDatabaseSheets()');
+      return;
+    }
+    const width = Math.max(sheet.getLastColumn(), 1);
+    const headers = sheet.getRange(1, 1, 1, width).getDisplayValues()[0].map(value => String(value || '').trim());
+    const missing = schema.headers.filter(header => headers.indexOf(header) === -1);
+    if (missing.length) {
+      allSheetsOk = false;
+      lines.push('MISSING columns in "' + schema.name + '": ' + missing.join(', ') + ' -> run setupDatabaseSheets()');
+    } else {
+      lines.push('OK  Sheet "' + schema.name + '": ' + Math.max(sheet.getLastRow() - 1, 0) + ' rows');
+    }
+  });
+
+  // Only report whether a password exists; never log the hash itself.
+  if (allSheetsOk) {
+    const admins = sheetRows_(GTT_CONFIG.SHEETS.USERS).filter(user => String(user.role) === 'ADMIN' && bool_(user.active));
+    const withPassword = admins.filter(user => String(user.password_hash || '').trim());
+    if (!admins.length) lines.push('MISSING active ADMIN user -> run setupDatabaseSheets()');
+    else if (!withPassword.length) lines.push('TODO Admin password not set -> Sheet menu 🚀 GO TO TARGET > 2. Set / reset Admin password');
+    else lines.push('OK  Admin accounts with password: ' + withPassword.map(user => user.username).join(', '));
+  }
+
+  Logger.log(lines.join('\n'));
+  return allSheetsOk ? 'OK' : 'NEEDS SETUP';
+}
+
 function seedInitialData() {
   const ss = getDatabaseSpreadsheet_();
   ensureDatabaseSheets_(ss);
