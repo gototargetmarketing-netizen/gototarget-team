@@ -68,14 +68,14 @@
       <!-- Login Form -->
       <form id="login-form" class="p-8 space-y-5">
         <div>
-          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Username</label>
-          <input id="login-username" type="text" required autocomplete="username" minlength="3" maxlength="30" placeholder="Enter your username"
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Company Email</label>
+          <input id="login-email" type="email" required placeholder="name@gototarget.co"
             class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-[#F5F7FA]/60 text-[#061D42] text-sm focus:outline-none focus:ring-2 focus:ring-[#2585E8] focus:bg-white transition" />
         </div>
 
         <div>
-          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Password</label>
-          <input id="login-passcode" type="password" required autocomplete="current-password" placeholder="Enter your password"
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Workspace Access Key</label>
+          <input id="login-passcode" type="password" required placeholder="••••••••"
             class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-[#F5F7FA]/60 text-[#061D42] text-sm focus:outline-none focus:ring-2 focus:ring-[#2585E8] focus:bg-white transition" />
         </div>
 
@@ -90,6 +90,22 @@
           <span>Sign In to Workspace</span>
         </button>
 
+        <!-- Quick Preview Mode -->
+        <div class="pt-4 border-t border-slate-100">
+          <p class="text-[11px] text-center text-slate-400 mb-2.5">Internal Quick Access (Preview Mode)</p>
+          <div class="grid grid-cols-2 gap-2.5">
+            <button type="button" onclick="quickLogin('ADMIN')"
+              class="py-2 px-3 rounded-lg border border-slate-200 hover:border-[#2585E8] hover:bg-[#2585E8]/5 text-xs font-medium text-[#061D42] transition flex items-center justify-center gap-1.5 cursor-pointer">
+              <i data-lucide="shield" class="w-3.5 h-3.5 text-[#2585E8]"></i>
+              <span>Enter as Admin</span>
+            </button>
+            <button type="button" onclick="quickLogin('STAFF')"
+              class="py-2 px-3 rounded-lg border border-slate-200 hover:border-[#50D6B0] hover:bg-[#50D6B0]/10 text-xs font-medium text-[#061D42] transition flex items-center justify-center gap-1.5 cursor-pointer">
+              <i data-lucide="user-check" class="w-3.5 h-3.5 text-[#50D6B0]"></i>
+              <span>Enter as Staff</span>
+            </button>
+          </div>
+        </div>
       </form>
     </div>
     <p class="mt-6 text-xs text-slate-400">Authorized GO TO TARGET personnel only.</p>
@@ -335,10 +351,6 @@
        4. APPLICATION JAVASCRIPT LOGIC
   ======================================================================== -->
   <script>
-    // SETUP: Paste the deployed Google Apps Script Web App URL here (must end with /exec).
-    // Example: https://script.google.com/macros/s/AKfycb.../exec
-    const GTT_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyc6Z1VAd1SH713nMSPXqwePfLNEk-injD6K2XU43cHEJqFlNS_VNXY9nA6N0qTcvPCDQ/exec';
-
     // ------------------------------------------------------------------------
     // INITIAL SEED DATA & DEFAULT TEMPLATES
     // ------------------------------------------------------------------------
@@ -350,9 +362,9 @@
     ];
 
     const SEED_USERS = [
-      { user_id: 'usr_admin_01', name: 'Narin Srisai', username: 'admin', email: 'admin@gototarget.co', role: 'ADMIN', active: true },
-      { user_id: 'usr_staff_01', name: 'Ploypailin K.', username: 'staff', email: 'staff@gototarget.co', role: 'STAFF', active: true },
-      { user_id: 'usr_staff_02', name: 'Thanawat M.', username: 'creative', email: 'creative@gototarget.co', role: 'STAFF', active: true }
+      { user_id: 'usr_admin_01', name: 'Narin Srisai', email: 'admin@gototarget.co', role: 'ADMIN', active: true },
+      { user_id: 'usr_staff_01', name: 'Ploypailin K.', email: 'staff@gototarget.co', role: 'STAFF', active: true },
+      { user_id: 'usr_staff_02', name: 'Thanawat M.', email: 'creative@gototarget.co', role: 'STAFF', active: true }
     ];
 
     const SEED_CLIENTS = [
@@ -419,8 +431,8 @@
       clientSearch: '',
       showArchived: false,
       workspaceSearch: '',
-      apiEndpoint: (GTT_APPS_SCRIPT_URL.startsWith('https://script.google.com/macros/s/') && GTT_APPS_SCRIPT_URL.endsWith('/exec')) ? GTT_APPS_SCRIPT_URL : '',
-      apiSecret: '',
+      apiEndpoint: localStorage.getItem('gtt_gas_api_url') || '',
+      apiSecret: localStorage.getItem('gtt_gas_api_secret') || '',
       workspaceKey: localStorage.getItem('gtt_workspace_key') || 'GTT2026',
       clients: JSON.parse(localStorage.getItem('gtt_clients') || 'null') || SEED_CLIENTS,
       workspaces: JSON.parse(localStorage.getItem('gtt_workspaces') || 'null') || SEED_WORKSPACES,
@@ -505,63 +517,29 @@
         const res = await fetch(state.apiEndpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({
-            action,
-            token: state.apiSecret,
-            session_token: sessionStorage.getItem('gtt_session_token') || '',
-            payload
-          })
+          body: JSON.stringify({ action, token: state.apiSecret, payload })
         });
-        if (!res.ok) throw new Error('HTTP ' + res.status);
         const result = await res.json();
         if (!result.success) throw new Error(result.error || 'Apps Script Error');
         return result.data;
       } catch (err) {
-        window.gttLastApiError = err && err.message ? err.message : String(err);
-        showToast('Apps Script: ' + window.gttLastApiError, 'error');
+        showToast('Sync warning: ' + err.message, 'error');
         return null;
       }
     }
 
     async function syncFromGoogleSheets() {
-      if (!state.apiEndpoint) return false;
-      let [remoteClients, remoteWorkspaces] = await Promise.all([
+      if (!state.apiEndpoint) return;
+      showToast('Syncing from Google Sheets...');
+      const [remoteClients, remoteWorkspaces] = await Promise.all([
         callAppsScript('getClients'),
         callAppsScript('getAllWorkspaces')
       ]);
-      if (!Array.isArray(remoteClients) || !Array.isArray(remoteWorkspaces)) return false;
-
-      // Preserve previously saved browser data: import it once only when the cloud database is empty.
-      const hasPreviouslySavedLocalData = Boolean(localStorage.getItem('gtt_clients'));
-      if (state.currentUser && state.currentUser.role === 'ADMIN' &&
-          remoteClients.length === 0 && remoteWorkspaces.length === 0 &&
-          hasPreviouslySavedLocalData && (state.clients.length || state.workspaces.length)) {
-        const importResult = await callAppsScript('importLocalDataIfEmpty', {
-          clients: state.clients,
-          workspaces: state.workspaces,
-          users: state.users
-        });
-        if (!importResult) return false;
-        [remoteClients, remoteWorkspaces] = await Promise.all([
-          callAppsScript('getClients'),
-          callAppsScript('getAllWorkspaces')
-        ]);
-        if (!Array.isArray(remoteClients) || !Array.isArray(remoteWorkspaces)) return false;
-      }
-
-      state.clients = remoteClients;
-      state.workspaces = remoteWorkspaces;
-
-      if (state.currentUser && state.currentUser.role === 'ADMIN') {
-        const remoteUsers = await callAppsScript('getUsers');
-        if (!Array.isArray(remoteUsers)) return false;
-        state.users = remoteUsers;
-      }
-
+      if (Array.isArray(remoteClients)) state.clients = remoteClients;
+      if (Array.isArray(remoteWorkspaces)) state.workspaces = remoteWorkspaces;
       saveState();
       renderApp();
       showToast('Synced latest data from Google Sheets');
-      return true;
     }
 
     // ------------------------------------------------------------------------
@@ -569,47 +547,55 @@
     // ------------------------------------------------------------------------
     document.getElementById('login-form').addEventListener('submit', async function (e) {
       e.preventDefault();
-      const username = document.getElementById('login-username').value.trim().toLowerCase();
-      const password = document.getElementById('login-passcode').value;
+      const email = document.getElementById('login-email').value.trim().toLowerCase();
+      const passcode = document.getElementById('login-passcode').value.trim();
       const errBox = document.getElementById('login-error');
       const errText = document.getElementById('login-error-text');
-      const submitBtn = document.getElementById('login-submit-btn');
 
       errBox.classList.add('hidden');
-      submitBtn.disabled = true;
-      submitBtn.classList.add('opacity-60');
-      window.gttLastApiError = '';
 
-      try {
-        if (!state.apiEndpoint) {
-          errText.textContent = 'ยังไม่ได้ตั้งค่า Web App URL กรุณาใส่ URL ใน GTT_APPS_SCRIPT_URL ในไฟล์ index.html แล้ว Deploy เว็บไซต์ใหม่';
-          errBox.classList.remove('hidden');
+      if (state.apiEndpoint) {
+        const remoteUser = await callAppsScript('authenticateUser', { email, passcode });
+        if (remoteUser && remoteUser.active) {
+          state.currentUser = remoteUser;
+          sessionStorage.setItem('gtt_current_user', JSON.stringify(remoteUser));
+          initWorkspace();
           return;
         }
-
-        const authResult = await callAppsScript('authenticateUser', { username, password });
-        if (!authResult || !authResult.user || !authResult.session_token) {
-          errText.textContent = window.gttLastApiError || 'เข้าสู่ระบบไม่สำเร็จ กรุณาตรวจสอบ Username และ Password';
-          errBox.classList.remove('hidden');
-          return;
-        }
-
-        sessionStorage.setItem('gtt_session_token', authResult.session_token);
-        state.currentUser = authResult.user;
-        sessionStorage.setItem('gtt_current_user', JSON.stringify(authResult.user));
-        await initWorkspace();
-      } finally {
-        submitBtn.disabled = false;
-        submitBtn.classList.remove('opacity-60');
       }
+
+      const matched = state.users.find(u => u.email.toLowerCase() === email && u.active !== false);
+      if (!matched) {
+        errText.textContent = 'Access denied. This email is not registered in GO TO TARGET.';
+        errBox.classList.remove('hidden');
+        return;
+      }
+
+      if (passcode !== state.workspaceKey) {
+        errText.textContent = 'Invalid company workspace access code. (Default: GTT2026)';
+        errBox.classList.remove('hidden');
+        return;
+      }
+
+      state.currentUser = matched;
+      sessionStorage.setItem('gtt_current_user', JSON.stringify(matched));
+      showToast('Welcome back, ' + matched.name);
+      initWorkspace();
     });
+
+    function quickLogin(role) {
+      const user = state.users.find(u => u.role === role && u.active !== false) || state.users[0];
+      state.currentUser = user;
+      sessionStorage.setItem('gtt_current_user', JSON.stringify(user));
+      showToast(`Signed in as ${user.name} (${user.role})`);
+      initWorkspace();
+    }
 
     function logout() {
       state.currentUser = null;
       state.selectedClientId = null;
       state.activeNav = 'clients';
       sessionStorage.removeItem('gtt_current_user');
-      sessionStorage.removeItem('gtt_session_token');
       document.getElementById('app-shell').classList.add('hidden');
       document.getElementById('login-view').classList.remove('hidden');
       lucide.createIcons();
@@ -665,29 +651,7 @@
     // ------------------------------------------------------------------------
     // MAIN RENDER CONTROLLER
     // ------------------------------------------------------------------------
-    async function initWorkspace() {
-      if (!state.apiEndpoint) {
-        state.currentUser = null;
-        sessionStorage.removeItem('gtt_current_user');
-        sessionStorage.removeItem('gtt_session_token');
-      } else {
-        const sessionToken = sessionStorage.getItem('gtt_session_token') || '';
-        if (!sessionToken) {
-          state.currentUser = null;
-          sessionStorage.removeItem('gtt_current_user');
-        } else {
-          const verifiedUser = await callAppsScript('validateSession');
-          if (!verifiedUser || !verifiedUser.active) {
-            state.currentUser = null;
-            sessionStorage.removeItem('gtt_current_user');
-            sessionStorage.removeItem('gtt_session_token');
-          } else {
-            state.currentUser = verifiedUser;
-            sessionStorage.setItem('gtt_current_user', JSON.stringify(verifiedUser));
-          }
-        }
-      }
-
+    function initWorkspace() {
       if (!state.currentUser) {
         document.getElementById('login-view').classList.remove('hidden');
         document.getElementById('app-shell').classList.add('hidden');
@@ -699,22 +663,27 @@
       document.getElementById('app-shell').classList.remove('hidden');
 
       const isAdmin = state.currentUser.role === 'ADMIN';
-      if (!isAdmin && state.activeNav === 'settings') state.activeNav = 'clients';
       document.getElementById('user-avatar').textContent = getInitials(state.currentUser.name);
       document.getElementById('user-name-display').textContent = state.currentUser.name;
 
       const roleBadge = document.getElementById('user-role-badge');
       roleBadge.textContent = state.currentUser.role;
       roleBadge.className = isAdmin
-        ? 'inline-block text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#50D6B0]/20 text-[#0F766E]'
-        : 'inline-block text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#45B8E8]/20 text-[#2585E8]';
+        ? 'inline-block text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#50D6B0]/20 text-[#50D6B0]'
+        : 'inline-block text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#45B8E8]/20 text-[#45B8E8]';
 
       const settingsNav = document.getElementById('nav-settings');
-      if (isAdmin) settingsNav.classList.remove('hidden');
-      else settingsNav.classList.add('hidden');
+      if (isAdmin) {
+        settingsNav.classList.remove('hidden');
+      } else {
+        settingsNav.classList.add('hidden');
+      }
 
-      if (state.apiEndpoint) await syncFromGoogleSheets();
-      else renderApp();
+      if (state.apiEndpoint) {
+        syncFromGoogleSheets();
+      } else {
+        renderApp();
+      }
     }
 
     function renderApp() {
@@ -1056,16 +1025,13 @@
             <div class="w-9 h-9 rounded-full bg-[#061D42] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">${getInitials(u.name)}</div>
             <div class="min-w-0">
               <p class="text-sm font-semibold text-[#061D42] truncate">${escapeHtml(u.name)}</p>
-              <p class="text-xs text-slate-500 truncate">@${escapeHtml(u.username || String(u.email || '').split('@')[0])}</p>
+              <p class="text-xs text-slate-500 truncate">${escapeHtml(u.email)}</p>
             </div>
           </div>
           <div class="flex items-center gap-2.5">
             <button onclick="toggleUserRole('${u.user_id}')" title="Click to switch role"
               class="px-2.5 py-1 rounded-lg text-xs font-bold tracking-wider cursor-pointer transition ${u.role === 'ADMIN' ? 'bg-[#50D6B0]/20 text-[#0F766E]' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">
               ${u.role}
-            </button>
-            <button onclick="resetUserPassword('${u.user_id}')" title="Generate a new temporary password" class="p-1.5 rounded-lg text-slate-400 hover:text-[#2585E8] hover:bg-blue-50 transition cursor-pointer">
-              <i data-lucide="key-round" class="w-4 h-4"></i>
             </button>
             <button onclick="removeUser('${u.user_id}')" title="Revoke Access" class="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition cursor-pointer">
               <i data-lucide="trash-2" class="w-4 h-4"></i>
@@ -1088,13 +1054,13 @@
               </div>
               <div>
                 <h2 class="text-base font-bold text-[#061D42]">Internal Team Access</h2>
-                <p class="text-xs text-slate-500">Each team member signs in with a unique password. Admins manage clients, workspaces, and team access; Staff have view-only access.</p>
+                <p class="text-xs text-slate-500">Only listed company emails can log in. Admins manage clients & links; Staff have view-only access.</p>
               </div>
             </div>
 
             <form onsubmit="handleAddTeamMember(event)" class="grid grid-cols-1 sm:grid-cols-12 gap-3 bg-[#F5F7FA] p-4 rounded-xl">
               <input id="new-member-name" type="text" required placeholder="Full Name" class="sm:col-span-4 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#2585E8]" />
-              <input id="new-member-username" type="text" required minlength="3" maxlength="30" pattern="[A-Za-z0-9][A-Za-z0-9._-]{2,29}" autocomplete="off" placeholder="Username" class="sm:col-span-4 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#2585E8]" />
+              <input id="new-member-email" type="email" required placeholder="staff@gototarget.co" class="sm:col-span-4 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#2585E8]" />
               <select id="new-member-role" class="sm:col-span-2 px-3 py-2 rounded-xl bg-white border border-slate-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#2585E8]">
                 <option value="STAFF">STAFF</option>
                 <option value="ADMIN">ADMIN</option>
@@ -1112,21 +1078,32 @@
                 <i data-lucide="database" class="w-5 h-5"></i>
               </div>
               <div>
-                <h2 class="text-base font-bold text-[#061D42]">Google Sheets Backend Connection</h2>
-                <p class="text-xs text-slate-500">ระบบใช้ URL ที่กำหนดไว้ในตัวไฟล์ HTML โดยตรง เพื่อเชื่อม Google Sheets อัตโนมัติ</p>
+                <h2 class="text-base font-bold text-[#061D42]">Google Sheets Backend & Security Key</h2>
+                <p class="text-xs text-slate-500">Connect your deployed Google Apps Script Web App URL for permanent cloud persistence.</p>
               </div>
             </div>
 
             <div>
-              <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Google Apps Script Web App URL (แก้ในไฟล์ index.html)</label>
-              <input id="cfg-api-url" type="url" readonly placeholder="Set GTT_APPS_SCRIPT_URL in index.html" value="${escapeHtml(state.apiEndpoint)}"
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Google Apps Script Web App URL</label>
+              <input id="cfg-api-url" type="url" placeholder="https://script.google.com/macros/s/AKfycb.../exec" value="${escapeHtml(state.apiEndpoint)}"
                 class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm text-[#061D42] focus:outline-none focus:ring-2 focus:ring-[#2585E8]" />
             </div>
 
-            <p class="text-xs text-slate-400">ไม่ต้องกรอก API Token เพิ่มเติม เปลี่ยน URL ได้ที่ตัวแปร GTT_APPS_SCRIPT_URL ในไฟล์ index.html เท่านั้น</p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">API Secret Token (Matches Apps Script)</label>
+                <input id="cfg-api-secret" type="password" placeholder="Optional API token" value="${escapeHtml(state.apiSecret)}"
+                  class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm text-[#061D42] focus:outline-none focus:ring-2 focus:ring-[#2585E8]" />
+              </div>
+              <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Company Login Access Key</label>
+                <input id="cfg-workspace-key" type="text" required value="${escapeHtml(state.workspaceKey)}"
+                  class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm text-[#061D42] focus:outline-none focus:ring-2 focus:ring-[#2585E8]" />
+              </div>
+            </div>
 
             <div class="pt-2 flex flex-wrap items-center justify-between gap-3">
-              <span class="text-xs text-slate-400">Changes save in this browser. Sign in again if you change the Web App URL.</span>
+              <span class="text-xs text-slate-400">Changes save immediately and persist across refreshes.</span>
               <button type="submit" class="px-5 py-2.5 rounded-xl bg-[#061D42] hover:bg-[#0d2d63] text-white text-sm font-semibold shadow-sm transition cursor-pointer">Save Configuration</button>
             </div>
           </form>
@@ -1182,6 +1159,7 @@
           archived: false,
           created_at: today
         };
+
         const defaultWorkspaces = DEFAULT_WORKSPACE_TEMPLATES.map((tpl, idx) => ({
           workspace_id: `ws_${Date.now()}_${idx}`,
           client_id: newClientId,
@@ -1194,10 +1172,6 @@
           updated_at: today
         }));
 
-        if (state.apiEndpoint) {
-          const savedClient = await callAppsScript('createClient', { client: newClient, defaultWorkspaces });
-          if (!savedClient) return;
-        }
         state.clients.unshift(newClient);
         state.workspaces.push(...defaultWorkspaces);
         saveState();
@@ -1205,19 +1179,21 @@
         state.selectedClientId = newClientId;
         renderApp();
         showToast(`Created "${name}" with 4 default workspaces`);
+
+        if (state.apiEndpoint) {
+          await callAppsScript('createClient', { client: newClient, defaultWorkspaces });
+        }
       } else {
         const idx = state.clients.findIndex(c => c.client_id === id);
         if (idx !== -1) {
-          const updatedClient = { ...state.clients[idx], client_name: name, logo_url: logo, description: desc };
-          if (state.apiEndpoint) {
-            const savedClient = await callAppsScript('updateClient', updatedClient);
-            if (!savedClient) return;
-          }
-          state.clients[idx] = updatedClient;
+          state.clients[idx] = { ...state.clients[idx], client_name: name, logo_url: logo, description: desc };
           saveState();
           closeClientModal();
           renderApp();
           showToast(`Updated "${name}"`);
+          if (state.apiEndpoint) {
+            await callAppsScript('updateClient', state.clients[idx]);
+          }
         }
       }
     });
@@ -1225,15 +1201,13 @@
     async function toggleArchiveClient(clientId) {
       const idx = state.clients.findIndex(c => c.client_id === clientId);
       if (idx === -1) return;
-      const updatedClient = { ...state.clients[idx], archived: !state.clients[idx].archived };
-      if (state.apiEndpoint) {
-        const savedClient = await callAppsScript('updateClient', updatedClient);
-        if (!savedClient) return;
-      }
-      state.clients[idx] = updatedClient;
+      state.clients[idx].archived = !state.clients[idx].archived;
       saveState();
       renderApp();
-      showToast(updatedClient.archived ? `Archived ${updatedClient.client_name}` : `Restored ${updatedClient.client_name}`);
+      showToast(state.clients[idx].archived ? `Archived ${state.clients[idx].client_name}` : `Restored ${state.clients[idx].client_name}`);
+      if (state.apiEndpoint) {
+        await callAppsScript('updateClient', state.clients[idx]);
+      }
     }
 
     function confirmDeleteClient(clientId) {
@@ -1242,10 +1216,6 @@
       document.getElementById('confirm-title').textContent = 'Delete Client Permanently';
       document.getElementById('confirm-message').textContent = `Are you sure you want to delete "${client.client_name}" and all of its connected workspaces? This action cannot be undone.`;
       document.getElementById('confirm-yes-btn').onclick = async function () {
-        if (state.apiEndpoint) {
-          const result = await callAppsScript('deleteClient', { client_id: clientId });
-          if (!result) return;
-        }
         state.clients = state.clients.filter(c => c.client_id !== clientId);
         state.workspaces = state.workspaces.filter(w => w.client_id !== clientId);
         if (state.selectedClientId === clientId) state.selectedClientId = null;
@@ -1253,6 +1223,9 @@
         closeConfirmModal();
         renderApp();
         showToast(`Deleted "${client.client_name}"`);
+        if (state.apiEndpoint) {
+          await callAppsScript('deleteClient', { client_id: clientId });
+        }
       };
       document.getElementById('confirm-modal').classList.remove('hidden');
     }
@@ -1335,19 +1308,18 @@
           created_at: today,
           updated_at: today
         };
-        if (state.apiEndpoint) {
-          const savedWorkspace = await callAppsScript('createWorkspace', newWs);
-          if (!savedWorkspace) return;
-        }
         state.workspaces.push(newWs);
         saveState();
         closeWorkspaceModal();
         renderApp();
         showToast(`Added "${name}" workspace`);
+        if (state.apiEndpoint) {
+          await callAppsScript('createWorkspace', newWs);
+        }
       } else {
         const idx = state.workspaces.findIndex(w => w.workspace_id === wsId);
         if (idx !== -1) {
-          const updatedWorkspace = {
+          state.workspaces[idx] = {
             ...state.workspaces[idx],
             workspace_name: name,
             description: desc,
@@ -1356,15 +1328,13 @@
             external_url: url,
             updated_at: today
           };
-          if (state.apiEndpoint) {
-            const savedWorkspace = await callAppsScript('updateWorkspace', updatedWorkspace);
-            if (!savedWorkspace) return;
-          }
-          state.workspaces[idx] = updatedWorkspace;
           saveState();
           closeWorkspaceModal();
           renderApp();
           showToast(`Saved "${name}" settings`);
+          if (state.apiEndpoint) {
+            await callAppsScript('updateWorkspace', state.workspaces[idx]);
+          }
         }
       }
     });
@@ -1375,15 +1345,14 @@
       document.getElementById('confirm-title').textContent = 'Delete Workspace Category';
       document.getElementById('confirm-message').textContent = `Remove "${ws.workspace_name}" from this client? Your actual Google Drive files will not be affected.`;
       document.getElementById('confirm-yes-btn').onclick = async function () {
-        if (state.apiEndpoint) {
-          const result = await callAppsScript('deleteWorkspace', { workspace_id: wsId });
-          if (!result) return;
-        }
         state.workspaces = state.workspaces.filter(w => w.workspace_id !== wsId);
         saveState();
         closeConfirmModal();
         renderApp();
         showToast(`Removed "${ws.workspace_name}"`);
+        if (state.apiEndpoint) {
+          await callAppsScript('deleteWorkspace', { workspace_id: wsId });
+        }
       };
       document.getElementById('confirm-modal').classList.remove('hidden');
     }
@@ -1395,138 +1364,65 @@
     // ------------------------------------------------------------------------
     // ADMIN SETTINGS HANDLERS
     // ------------------------------------------------------------------------
-    async function handleAddTeamMember(e) {
+    function handleAddTeamMember(e) {
       e.preventDefault();
       const name = document.getElementById('new-member-name').value.trim();
-      const username = document.getElementById('new-member-username').value.trim().toLowerCase();
+      const email = document.getElementById('new-member-email').value.trim().toLowerCase();
       const role = document.getElementById('new-member-role').value;
 
-      if (!/^[a-z0-9][a-z0-9._-]{2,29}$/.test(username)) {
-        showToast('Username must be 3–30 characters using letters, numbers, dots, underscores or hyphens.', 'error');
-        return;
-      }
-      if (state.users.some(u => String(u.username || String(u.email || '').split('@')[0]).toLowerCase() === username)) {
-        showToast('This username is already registered.', 'error');
+      if (state.users.some(u => u.email.toLowerCase() === email)) {
+        showToast('This email is already registered.', 'error');
         return;
       }
 
-      const newUser = {
+      state.users.push({
         user_id: 'usr_' + Date.now(),
         name,
-        username,
+        email,
         role,
         active: true
-      };
-
-      let temporaryPassword = '';
-      if (state.apiEndpoint) {
-        const created = await callAppsScript('createUser', newUser);
-        if (!created || !created.user) return;
-        state.users.push(created.user);
-        temporaryPassword = created.temporary_password || '';
-      } else {
-        state.users.push(newUser);
-      }
+      });
       saveState();
       renderApp();
       showToast(`Added ${name} (${role})`);
-      if (temporaryPassword) {
-        window.alert(`New account created for ${name}.\n\nUsername: ${username}\nTemporary password: ${temporaryPassword}\n\nSend these credentials securely to the team member. The password will not be shown again.`);
-      }
     }
 
-    async function toggleUserRole(userId) {
+    function toggleUserRole(userId) {
       const idx = state.users.findIndex(u => u.user_id === userId);
       if (idx === -1) return;
-      const newRole = state.users[idx].role === 'ADMIN' ? 'STAFF' : 'ADMIN';
-
-      if (state.apiEndpoint) {
-        const savedUser = await callAppsScript('updateUser', { user_id: userId, role: newRole });
-        if (!savedUser) return;
-        state.users[idx] = savedUser;
-      } else {
-        state.users[idx].role = newRole;
-      }
+      state.users[idx].role = state.users[idx].role === 'ADMIN' ? 'STAFF' : 'ADMIN';
       saveState();
       renderApp();
       showToast('Updated member role');
     }
 
-    async function resetUserPassword(userId) {
-      if (!state.apiEndpoint) {
-        showToast('Connect Google Sheets first to issue individual passwords.', 'error');
+    function removeUser(userId) {
+      if (state.users.length <= 1) {
+        showToast('At least one administrator must remain.', 'error');
         return;
       }
-      const target = state.users.find(u => u.user_id === userId);
-      if (!target) return;
-      if (!window.confirm(`Generate a new password for ${target.name}? Their current password will stop working.`)) return;
-      const result = await callAppsScript('resetUserPassword', { user_id: userId });
-      if (!result || !result.temporary_password) return;
-      window.alert(`New temporary password for ${target.name} (@${target.username || String(target.email || '').split('@')[0]}):\n\n${result.temporary_password}\n\nSend it securely to the team member. It will not be shown again.`);
-      if (state.currentUser && state.currentUser.user_id === userId) {
-        logout();
-      }
-    }
-
-    async function removeUser(userId) {
-      if (state.currentUser && state.currentUser.user_id === userId) {
-        showToast('You cannot remove your own account.', 'error');
-        return;
-      }
-      const target = state.users.find(u => u.user_id === userId);
-      if (!target) return;
-
-      if (state.apiEndpoint) {
-        const result = await callAppsScript('deleteUser', { user_id: userId });
-        if (!result) return;
-      } else if (state.users.filter(u => u.active !== false && u.role === 'ADMIN').length <= 1 && target.role === 'ADMIN') {
-        showToast('At least one active administrator must remain.', 'error');
-        return;
-      }
-
       state.users = state.users.filter(u => u.user_id !== userId);
       saveState();
       renderApp();
       showToast('Removed team member access');
     }
 
-    async function handleSaveBackendConfig(e) {
+    function handleSaveBackendConfig(e) {
       e.preventDefault();
-      const previousEndpoint = state.apiEndpoint;
-      const nextEndpoint = document.getElementById('cfg-api-url').value.trim();
-      state.apiEndpoint = nextEndpoint;
-      state.apiSecret = '';
+      state.apiEndpoint = document.getElementById('cfg-api-url').value.trim();
+      state.apiSecret = document.getElementById('cfg-api-secret').value.trim();
+      state.workspaceKey = document.getElementById('cfg-workspace-key').value.trim() || 'GTT2026';
+
       localStorage.setItem('gtt_gas_api_url', state.apiEndpoint);
-      localStorage.removeItem('gtt_gas_api_secret');
+      localStorage.setItem('gtt_gas_api_secret', state.apiSecret);
+      localStorage.setItem('gtt_workspace_key', state.workspaceKey);
 
-      if (previousEndpoint !== nextEndpoint) {
-        sessionStorage.removeItem('gtt_session_token');
-        sessionStorage.removeItem('gtt_current_user');
-        state.currentUser = null;
-        state.activeNav = 'clients';
-        state.selectedClientId = null;
-        if (state.apiEndpoint) {
-          showToast('Connection URL saved. Sign in again using your individual password.');
-        } else {
-          showToast('ยังไม่ได้กำหนด Web App URL ใน GTT_APPS_SCRIPT_URL ของ index.html', 'error');
-        }
-        document.getElementById('app-shell').classList.add('hidden');
-        document.getElementById('login-view').classList.remove('hidden');
-        return;
-      }
-
-      if (!state.apiEndpoint) {
-        showToast('กรุณากำหนด Web App URL ใน GTT_APPS_SCRIPT_URL ของ index.html', 'error');
+      showToast('Workspace & Google Sheets settings saved');
+      if (state.apiEndpoint) {
+        syncFromGoogleSheets();
+      } else {
         renderApp();
-        return;
       }
-
-      if (!sessionStorage.getItem('gtt_session_token')) {
-        showToast('Settings saved. Sign in again to connect to Google Sheets.');
-        return;
-      }
-      showToast('Google Sheets connection settings saved.');
-      await syncFromGoogleSheets();
     }
 
     // Boot Application
