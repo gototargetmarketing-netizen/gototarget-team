@@ -442,7 +442,34 @@
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    // Use this for every value placed inside an inline handler, e.g. onclick="fn(${jsArg(id)})".
+    // escapeHtml alone is NOT enough there: the browser decodes &#39; back to ' before running the JS,
+    // so a value containing a quote could break out of the string and run code.
+    // JSON.stringify makes a safe JS string literal; escapeHtml then makes it safe inside the attribute.
+    function jsArg(value) {
+      return escapeHtml(JSON.stringify(String(value == null ? '' : value)));
+    }
+
+    // Only allow real web links. Blocks javascript:, data: and other schemes that could run code
+    // if someone edits a link directly in the Google Sheet. Returns '' for anything unsafe.
+    function safeUrl(url) {
+      const trimmed = String(url || '').trim();
+      if (!trimmed) return '';
+      try {
+        const parsed = new URL(trimmed);
+        return (parsed.protocol === 'https:' || parsed.protocol === 'http:') ? parsed.href : '';
+      } catch (err) {
+        return '';
+      }
+    }
+
+    function openExternalLink(url) {
+      const safe = safeUrl(url);
+      if (safe) window.open(safe, '_blank', 'noopener,noreferrer');
     }
 
     function getInitials(name) {
@@ -784,27 +811,27 @@
         : `<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             ${filtered.map(client => {
               const clientWs = state.workspaces.filter(w => w.client_id === client.client_id);
-              const connected = clientWs.filter(w => w.external_url && w.external_url.trim() !== '').length;
+              const connected = clientWs.filter(w => safeUrl(w.external_url)).length;
 
-              const logoHtml = client.logo_url
-                ? `<img src="${escapeHtml(client.logo_url)}" alt="${escapeHtml(client.client_name)}" class="w-14 h-14 rounded-xl object-cover border border-slate-200 bg-slate-50 flex-shrink-0" />`
-                : `<div class="w-14 h-14 rounded-xl bg-gradient-to-br from-[#061D42] to-[#0f3470] text-white font-bold text-lg flex items-center justify-center flex-shrink-0">${getInitials(client.client_name)}</div>`;
+              const logoHtml = safeUrl(client.logo_url)
+                ? `<img src="${escapeHtml(safeUrl(client.logo_url))}" alt="${escapeHtml(client.client_name)}" class="w-14 h-14 rounded-xl object-cover border border-slate-200 bg-slate-50 flex-shrink-0" />`
+                : `<div class="w-14 h-14 rounded-xl bg-gradient-to-br from-[#061D42] to-[#0f3470] text-white font-bold text-lg flex items-center justify-center flex-shrink-0">${escapeHtml(getInitials(client.client_name))}</div>`;
 
               const adminActions = isAdmin ? `
                 <div onclick="event.stopPropagation()" class="absolute top-4 right-4 flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                  <button onclick="openEditClientModal('${client.client_id}')" title="Edit Client" class="p-1.5 rounded-lg bg-slate-100 hover:bg-[#2585E8] text-slate-600 hover:text-white transition cursor-pointer">
+                  <button onclick="openEditClientModal(${jsArg(client.client_id)})" title="Edit Client" class="p-1.5 rounded-lg bg-slate-100 hover:bg-[#2585E8] text-slate-600 hover:text-white transition cursor-pointer">
                     <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
                   </button>
-                  <button onclick="toggleArchiveClient('${client.client_id}')" title="${client.archived ? 'Restore' : 'Archive'}" class="p-1.5 rounded-lg bg-slate-100 hover:bg-amber-500 text-slate-600 hover:text-white transition cursor-pointer">
+                  <button onclick="toggleArchiveClient(${jsArg(client.client_id)})" title="${client.archived ? 'Restore' : 'Archive'}" class="p-1.5 rounded-lg bg-slate-100 hover:bg-amber-500 text-slate-600 hover:text-white transition cursor-pointer">
                     <i data-lucide="${client.archived ? 'archive-restore' : 'archive'}" class="w-3.5 h-3.5"></i>
                   </button>
-                  <button onclick="confirmDeleteClient('${client.client_id}')" title="Delete Client" class="p-1.5 rounded-lg bg-slate-100 hover:bg-red-600 text-slate-600 hover:text-white transition cursor-pointer">
+                  <button onclick="confirmDeleteClient(${jsArg(client.client_id)})" title="Delete Client" class="p-1.5 rounded-lg bg-slate-100 hover:bg-red-600 text-slate-600 hover:text-white transition cursor-pointer">
                     <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
                   </button>
                 </div>` : '';
 
               return `
-                <div onclick="openClientWorkspace('${client.client_id}')" class="group relative bg-white rounded-2xl border border-slate-200/90 hover:border-[#2585E8] p-6 shadow-xs hover:shadow-lg hover:shadow-[#061D42]/5 transition-all duration-200 cursor-pointer flex flex-col justify-between">
+                <div onclick="openClientWorkspace(${jsArg(client.client_id)})" class="group relative bg-white rounded-2xl border border-slate-200/90 hover:border-[#2585E8] p-6 shadow-xs hover:shadow-lg hover:shadow-[#061D42]/5 transition-all duration-200 cursor-pointer flex flex-col justify-between">
                   ${adminActions}
                   <div>
                     <div class="flex items-center gap-4 mb-4">
@@ -868,28 +895,28 @@
       if (!client) return `<p>Client not found.</p>`;
       const clientWorkspaces = state.workspaces.filter(w => w.client_id === client.client_id);
 
-      const logoHtml = client.logo_url
-        ? `<img src="${escapeHtml(client.logo_url)}" alt="${escapeHtml(client.client_name)}" class="w-20 h-20 rounded-2xl object-cover border border-slate-200 bg-slate-50 flex-shrink-0" />`
-        : `<div class="w-20 h-20 rounded-2xl bg-[#061D42] text-white font-bold text-2xl flex items-center justify-center flex-shrink-0 shadow-inner">${getInitials(client.client_name)}</div>`;
+      const logoHtml = safeUrl(client.logo_url)
+        ? `<img src="${escapeHtml(safeUrl(client.logo_url))}" alt="${escapeHtml(client.client_name)}" class="w-20 h-20 rounded-2xl object-cover border border-slate-200 bg-slate-50 flex-shrink-0" />`
+        : `<div class="w-20 h-20 rounded-2xl bg-[#061D42] text-white font-bold text-2xl flex items-center justify-center flex-shrink-0 shadow-inner">${escapeHtml(getInitials(client.client_name))}</div>`;
 
       const wsCardsHtml = clientWorkspaces.map(ws => {
         const theme = COLOR_STYLES[ws.color] || COLOR_STYLES.blue;
-        const hasLink = Boolean(ws.external_url && ws.external_url.trim());
+        const hasLink = Boolean(safeUrl(ws.external_url));
         const serviceName = detectLinkService(ws.external_url);
 
         const adminWsControls = isAdmin ? `
           <div onclick="event.stopPropagation()" class="absolute top-4 right-4 flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-            <button onclick="openEditWorkspaceModal('${ws.workspace_id}')" title="Edit Workspace & Link" class="p-1.5 rounded-lg bg-slate-100 hover:bg-[#2585E8] text-slate-600 hover:text-white transition cursor-pointer">
+            <button onclick="openEditWorkspaceModal(${jsArg(ws.workspace_id)})" title="Edit Workspace & Link" class="p-1.5 rounded-lg bg-slate-100 hover:bg-[#2585E8] text-slate-600 hover:text-white transition cursor-pointer">
               <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
             </button>
-            <button onclick="confirmDeleteWorkspace('${ws.workspace_id}')" title="Delete Workspace" class="p-1.5 rounded-lg bg-slate-100 hover:bg-red-600 text-slate-600 hover:text-white transition cursor-pointer">
+            <button onclick="confirmDeleteWorkspace(${jsArg(ws.workspace_id)})" title="Delete Workspace" class="p-1.5 rounded-lg bg-slate-100 hover:bg-red-600 text-slate-600 hover:text-white transition cursor-pointer">
               <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
             </button>
           </div>` : '';
 
         const clickHandler = hasLink
-          ? `window.open('${escapeHtml(ws.external_url)}', '_blank', 'noopener,noreferrer')`
-          : (isAdmin ? `openEditWorkspaceModal('${ws.workspace_id}')` : '');
+          ? `openExternalLink(${jsArg(ws.external_url)})`
+          : (isAdmin ? `openEditWorkspaceModal(${jsArg(ws.workspace_id)})` : '');
 
         return `
           <div onclick="${clickHandler}"
@@ -936,11 +963,11 @@
 
             ${isAdmin ? `
               <div class="flex items-center gap-2.5">
-                <button onclick="openEditClientModal('${client.client_id}')" class="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 px-3.5 py-2 rounded-xl border border-slate-200 transition cursor-pointer">
+                <button onclick="openEditClientModal(${jsArg(client.client_id)})" class="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 px-3.5 py-2 rounded-xl border border-slate-200 transition cursor-pointer">
                   <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
                   <span>Edit Client</span>
                 </button>
-                <button onclick="openCreateWorkspaceModal('${client.client_id}')" class="inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-[#061D42] hover:bg-[#0d2d63] px-4 py-2 rounded-xl shadow-xs transition cursor-pointer">
+                <button onclick="openCreateWorkspaceModal(${jsArg(client.client_id)})" class="inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-[#061D42] hover:bg-[#0d2d63] px-4 py-2 rounded-xl shadow-xs transition cursor-pointer">
                   <i data-lucide="plus" class="w-4 h-4 text-[#50D6B0]"></i>
                   <span>Add Workspace</span>
                 </button>
@@ -979,12 +1006,12 @@
       }).map(ws => {
         const client = state.clients.find(c => c.client_id === ws.client_id);
         const theme = COLOR_STYLES[ws.color] || COLOR_STYLES.blue;
-        const hasLink = Boolean(ws.external_url && ws.external_url.trim());
+        const hasLink = Boolean(safeUrl(ws.external_url));
 
         return `
           <tr class="hover:bg-[#F5F7FA]/60 transition-colors">
             <td class="py-3.5 px-5 font-semibold text-[#061D42]">
-              <button onclick="openClientWorkspace('${client.client_id}')" class="hover:text-[#2585E8] text-left cursor-pointer">${escapeHtml(client.client_name)}</button>
+              <button onclick="openClientWorkspace(${jsArg(client.client_id)})" class="hover:text-[#2585E8] text-left cursor-pointer">${escapeHtml(client.client_name)}</button>
             </td>
             <td class="py-3.5 px-5">
               <div class="inline-flex items-center gap-2">
@@ -1002,9 +1029,9 @@
             </td>
             <td class="py-3.5 px-5 text-right">
               ${hasLink
-                ? `<a href="${escapeHtml(ws.external_url)}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#061D42] hover:bg-[#2585E8] text-white text-xs font-semibold transition"><span>Open</span><i data-lucide="external-link" class="w-3 h-3"></i></a>`
+                ? `<a href="${escapeHtml(safeUrl(ws.external_url))}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#061D42] hover:bg-[#2585E8] text-white text-xs font-semibold transition"><span>Open</span><i data-lucide="external-link" class="w-3 h-3"></i></a>`
                 : isAdmin
-                  ? `<button onclick="openEditWorkspaceModal('${ws.workspace_id}')" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 hover:border-[#2585E8] text-xs font-semibold text-[#2585E8] transition cursor-pointer"><i data-lucide="plus" class="w-3 h-3"></i><span>Add Link</span></button>`
+                  ? `<button onclick="openEditWorkspaceModal(${jsArg(ws.workspace_id)})" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 hover:border-[#2585E8] text-xs font-semibold text-[#2585E8] transition cursor-pointer"><i data-lucide="plus" class="w-3 h-3"></i><span>Add Link</span></button>`
                   : `<span class="text-xs text-slate-300">—</span>`}
             </td>
           </tr>`;
@@ -1053,21 +1080,21 @@
       const usersHtml = state.users.map(u => `
         <div class="py-3.5 flex items-center justify-between gap-4">
           <div class="flex items-center gap-3 min-w-0">
-            <div class="w-9 h-9 rounded-full bg-[#061D42] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">${getInitials(u.name)}</div>
+            <div class="w-9 h-9 rounded-full bg-[#061D42] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">${escapeHtml(getInitials(u.name))}</div>
             <div class="min-w-0">
               <p class="text-sm font-semibold text-[#061D42] truncate">${escapeHtml(u.name)}</p>
               <p class="text-xs text-slate-500 truncate">@${escapeHtml(u.username || String(u.email || '').split('@')[0])}</p>
             </div>
           </div>
           <div class="flex items-center gap-2.5">
-            <button onclick="toggleUserRole('${u.user_id}')" title="Click to switch role"
+            <button onclick="toggleUserRole(${jsArg(u.user_id)})" title="Click to switch role"
               class="px-2.5 py-1 rounded-lg text-xs font-bold tracking-wider cursor-pointer transition ${u.role === 'ADMIN' ? 'bg-[#50D6B0]/20 text-[#0F766E]' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">
               ${u.role}
             </button>
-            <button onclick="resetUserPassword('${u.user_id}')" title="Generate a new temporary password" class="p-1.5 rounded-lg text-slate-400 hover:text-[#2585E8] hover:bg-blue-50 transition cursor-pointer">
+            <button onclick="resetUserPassword(${jsArg(u.user_id)})" title="Generate a new temporary password" class="p-1.5 rounded-lg text-slate-400 hover:text-[#2585E8] hover:bg-blue-50 transition cursor-pointer">
               <i data-lucide="key-round" class="w-4 h-4"></i>
             </button>
-            <button onclick="removeUser('${u.user_id}')" title="Revoke Access" class="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition cursor-pointer">
+            <button onclick="removeUser(${jsArg(u.user_id)})" title="Revoke Access" class="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition cursor-pointer">
               <i data-lucide="trash-2" class="w-4 h-4"></i>
             </button>
           </div>
