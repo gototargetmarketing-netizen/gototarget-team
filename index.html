@@ -1,2320 +1,1434 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import {
-  Users,
-  FolderKanban,
-  Settings,
-  Search,
-  Plus,
-  ExternalLink,
-  ArrowLeft,
-  Video,
-  Image as ImageIcon,
-  FileText,
-  ClipboardList,
-  Pencil,
-  Trash2,
-  Archive,
-  CheckCircle2,
-  AlertCircle,
-  LogOut,
-  ChevronLeft,
-  ChevronRight,
-  Link2,
-  Shield,
-  UserCheck,
-  Database,
-  Globe,
-  RefreshCw,
-  X,
-  FolderOpen,
-  FileSpreadsheet,
-  Sparkles,
-  Copy,
-  Check,
-  ArchiveRestore,
-  Menu
-} from 'lucide-react';
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GO TO TARGET — Internal Client Workspace</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter & Noto Sans Thai -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    body {
+      font-family: 'Inter', 'Noto Sans Thai', sans-serif;
+    }
+    .line-clamp-2 {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body class="bg-[#F5F7FA] text-[#061D42] antialiased selection:bg-[#2585E8]/20">
 
-// ============================================================================
-// BRAND LOGO COMPONENT (Custom SVG inspired by GO TO TARGET brand emblem)
-// ============================================================================
-const GoToTargetLogo = ({ collapsed = false, size = 'md' }) => {
-  const dimensions = size === 'lg' ? 'w-14 h-14' : 'w-9 h-9';
-  return (
-    <div className="flex items-center gap-3 select-none">
-      <div className={`relative flex-shrink-0 ${dimensions}`}>
-        <svg viewBox="0 0 120 90" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full drop-shadow-sm">
-          <defs>
-            <linearGradient id="gttMintCyan" x1="10" y1="75" x2="70" y2="15" gradientUnits="userSpaceOnUse">
-              <stop offset="0%" stopColor="#50D6B0" />
-              <stop offset="100%" stopColor="#45B8E8" />
-            </linearGradient>
-            <linearGradient id="gttCyanBlue" x1="65" y1="20" x2="112" y2="75" gradientUnits="userSpaceOnUse">
-              <stop offset="0%" stopColor="#45B8E8" />
-              <stop offset="100%" stopColor="#2585E8" />
-            </linearGradient>
-          </defs>
-          {/* Left "G" with integrated upward-right target arrow */}
-          <path
-            d="M66 36C66 21.6406 54.3594 10 40 10C22.3269 10 8 24.3269 8 42C8 59.6731 22.3269 74 40 74C45.2 74 50.1 72.7 54.4 70.4L61 78L65 44H33L42 53C39.2 54.3 36.2 55 33 55C24.7157 55 18 48.2843 18 40C18 31.7157 24.7157 25 33 25C40.1 25 46 29.9 47.6 36.5H66V36Z"
-            fill="url(#gttMintCyan)"
-          />
-          {/* Right "O" infinity loop */}
-          <path
-            d="M84 14C69.6406 14 58 25.6406 58 40C58 54.3594 69.6406 66 84 66C98.3594 66 110 54.3594 110 40C110 25.6406 98.3594 14 84 14ZM84 52C77.3726 52 72 46.6274 72 40C72 33.3726 77.3726 28 84 28C90.6274 28 96 33.3726 96 40C96 46.6274 90.6274 52 84 52Z"
-            fill="url(#gttCyanBlue)"
-          />
-        </svg>
-      </div>
-      {!collapsed && (
-        <div className="flex flex-col leading-tight overflow-hidden">
-          <span className="font-bold tracking-tight text-white text-base whitespace-nowrap">
-            GO TO TARGET
-          </span>
-          <span className="text-[10px] tracking-widest uppercase text-[#50D6B0] font-medium whitespace-nowrap">
-            Client Workspace
-          </span>
-        </div>
-      )}
+  <!-- Toast Notification -->
+  <div id="toast-container" class="fixed bottom-5 right-5 z-50 hidden">
+    <div id="toast-box" class="flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg border text-sm font-medium bg-[#061D42] text-white border-[#2585E8]/40">
+      <i id="toast-icon" data-lucide="check-circle-2" class="w-4 h-4 text-[#50D6B0] flex-shrink-0"></i>
+      <span id="toast-message"></span>
     </div>
-  );
-};
+  </div>
 
-// ============================================================================
-// ICON & COLOR HELPERS FOR WORKSPACE CATEGORIES
-// ============================================================================
-const WORKSPACE_ICONS = {
-  Video: Video,
-  Image: ImageIcon,
-  FileText: FileText,
-  Clipboard: ClipboardList,
-  Folder: FolderOpen,
-  Spreadsheet: FileSpreadsheet,
-  Link: Link2
-};
+  <!-- ========================================================================
+       1. LOGIN VIEW (SECURE INTERNAL ACCESS)
+  ======================================================================== -->
+  <div id="login-view" class="min-h-screen bg-[#F5F7FA] flex flex-col justify-center items-center p-4 sm:p-6">
+    <div class="w-full max-w-md bg-white rounded-2xl shadow-xl shadow-[#061D42]/5 border border-slate-200/80 overflow-hidden">
+      <!-- Top Navy Brand Header -->
+      <div class="bg-[#061D42] px-8 py-8 text-center relative overflow-hidden">
+        <div class="absolute -right-10 -top-10 w-36 h-36 rounded-full bg-[#2585E8]/10 pointer-events-none"></div>
+        <div class="absolute -left-10 -bottom-10 w-32 h-32 rounded-full bg-[#50D6B0]/10 pointer-events-none"></div>
+        <div class="flex justify-center mb-4">
+          <div class="w-14 h-14">
+            <svg viewBox="0 0 120 90" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full drop-shadow-sm">
+              <defs>
+                <linearGradient id="gttMintCyanLg" x1="10" y1="75" x2="70" y2="15" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stop-color="#50D6B0" />
+                  <stop offset="100%" stop-color="#45B8E8" />
+                </linearGradient>
+                <linearGradient id="gttCyanBlueLg" x1="65" y1="20" x2="112" y2="75" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stop-color="#45B8E8" />
+                  <stop offset="100%" stop-color="#2585E8" />
+                </linearGradient>
+              </defs>
+              <path d="M66 36C66 21.6406 54.3594 10 40 10C22.3269 10 8 24.3269 8 42C8 59.6731 22.3269 74 40 74C45.2 74 50.1 72.7 54.4 70.4L61 78L65 44H33L42 53C39.2 54.3 36.2 55 33 55C24.7157 55 18 48.2843 18 40C18 31.7157 24.7157 25 33 25C40.1 25 46 29.9 47.6 36.5H66V36Z" fill="url(#gttMintCyanLg)" />
+              <path d="M84 14C69.6406 14 58 25.6406 58 40C58 54.3594 69.6406 66 84 66C98.3594 66 110 54.3594 110 40C110 25.6406 98.3594 14 84 14ZM84 52C77.3726 52 72 46.6274 72 40C72 33.3726 77.3726 28 84 28C90.6274 28 96 33.3726 96 40C96 46.6274 90.6274 52 84 52Z" fill="url(#gttCyanBlueLg)" />
+            </svg>
+          </div>
+        </div>
+        <h1 class="text-xl font-bold tracking-tight text-white">GO TO TARGET</h1>
+        <p class="text-xs uppercase tracking-[0.2em] text-[#50D6B0] mt-1 font-medium">Internal Client Workspace</p>
+      </div>
 
-const WORKSPACE_COLORS = {
-  blue: {
-    bg: 'bg-[#2585E8]/10',
-    text: 'text-[#2585E8]',
-    border: 'border-[#2585E8]/20',
-    badge: 'bg-[#2585E8] text-white'
-  },
-  cyan: {
-    bg: 'bg-[#45B8E8]/15',
-    text: 'text-[#0E7490]',
-    border: 'border-[#45B8E8]/30',
-    badge: 'bg-[#45B8E8] text-[#061D42]'
-  },
-  mint: {
-    bg: 'bg-[#50D6B0]/15',
-    text: 'text-[#0F766E]',
-    border: 'border-[#50D6B0]/30',
-    badge: 'bg-[#50D6B0] text-[#061D42]'
-  },
-  orange: {
-    bg: 'bg-amber-500/10',
-    text: 'text-amber-600',
-    border: 'border-amber-500/20',
-    badge: 'bg-amber-500 text-white'
-  },
-  navy: {
-    bg: 'bg-[#061D42]/10',
-    text: 'text-[#061D42]',
-    border: 'border-[#061D42]/20',
-    badge: 'bg-[#061D42] text-white'
-  }
-};
+      <!-- Login Form -->
+      <form id="login-form" class="p-8 space-y-5">
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Company Email</label>
+          <input id="login-email" type="email" required placeholder="name@gototarget.co"
+            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-[#F5F7FA]/60 text-[#061D42] text-sm focus:outline-none focus:ring-2 focus:ring-[#2585E8] focus:bg-white transition" />
+        </div>
 
-const DEFAULT_WORKSPACE_TEMPLATES = [
-  {
-    workspace_name: 'VIDEO',
-    description: 'Video production and video working files',
-    icon: 'Video',
-    color: 'blue',
-    external_url: ''
-  },
-  {
-    workspace_name: 'GRAPHIC',
-    description: 'Graphic design and artwork files',
-    icon: 'Image',
-    color: 'cyan',
-    external_url: ''
-  },
-  {
-    workspace_name: 'CONTENT',
-    description: 'Content, captions, copywriting and content planning',
-    icon: 'FileText',
-    color: 'mint',
-    external_url: ''
-  },
-  {
-    workspace_name: 'BRIEF',
-    description: 'Brief, references and client information',
-    icon: 'Clipboard',
-    color: 'orange',
-    external_url: ''
-  }
-];
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Workspace Access Key</label>
+          <input id="login-passcode" type="password" required placeholder="••••••••"
+            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-[#F5F7FA]/60 text-[#061D42] text-sm focus:outline-none focus:ring-2 focus:ring-[#2585E8] focus:bg-white transition" />
+        </div>
 
-// ============================================================================
-// INITIAL SEED DATA (Used only on first boot before Google Sheet sync)
-// ============================================================================
-const SEED_USERS = [
-  {
-    user_id: 'usr_admin_01',
-    name: 'Narin Srisai',
-    email: 'admin@gototarget.co',
-    role: 'ADMIN',
-    avatar_url: '',
-    active: true
-  },
-  {
-    user_id: 'usr_staff_01',
-    name: 'Ploypailin K.',
-    email: 'staff@gototarget.co',
-    role: 'STAFF',
-    avatar_url: '',
-    active: true
-  },
-  {
-    user_id: 'usr_staff_02',
-    name: 'Thanawat M.',
-    email: 'creative@gototarget.co',
-    role: 'STAFF',
-    avatar_url: '',
-    active: true
-  }
-];
+        <div id="login-error" class="hidden flex items-start gap-2.5 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs">
+          <i data-lucide="alert-circle" class="w-4 h-4 flex-shrink-0 mt-0.5"></i>
+          <span id="login-error-text"></span>
+        </div>
 
-const SEED_CLIENTS = [
-  {
-    client_id: 'cli_001',
-    client_name: 'Aether Botanics',
-    logo_url: '',
-    description: 'Organic skincare & wellness brand — Full-funnel social media & video campaigns.',
-    archived: false,
-    created_at: '2026-01-12'
-  },
-  {
-    client_id: 'cli_002',
-    client_name: 'Krono Mobility',
-    logo_url: '',
-    description: 'Electric urban commuter bikes — Performance ads, launch films & content calendar.',
-    archived: false,
-    created_at: '2026-02-04'
-  },
-  {
-    client_id: 'cli_003',
-    client_name: 'Siam Artisan Roasters',
-    logo_url: '',
-    description: 'Specialty coffee roastery — Brand storytelling, packaging visuals & monthly reels.',
-    archived: false,
-    created_at: '2026-03-18'
-  }
-];
+        <button type="submit" id="login-submit-btn"
+          class="w-full py-3 px-4 rounded-xl bg-[#061D42] hover:bg-[#0c2c61] text-white font-semibold text-sm shadow-sm transition flex items-center justify-center gap-2 cursor-pointer">
+          <i data-lucide="shield" class="w-4 h-4 text-[#50D6B0]"></i>
+          <span>Sign In to Workspace</span>
+        </button>
 
-const SEED_WORKSPACES = [
-  // Aether Botanics
-  {
-    workspace_id: 'ws_101',
-    client_id: 'cli_001',
-    workspace_name: 'VIDEO',
-    description: 'Video production and video working files',
-    icon: 'Video',
-    color: 'blue',
-    external_url: 'https://drive.google.com',
-    created_at: '2026-01-12',
-    updated_at: '2026-01-12'
-  },
-  {
-    workspace_id: 'ws_102',
-    client_id: 'cli_001',
-    workspace_name: 'GRAPHIC',
-    description: 'Graphic design and artwork files',
-    icon: 'Image',
-    color: 'cyan',
-    external_url: 'https://drive.google.com',
-    created_at: '2026-01-12',
-    updated_at: '2026-01-12'
-  },
-  {
-    workspace_id: 'ws_103',
-    client_id: 'cli_001',
-    workspace_name: 'CONTENT',
-    description: 'Content, captions, copywriting and content planning',
-    icon: 'FileText',
-    color: 'mint',
-    external_url: 'https://docs.google.com/spreadsheets',
-    created_at: '2026-01-12',
-    updated_at: '2026-01-12'
-  },
-  {
-    workspace_id: 'ws_104',
-    client_id: 'cli_001',
-    workspace_name: 'BRIEF',
-    description: 'Brief, references and client information',
-    icon: 'Clipboard',
-    color: 'orange',
-    external_url: 'https://docs.google.com/document',
-    created_at: '2026-01-12',
-    updated_at: '2026-01-12'
-  },
-  // Krono Mobility
-  {
-    workspace_id: 'ws_201',
-    client_id: 'cli_002',
-    workspace_name: 'VIDEO',
-    description: 'Video production and video working files',
-    icon: 'Video',
-    color: 'blue',
-    external_url: 'https://drive.google.com',
-    created_at: '2026-02-04',
-    updated_at: '2026-02-04'
-  },
-  {
-    workspace_id: 'ws_202',
-    client_id: 'cli_002',
-    workspace_name: 'GRAPHIC',
-    description: 'Graphic design and artwork files',
-    icon: 'Image',
-    color: 'cyan',
-    external_url: '',
-    created_at: '2026-02-04',
-    updated_at: '2026-02-04'
-  },
-  {
-    workspace_id: 'ws_203',
-    client_id: 'cli_002',
-    workspace_name: 'CONTENT',
-    description: 'Content, captions, copywriting and content planning',
-    icon: 'FileText',
-    color: 'mint',
-    external_url: 'https://docs.google.com/spreadsheets',
-    created_at: '2026-02-04',
-    updated_at: '2026-02-04'
-  },
-  {
-    workspace_id: 'ws_204',
-    client_id: 'cli_002',
-    workspace_name: 'BRIEF',
-    description: 'Brief, references and client information',
-    icon: 'Clipboard',
-    color: 'orange',
-    external_url: '',
-    created_at: '2026-02-04',
-    updated_at: '2026-02-04'
-  },
-  // Siam Artisan Roasters
-  {
-    workspace_id: 'ws_301',
-    client_id: 'cli_003',
-    workspace_name: 'VIDEO',
-    description: 'Video production and video working files',
-    icon: 'Video',
-    color: 'blue',
-    external_url: '',
-    created_at: '2026-03-18',
-    updated_at: '2026-03-18'
-  },
-  {
-    workspace_id: 'ws_302',
-    client_id: 'cli_003',
-    workspace_name: 'GRAPHIC',
-    description: 'Graphic design and artwork files',
-    icon: 'Image',
-    color: 'cyan',
-    external_url: 'https://drive.google.com',
-    created_at: '2026-03-18',
-    updated_at: '2026-03-18'
-  },
-  {
-    workspace_id: 'ws_303',
-    client_id: 'cli_003',
-    workspace_name: 'CONTENT',
-    description: 'Content, captions, copywriting and content planning',
-    icon: 'FileText',
-    color: 'mint',
-    external_url: '',
-    created_at: '2026-03-18',
-    updated_at: '2026-03-18'
-  },
-  {
-    workspace_id: 'ws_304',
-    client_id: 'cli_003',
-    workspace_name: 'BRIEF',
-    description: 'Brief, references and client information',
-    icon: 'Clipboard',
-    color: 'orange',
-    external_url: 'https://docs.google.com/document',
-    created_at: '2026-03-18',
-    updated_at: '2026-03-18'
-  }
-];
+        <!-- Quick Preview Mode -->
+        <div class="pt-4 border-t border-slate-100">
+          <p class="text-[11px] text-center text-slate-400 mb-2.5">Internal Quick Access (Preview Mode)</p>
+          <div class="grid grid-cols-2 gap-2.5">
+            <button type="button" onclick="quickLogin('ADMIN')"
+              class="py-2 px-3 rounded-lg border border-slate-200 hover:border-[#2585E8] hover:bg-[#2585E8]/5 text-xs font-medium text-[#061D42] transition flex items-center justify-center gap-1.5 cursor-pointer">
+              <i data-lucide="shield" class="w-3.5 h-3.5 text-[#2585E8]"></i>
+              <span>Enter as Admin</span>
+            </button>
+            <button type="button" onclick="quickLogin('STAFF')"
+              class="py-2 px-3 rounded-lg border border-slate-200 hover:border-[#50D6B0] hover:bg-[#50D6B0]/10 text-xs font-medium text-[#061D42] transition flex items-center justify-center gap-1.5 cursor-pointer">
+              <i data-lucide="user-check" class="w-3.5 h-3.5 text-[#50D6B0]"></i>
+              <span>Enter as Staff</span>
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+    <p class="mt-6 text-xs text-slate-400">Authorized GO TO TARGET personnel only.</p>
+  </div>
 
-// ============================================================================
-// UTILITY HELPERS
-// ============================================================================
-const getInitials = (name) => {
-  if (!name) return 'GT';
-  return name
-    .split(' ')
-    .map((n) => n[0])
-    .slice(0, 2)
-    .join('')
-    .toUpperCase();
-};
+  <!-- ========================================================================
+       2. MAIN APP SHELL (AUTHENTICATED WORKSPACE)
+  ======================================================================== -->
+  <div id="app-shell" class="hidden min-h-screen bg-[#F5F7FA] text-[#061D42] flex flex-col md:flex-row">
 
-const detectLinkService = (url) => {
-  if (!url) return null;
-  const lower = url.toLowerCase();
-  if (lower.includes('drive.google.com')) return 'Google Drive';
-  if (lower.includes('docs.google.com/spreadsheets')) return 'Google Sheets';
-  if (lower.includes('docs.google.com/document')) return 'Google Docs';
-  if (lower.includes('docs.google.com/forms')) return 'Google Forms';
-  if (lower.includes('figma.com')) return 'Figma';
-  if (lower.includes('notion.so') || lower.includes('notion.site')) return 'Notion';
-  return 'External Link';
-};
+    <!-- Mobile Top Header -->
+    <div class="md:hidden bg-[#061D42] text-white px-4 py-3 flex items-center justify-between sticky top-0 z-30 shadow-sm">
+      <div class="flex items-center gap-2.5 cursor-pointer" onclick="navigateTo('clients')">
+        <div class="w-8 h-8">
+          <svg viewBox="0 0 120 90" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full">
+            <path d="M66 36C66 21.6406 54.3594 10 40 10C22.3269 10 8 24.3269 8 42C8 59.6731 22.3269 74 40 74C45.2 74 50.1 72.7 54.4 70.4L61 78L65 44H33L42 53C39.2 54.3 36.2 55 33 55C24.7157 55 18 48.2843 18 40C18 31.7157 24.7157 25 33 25C40.1 25 46 29.9 47.6 36.5H66V36Z" fill="#50D6B0" />
+            <path d="M84 14C69.6406 14 58 25.6406 58 40C58 54.3594 69.6406 66 84 66C98.3594 66 110 54.3594 110 40C110 25.6406 98.3594 14 84 14ZM84 52C77.3726 52 72 46.6274 72 40C72 33.3726 77.3726 28 84 28C90.6274 28 96 33.3726 96 40C96 46.6274 90.6274 52 84 52Z" fill="#2585E8" />
+          </svg>
+        </div>
+        <span class="font-bold text-sm tracking-tight">GO TO TARGET</span>
+      </div>
+      <button onclick="toggleMobileMenu()" class="p-2 rounded-lg text-slate-300 hover:text-white hover:bg-white/10">
+        <i data-lucide="menu" class="w-6 h-6"></i>
+      </button>
+    </div>
 
-const formatUrl = (url) => {
-  if (!url) return '';
-  const trimmed = url.trim();
-  if (!trimmed) return '';
-  if (/^https?:\/\//i.test(trimmed)) return trimmed;
-  return `https://${trimmed}`;
-};
+    <!-- Sidebar Navigation -->
+    <aside id="sidebar" class="hidden md:flex flex-col bg-[#061D42] text-white transition-all duration-200 flex-shrink-0 md:w-64 md:sticky md:top-0 md:h-screen select-none z-40">
+      <!-- Top Brand Logo -->
+      <div class="h-16 px-4 flex items-center justify-between border-b border-white/10">
+        <div onclick="navigateTo('clients')" class="flex items-center gap-3 cursor-pointer overflow-hidden">
+          <div class="w-9 h-9 flex-shrink-0">
+            <svg viewBox="0 0 120 90" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full">
+              <defs>
+                <linearGradient id="gttMintCyanSm" x1="10" y1="75" x2="70" y2="15" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stop-color="#50D6B0" />
+                  <stop offset="100%" stop-color="#45B8E8" />
+                </linearGradient>
+                <linearGradient id="gttCyanBlueSm" x1="65" y1="20" x2="112" y2="75" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stop-color="#45B8E8" />
+                  <stop offset="100%" stop-color="#2585E8" />
+                </linearGradient>
+              </defs>
+              <path d="M66 36C66 21.6406 54.3594 10 40 10C22.3269 10 8 24.3269 8 42C8 59.6731 22.3269 74 40 74C45.2 74 50.1 72.7 54.4 70.4L61 78L65 44H33L42 53C39.2 54.3 36.2 55 33 55C24.7157 55 18 48.2843 18 40C18 31.7157 24.7157 25 33 25C40.1 25 46 29.9 47.6 36.5H66V36Z" fill="url(#gttMintCyanSm)" />
+              <path d="M84 14C69.6406 14 58 25.6406 58 40C58 54.3594 69.6406 66 84 66C98.3594 66 110 54.3594 110 40C110 25.6406 98.3594 14 84 14ZM84 52C77.3726 52 72 46.6274 72 40C72 33.3726 77.3726 28 84 28C90.6274 28 96 33.3726 96 40C96 46.6274 90.6274 52 84 52Z" fill="url(#gttCyanBlueSm)" />
+            </svg>
+          </div>
+          <div class="sidebar-label flex flex-col leading-tight overflow-hidden">
+            <span class="font-bold tracking-tight text-white text-base whitespace-nowrap">GO TO TARGET</span>
+            <span class="text-[10px] tracking-widest uppercase text-[#50D6B0] font-medium whitespace-nowrap">Client Workspace</span>
+          </div>
+        </div>
 
-// ============================================================================
-// MAIN APPLICATION COMPONENT
-// ============================================================================
-export default function App() {
-  // Navigation & UI State
-  const [activeNav, setActiveNav] = useState('clients'); // 'clients' | 'workspaces' | 'settings'
-  const [selectedClientId, setSelectedClientId] = useState(null);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+        <button onclick="toggleSidebarCollapse()" class="hidden md:flex p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition cursor-pointer" title="Collapse Sidebar">
+          <i id="collapse-icon" data-lucide="chevron-left" class="w-4 h-4"></i>
+        </button>
 
-  // Persistent Data State (Backed by localStorage + Google Apps Script API)
-  const [apiEndpoint, setApiEndpoint] = useState(() => {
-    return localStorage.getItem('gtt_gas_api_url') || '';
-  });
-  const [apiSecret, setApiSecret] = useState(() => {
-    return localStorage.getItem('gtt_gas_api_secret') || '';
-  });
+        <button onclick="toggleMobileMenu()" class="md:hidden p-1.5 rounded-lg text-slate-300 hover:text-white">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
 
-  const [clients, setClients] = useState(() => {
-    const saved = localStorage.getItem('gtt_clients');
-    return saved ? JSON.parse(saved) : SEED_CLIENTS;
-  });
+      <!-- Menu Items (Clients, Workspaces, Settings [Admin only]) -->
+      <nav class="flex-1 px-3 py-6 space-y-1.5 overflow-y-auto">
+        <button id="nav-clients" onclick="navigateTo('clients')"
+          class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition cursor-pointer bg-[#2585E8] text-white shadow-sm">
+          <i data-lucide="users" class="w-5 h-5 flex-shrink-0"></i>
+          <span class="sidebar-label">Clients</span>
+        </button>
 
-  const [workspaces, setWorkspaces] = useState(() => {
-    const saved = localStorage.getItem('gtt_workspaces');
-    return saved ? JSON.parse(saved) : SEED_WORKSPACES;
-  });
+        <button id="nav-workspaces" onclick="navigateTo('workspaces')"
+          class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition cursor-pointer text-slate-300 hover:text-white hover:bg-white/5">
+          <i data-lucide="folder-kanban" class="w-5 h-5 flex-shrink-0"></i>
+          <span class="sidebar-label">Workspaces</span>
+        </button>
 
-  const [users, setUsers] = useState(() => {
-    const saved = localStorage.getItem('gtt_users');
-    return saved ? JSON.parse(saved) : SEED_USERS;
-  });
+        <button id="nav-settings" onclick="navigateTo('settings')"
+          class="hidden w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition cursor-pointer text-slate-300 hover:text-white hover:bg-white/5">
+          <i data-lucide="settings" class="w-5 h-5 flex-shrink-0"></i>
+          <span class="sidebar-label">Settings</span>
+        </button>
+      </nav>
 
-  // Authentication State
-  const [currentUser, setCurrentUser] = useState(() => {
-    const saved = sessionStorage.getItem('gtt_current_user');
-    return saved ? JSON.parse(saved) : null;
-  });
+      <!-- Bottom User Profile Area -->
+      <div class="p-3 border-t border-white/10">
+        <div id="user-profile-box" class="flex items-center justify-between p-2 rounded-xl bg-white/5">
+          <div class="flex items-center gap-2.5 min-w-0">
+            <div id="user-avatar" class="w-9 h-9 rounded-full bg-gradient-to-br from-[#50D6B0] to-[#2585E8] text-[#061D42] font-bold text-xs flex items-center justify-center flex-shrink-0">
+              GT
+            </div>
+            <div class="sidebar-label min-w-0">
+              <p id="user-name-display" class="text-sm font-semibold text-white truncate">User</p>
+              <span id="user-role-badge" class="inline-block text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#50D6B0]/20 text-[#50D6B0]">
+                STAFF
+              </span>
+            </div>
+          </div>
 
-  const [loginEmail, setLoginEmail] = useState('');
-  const [loginPasscode, setLoginPasscode] = useState('');
-  const [loginError, setLoginError] = useState('');
-  const [isAuthenticating, setIsAuthenticating] = useState(false);
+          <button onclick="logout()" title="Sign Out" class="sidebar-label p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition cursor-pointer">
+            <i data-lucide="log-out" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </div>
+    </aside>
 
-  // Loading & Notification State
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [toast, setToast] = useState(null);
+    <!-- Main Content Area -->
+    <main class="flex-1 min-w-0">
+      <!-- Top Breadcrumb & Sync Status Header -->
+      <header class="bg-white border-b border-slate-200/80 px-6 py-3.5 flex items-center justify-between sticky top-0 z-20">
+        <div class="flex items-center gap-2 text-xs text-slate-500">
+          <span class="font-semibold text-[#061D42]">GO TO TARGET</span>
+          <span>/</span>
+          <span id="breadcrumb-current" class="capitalize font-medium text-slate-700">Clients</span>
+        </div>
 
-  // Search & Filter State
-  const [clientSearch, setClientSearch] = useState('');
-  const [showArchivedClients, setShowArchivedClients] = useState(false);
-  const [workspaceSearch, setWorkspaceSearch] = useState('');
+        <div id="sync-status-area" class="flex items-center gap-3">
+          <span class="text-[11px] text-slate-400 hidden sm:inline">Local Workspace Storage</span>
+        </div>
+      </header>
 
-  // Modals State
-  const [clientModal, setClientModal] = useState({ open: false, mode: 'create', data: null });
-  const [workspaceModal, setWorkspaceModal] = useState({ open: false, mode: 'create', clientId: null, data: null });
-  const [confirmModal, setConfirmModal] = useState({ open: false, title: '', message: '', onConfirm: null });
-  const [userModal, setUserModal] = useState({ open: false, mode: 'create', data: null });
+      <!-- Dynamic Page Container -->
+      <div id="main-container" class="max-w-7xl mx-auto p-6 sm:p-8"></div>
+    </main>
+  </div>
 
-  const isAdmin = currentUser?.role === 'ADMIN';
+  <!-- ========================================================================
+       3. MODALS (CLIENT, WORKSPACE, CONFIRMATION)
+  ======================================================================== -->
+  <!-- Client Modal -->
+  <div id="client-modal" class="hidden fixed inset-0 z-50 bg-[#061D42]/50 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl border border-slate-200">
+      <div class="px-6 py-4 bg-[#061D42] text-white flex items-center justify-between">
+        <h3 id="client-modal-title" class="font-bold text-base">Add New Client</h3>
+        <button onclick="closeClientModal()" class="text-slate-300 hover:text-white p-1 rounded-lg cursor-pointer">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <form id="client-form" class="p-6 space-y-4">
+        <input type="hidden" id="client-form-id" />
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Client Name *</label>
+          <input id="client-form-name" type="text" required placeholder="e.g., ABC Company"
+            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm text-[#061D42] focus:outline-none focus:ring-2 focus:ring-[#2585E8]" />
+        </div>
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Client Logo URL (Optional)</label>
+          <input id="client-form-logo" type="url" placeholder="https://..."
+            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm text-[#061D42] focus:outline-none focus:ring-2 focus:ring-[#2585E8]" />
+          <p class="text-[11px] text-slate-400 mt-1">Leave blank to generate a clean branded monogram badge automatically.</p>
+        </div>
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Description (Optional)</label>
+          <textarea id="client-form-desc" rows="3" placeholder="Brief summary of client scope or brand..."
+            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm text-[#061D42] focus:outline-none focus:ring-2 focus:ring-[#2585E8]"></textarea>
+        </div>
+        <div id="client-auto-setup-note" class="p-3.5 rounded-xl bg-[#50D6B0]/10 border border-[#50D6B0]/30 text-xs text-[#061D42]">
+          <span class="font-semibold">Automatic Setup:</span> Creating this client will automatically generate 4 workspaces: <strong>VIDEO</strong>, <strong>GRAPHIC</strong>, <strong>CONTENT</strong>, and <strong>BRIEF</strong>.
+        </div>
+        <div class="pt-2 flex items-center justify-end gap-3">
+          <button type="button" onclick="closeClientModal()" class="px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 cursor-pointer">Cancel</button>
+          <button type="submit" id="client-form-submit" class="px-5 py-2.5 rounded-xl bg-[#061D42] hover:bg-[#0d2d63] text-white text-sm font-semibold shadow-sm cursor-pointer">Create Client</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
-  // Persist to localStorage automatically
-  useEffect(() => {
-    localStorage.setItem('gtt_clients', JSON.stringify(clients));
-  }, [clients]);
+  <!-- Workspace Modal -->
+  <div id="workspace-modal" class="hidden fixed inset-0 z-50 bg-[#061D42]/50 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl border border-slate-200">
+      <div class="px-6 py-4 bg-[#061D42] text-white flex items-center justify-between">
+        <h3 id="workspace-modal-title" class="font-bold text-base">Edit Workspace & Link</h3>
+        <button onclick="closeWorkspaceModal()" class="text-slate-300 hover:text-white p-1 rounded-lg cursor-pointer">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <form id="workspace-form" class="p-6 space-y-4">
+        <input type="hidden" id="ws-form-id" />
+        <input type="hidden" id="ws-form-client-id" />
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Workspace Name *</label>
+          <input id="ws-form-name" type="text" required placeholder="e.g., VIDEO, GRAPHIC, CONTENT, BRIEF"
+            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-[#061D42] focus:outline-none focus:ring-2 focus:ring-[#2585E8]" />
+        </div>
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Connected URL (Google Drive, Sheets, Docs, or External Link)</label>
+          <input id="ws-form-url" type="text" placeholder="https://drive.google.com/drive/folders/..."
+            class="w-full px-4 py-2.5 rounded-xl border border-[#2585E8]/50 bg-[#2585E8]/5 text-sm text-[#061D42] focus:outline-none focus:ring-2 focus:ring-[#2585E8]" />
+          <div id="ws-url-helper" class="hidden mt-1.5 flex items-center justify-between text-xs">
+            <span id="ws-detected-service" class="text-[#0F766E] font-medium"></span>
+            <button type="button" onclick="clearWsUrl()" class="text-red-500 hover:underline cursor-pointer">Clear Link</button>
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Short Description</label>
+          <input id="ws-form-desc" type="text" placeholder="e.g., Video production and video working files"
+            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm text-[#061D42] focus:outline-none focus:ring-2 focus:ring-[#2585E8]" />
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Category Icon</label>
+            <select id="ws-form-icon" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-[#061D42] bg-white focus:outline-none focus:ring-2 focus:ring-[#2585E8]">
+              <option value="video">Video</option>
+              <option value="image">Image</option>
+              <option value="file-text">FileText</option>
+              <option value="clipboard-list">Clipboard</option>
+              <option value="folder-open">Folder</option>
+              <option value="file-spreadsheet">Spreadsheet</option>
+              <option value="link-2">Link</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Accent Color</label>
+            <select id="ws-form-color" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-[#061D42] bg-white focus:outline-none focus:ring-2 focus:ring-[#2585E8]">
+              <option value="blue">Brand Blue</option>
+              <option value="cyan">Brand Cyan</option>
+              <option value="mint">Brand Mint</option>
+              <option value="orange">Warm Amber</option>
+              <option value="navy">Deep Navy</option>
+            </select>
+          </div>
+        </div>
+        <div class="pt-3 flex items-center justify-end gap-3">
+          <button type="button" onclick="closeWorkspaceModal()" class="px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 cursor-pointer">Cancel</button>
+          <button type="submit" class="px-5 py-2.5 rounded-xl bg-[#061D42] hover:bg-[#0d2d63] text-white text-sm font-semibold shadow-sm cursor-pointer">Save Workspace</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
-  useEffect(() => {
-    localStorage.setItem('gtt_workspaces', JSON.stringify(workspaces));
-  }, [workspaces]);
+  <!-- Confirmation Dialog Modal -->
+  <div id="confirm-modal" class="hidden fixed inset-0 z-50 bg-[#061D42]/50 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200">
+      <h3 id="confirm-title" class="text-lg font-bold text-[#061D42]">Confirm Action</h3>
+      <p id="confirm-message" class="text-sm text-slate-600 mt-2 leading-relaxed"></p>
+      <div class="mt-6 flex items-center justify-end gap-3">
+        <button onclick="closeConfirmModal()" class="px-4 py-2 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 cursor-pointer">Cancel</button>
+        <button id="confirm-yes-btn" class="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-semibold cursor-pointer">Confirm Delete</button>
+      </div>
+    </div>
+  </div>
 
-  useEffect(() => {
-    localStorage.setItem('gtt_users', JSON.stringify(users));
-  }, [users]);
+  <!-- ========================================================================
+       4. APPLICATION JAVASCRIPT LOGIC
+  ======================================================================== -->
+  <script>
+    // ------------------------------------------------------------------------
+    // INITIAL SEED DATA & DEFAULT TEMPLATES
+    // ------------------------------------------------------------------------
+    const DEFAULT_WORKSPACE_TEMPLATES = [
+      { workspace_name: 'VIDEO', description: 'Video production and video working files', icon: 'video', color: 'blue' },
+      { workspace_name: 'GRAPHIC', description: 'Graphic design and artwork files', icon: 'image', color: 'cyan' },
+      { workspace_name: 'CONTENT', description: 'Content, captions, copywriting and content planning', icon: 'file-text', color: 'mint' },
+      { workspace_name: 'BRIEF', description: 'Brief, references and client information', icon: 'clipboard-list', color: 'orange' }
+    ];
 
-  const showToast = (message, type = 'success') => {
-    setToast({ message, type });
-    setTimeout(() => {
-      setToast((prev) => (prev?.message === message ? null : prev));
-    }, 3500);
-  };
+    const SEED_USERS = [
+      { user_id: 'usr_admin_01', name: 'Narin Srisai', email: 'admin@gototarget.co', role: 'ADMIN', active: true },
+      { user_id: 'usr_staff_01', name: 'Ploypailin K.', email: 'staff@gototarget.co', role: 'STAFF', active: true },
+      { user_id: 'usr_staff_02', name: 'Thanawat M.', email: 'creative@gototarget.co', role: 'STAFF', active: true }
+    ];
 
-  // ============================================================================
-  // GOOGLE APPS SCRIPT API CONNECTOR
-  // ============================================================================
-  const callAppsScript = async (action, payload = {}) => {
-    if (!apiEndpoint) return null;
-    try {
-      setIsSyncing(true);
-      const response = await fetch(apiEndpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'text/plain;charset=utf-8' // Avoids CORS preflight issues with Google Apps Script
-        },
-        body: JSON.stringify({
-          action,
-          token: apiSecret,
-          payload
-        })
-      });
-      const result = await response.json();
-      if (!result.success) {
-        throw new Error(result.error || 'Apps Script API Error');
+    const SEED_CLIENTS = [
+      {
+        client_id: 'cli_001',
+        client_name: 'Aether Botanics',
+        logo_url: '',
+        description: 'Organic skincare & wellness brand — Full-funnel social media & video campaigns.',
+        archived: false,
+        created_at: '2026-01-12'
+      },
+      {
+        client_id: 'cli_002',
+        client_name: 'Krono Mobility',
+        logo_url: '',
+        description: 'Electric urban commuter bikes — Performance ads, launch films & content calendar.',
+        archived: false,
+        created_at: '2026-02-04'
+      },
+      {
+        client_id: 'cli_003',
+        client_name: 'Siam Artisan Roasters',
+        logo_url: '',
+        description: 'Specialty coffee roastery — Brand storytelling, packaging visuals & monthly reels.',
+        archived: false,
+        created_at: '2026-03-18'
       }
-      return result.data;
-    } catch (err) {
-      console.error('GAS Sync Error:', err);
-      showToast(`Sync warning: ${err.message}`, 'error');
-      return null;
-    } finally {
-      setIsSyncing(false);
-    }
-  };
+    ];
 
-  const syncFromGoogleSheets = async () => {
-    if (!apiEndpoint) {
-      showToast('Configure your Google Apps Script URL in Settings first.', 'error');
-      return;
+    const SEED_WORKSPACES = [
+      { workspace_id: 'ws_101', client_id: 'cli_001', workspace_name: 'VIDEO', description: 'Video production and video working files', icon: 'video', color: 'blue', external_url: 'https://drive.google.com', created_at: '2026-01-12', updated_at: '2026-01-12' },
+      { workspace_id: 'ws_102', client_id: 'cli_001', workspace_name: 'GRAPHIC', description: 'Graphic design and artwork files', icon: 'image', color: 'cyan', external_url: 'https://drive.google.com', created_at: '2026-01-12', updated_at: '2026-01-12' },
+      { workspace_id: 'ws_103', client_id: 'cli_001', workspace_name: 'CONTENT', description: 'Content, captions, copywriting and content planning', icon: 'file-text', color: 'mint', external_url: 'https://docs.google.com/spreadsheets', created_at: '2026-01-12', updated_at: '2026-01-12' },
+      { workspace_id: 'ws_104', client_id: 'cli_001', workspace_name: 'BRIEF', description: 'Brief, references and client information', icon: 'clipboard-list', color: 'orange', external_url: 'https://docs.google.com/document', created_at: '2026-01-12', updated_at: '2026-01-12' },
+
+      { workspace_id: 'ws_201', client_id: 'cli_002', workspace_name: 'VIDEO', description: 'Video production and video working files', icon: 'video', color: 'blue', external_url: 'https://drive.google.com', created_at: '2026-02-04', updated_at: '2026-02-04' },
+      { workspace_id: 'ws_202', client_id: 'cli_002', workspace_name: 'GRAPHIC', description: 'Graphic design and artwork files', icon: 'image', color: 'cyan', external_url: '', created_at: '2026-02-04', updated_at: '2026-02-04' },
+      { workspace_id: 'ws_203', client_id: 'cli_002', workspace_name: 'CONTENT', description: 'Content, captions, copywriting and content planning', icon: 'file-text', color: 'mint', external_url: 'https://docs.google.com/spreadsheets', created_at: '2026-02-04', updated_at: '2026-02-04' },
+      { workspace_id: 'ws_204', client_id: 'cli_002', workspace_name: 'BRIEF', description: 'Brief, references and client information', icon: 'clipboard-list', color: 'orange', external_url: '', created_at: '2026-02-04', updated_at: '2026-02-04' },
+
+      { workspace_id: 'ws_301', client_id: 'cli_003', workspace_name: 'VIDEO', description: 'Video production and video working files', icon: 'video', color: 'blue', external_url: '', created_at: '2026-03-18', updated_at: '2026-03-18' },
+      { workspace_id: 'ws_302', client_id: 'cli_003', workspace_name: 'GRAPHIC', description: 'Graphic design and artwork files', icon: 'image', color: 'cyan', external_url: 'https://drive.google.com', created_at: '2026-03-18', updated_at: '2026-03-18' },
+      { workspace_id: 'ws_303', client_id: 'cli_003', workspace_name: 'CONTENT', description: 'Content, captions, copywriting and content planning', icon: 'file-text', color: 'mint', external_url: '', created_at: '2026-03-18', updated_at: '2026-03-18' },
+      { workspace_id: 'ws_304', client_id: 'cli_003', workspace_name: 'BRIEF', description: 'Brief, references and client information', icon: 'clipboard-list', color: 'orange', external_url: 'https://docs.google.com/document', created_at: '2026-03-18', updated_at: '2026-03-18' }
+    ];
+
+    const COLOR_STYLES = {
+      blue: { bg: 'bg-[#2585E8]/10', text: 'text-[#2585E8]', border: 'border-[#2585E8]/20' },
+      cyan: { bg: 'bg-[#45B8E8]/15', text: 'text-[#0E7490]', border: 'border-[#45B8E8]/30' },
+      mint: { bg: 'bg-[#50D6B0]/15', text: 'text-[#0F766E]', border: 'border-[#50D6B0]/30' },
+      orange: { bg: 'bg-amber-500/10', text: 'text-amber-600', border: 'border-amber-500/20' },
+      navy: { bg: 'bg-[#061D42]/10', text: 'text-[#061D42]', border: 'border-[#061D42]/20' }
+    };
+
+    // ------------------------------------------------------------------------
+    // APPLICATION STATE
+    // ------------------------------------------------------------------------
+    let state = {
+      currentUser: JSON.parse(sessionStorage.getItem('gtt_current_user') || 'null'),
+      activeNav: 'clients',
+      selectedClientId: null,
+      sidebarCollapsed: false,
+      mobileMenuOpen: false,
+      clientSearch: '',
+      showArchived: false,
+      workspaceSearch: '',
+      apiEndpoint: localStorage.getItem('gtt_gas_api_url') || '',
+      apiSecret: localStorage.getItem('gtt_gas_api_secret') || '',
+      workspaceKey: localStorage.getItem('gtt_workspace_key') || 'GTT2026',
+      clients: JSON.parse(localStorage.getItem('gtt_clients') || 'null') || SEED_CLIENTS,
+      workspaces: JSON.parse(localStorage.getItem('gtt_workspaces') || 'null') || SEED_WORKSPACES,
+      users: JSON.parse(localStorage.getItem('gtt_users') || 'null') || SEED_USERS
+    };
+
+    function saveState() {
+      localStorage.setItem('gtt_clients', JSON.stringify(state.clients));
+      localStorage.setItem('gtt_workspaces', JSON.stringify(state.workspaces));
+      localStorage.setItem('gtt_users', JSON.stringify(state.users));
     }
-    setIsSyncing(true);
-    try {
+
+    // ------------------------------------------------------------------------
+    // UTILITY HELPERS
+    // ------------------------------------------------------------------------
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function getInitials(name) {
+      if (!name) return 'GT';
+      return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
+    }
+
+    function detectLinkService(url) {
+      if (!url) return null;
+      const lower = url.toLowerCase();
+      if (lower.includes('drive.google.com')) return 'Google Drive';
+      if (lower.includes('docs.google.com/spreadsheets')) return 'Google Sheets';
+      if (lower.includes('docs.google.com/document')) return 'Google Docs';
+      if (lower.includes('docs.google.com/forms')) return 'Google Forms';
+      if (lower.includes('figma.com')) return 'Figma';
+      if (lower.includes('notion.so') || lower.includes('notion.site')) return 'Notion';
+      return 'External Link';
+    }
+
+    function formatUrl(url) {
+      if (!url) return '';
+      const trimmed = url.trim();
+      if (!trimmed) return '';
+      return /^https?:\/\//i.test(trimmed) ? trimmed : 'https://' + trimmed;
+    }
+
+    let toastTimer = null;
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toast-container');
+      const box = document.getElementById('toast-box');
+      const icon = document.getElementById('toast-icon');
+      const msg = document.getElementById('toast-message');
+
+      msg.textContent = message;
+      if (type === 'error') {
+        box.className = 'flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg border text-sm font-medium bg-red-950 text-white border-red-800';
+        icon.setAttribute('data-lucide', 'alert-circle');
+        icon.className = 'w-4 h-4 text-red-400 flex-shrink-0';
+      } else {
+        box.className = 'flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg border text-sm font-medium bg-[#061D42] text-white border-[#2585E8]/40';
+        icon.setAttribute('data-lucide', 'check-circle-2');
+        icon.className = 'w-4 h-4 text-[#50D6B0] flex-shrink-0';
+      }
+
+      container.classList.remove('hidden');
+      lucide.createIcons();
+
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        container.classList.add('hidden');
+      }, 3500);
+    }
+
+    // ------------------------------------------------------------------------
+    // GOOGLE APPS SCRIPT API CONNECTOR
+    // ------------------------------------------------------------------------
+    async function callAppsScript(action, payload = {}) {
+      if (!state.apiEndpoint) return null;
+      try {
+        const res = await fetch(state.apiEndpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action, token: state.apiSecret, payload })
+        });
+        const result = await res.json();
+        if (!result.success) throw new Error(result.error || 'Apps Script Error');
+        return result.data;
+      } catch (err) {
+        showToast('Sync warning: ' + err.message, 'error');
+        return null;
+      }
+    }
+
+    async function syncFromGoogleSheets() {
+      if (!state.apiEndpoint) return;
+      showToast('Syncing from Google Sheets...');
       const [remoteClients, remoteWorkspaces] = await Promise.all([
         callAppsScript('getClients'),
         callAppsScript('getAllWorkspaces')
       ]);
-      if (Array.isArray(remoteClients)) setClients(remoteClients);
-      if (Array.isArray(remoteWorkspaces)) setWorkspaces(remoteWorkspaces);
+      if (Array.isArray(remoteClients)) state.clients = remoteClients;
+      if (Array.isArray(remoteWorkspaces)) state.workspaces = remoteWorkspaces;
+      saveState();
+      renderApp();
       showToast('Synced latest data from Google Sheets');
-    } catch (error) {
-      showToast('Failed to sync with Google Sheets', 'error');
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
-  // Auto-sync when API endpoint is configured and user is logged in
-  useEffect(() => {
-    if (currentUser && apiEndpoint) {
-      syncFromGoogleSheets();
-    }
-  }, [currentUser, apiEndpoint]);
-
-  // ============================================================================
-  // AUTHENTICATION HANDLERS
-  // ============================================================================
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    setLoginError('');
-    const normalizedEmail = loginEmail.trim().toLowerCase();
-
-    if (!normalizedEmail) {
-      setLoginError('Please enter your company email address.');
-      return;
     }
 
-    setIsAuthenticating(true);
+    // ------------------------------------------------------------------------
+    // AUTHENTICATION HANDLERS
+    // ------------------------------------------------------------------------
+    document.getElementById('login-form').addEventListener('submit', async function (e) {
+      e.preventDefault();
+      const email = document.getElementById('login-email').value.trim().toLowerCase();
+      const passcode = document.getElementById('login-passcode').value.trim();
+      const errBox = document.getElementById('login-error');
+      const errText = document.getElementById('login-error-text');
 
-    try {
-      // If connected to Google Apps Script backend, verify via authenticateUser
-      if (apiEndpoint) {
-        const remoteUser = await callAppsScript('authenticateUser', {
-          email: normalizedEmail,
-          passcode: loginPasscode
-        });
+      errBox.classList.add('hidden');
+
+      if (state.apiEndpoint) {
+        const remoteUser = await callAppsScript('authenticateUser', { email, passcode });
         if (remoteUser && remoteUser.active) {
-          setCurrentUser(remoteUser);
+          state.currentUser = remoteUser;
           sessionStorage.setItem('gtt_current_user', JSON.stringify(remoteUser));
-          setIsAuthenticating(false);
+          initWorkspace();
           return;
         }
       }
 
-      // Check authorized company directory
-      const matchedUser = users.find(
-        (u) => u.email.toLowerCase() === normalizedEmail && u.active !== false
-      );
-
-      if (!matchedUser) {
-        setLoginError('Access denied. This email is not registered in GO TO TARGET.');
-        setIsAuthenticating(false);
+      const matched = state.users.find(u => u.email.toLowerCase() === email && u.active !== false);
+      if (!matched) {
+        errText.textContent = 'Access denied. This email is not registered in GO TO TARGET.';
+        errBox.classList.remove('hidden');
         return;
       }
 
-      // Verify workspace access key (default internal key: "GTT2026" or custom set in Settings)
-      const requiredKey = localStorage.getItem('gtt_workspace_key') || 'GTT2026';
-      if (loginPasscode.trim() !== requiredKey) {
-        setLoginError('Invalid company workspace access code.');
-        setIsAuthenticating(false);
+      if (passcode !== state.workspaceKey) {
+        errText.textContent = 'Invalid company workspace access code. (Default: GTT2026)';
+        errBox.classList.remove('hidden');
         return;
       }
 
-      setCurrentUser(matchedUser);
-      sessionStorage.setItem('gtt_current_user', JSON.stringify(matchedUser));
-      showToast(`Welcome back, ${matchedUser.name}`);
-    } catch (err) {
-      setLoginError('Authentication failed. Please try again.');
-    } finally {
-      setIsAuthenticating(false);
-    }
-  };
-
-  const handleQuickDemoLogin = (role) => {
-    const user = users.find((u) => u.role === role && u.active !== false) || users[0];
-    setCurrentUser(user);
-    sessionStorage.setItem('gtt_current_user', JSON.stringify(user));
-    showToast(`Signed in as ${user.name} (${user.role})`);
-  };
-
-  const handleLogout = () => {
-    setCurrentUser(null);
-    sessionStorage.removeItem('gtt_current_user');
-    setSelectedClientId(null);
-    setActiveNav('clients');
-  };
-
-  // ============================================================================
-  // CLIENT CRUD OPERATIONS (ADMIN ONLY)
-  // ============================================================================
-  const handleSaveClient = async (formData) => {
-    if (!isAdmin) return;
-    const today = new Date().toISOString().split('T')[0];
-
-    if (clientModal.mode === 'create') {
-      const newClientId = `cli_${Date.now()}`;
-      const newClient = {
-        client_id: newClientId,
-        client_name: formData.client_name.trim(),
-        logo_url: formData.logo_url.trim(),
-        description: formData.description.trim(),
-        archived: false,
-        created_at: today
-      };
-
-      // Automatically create the 4 default workspace categories (VIDEO, GRAPHIC, CONTENT, BRIEF)
-      const defaultWorkspaces = DEFAULT_WORKSPACE_TEMPLATES.map((tpl, idx) => ({
-        workspace_id: `ws_${Date.now()}_${idx}`,
-        client_id: newClientId,
-        workspace_name: tpl.workspace_name,
-        description: tpl.description,
-        icon: tpl.icon,
-        color: tpl.color,
-        external_url: '',
-        created_at: today,
-        updated_at: today
-      }));
-
-      setClients((prev) => [newClient, ...prev]);
-      setWorkspaces((prev) => [...prev, ...defaultWorkspaces]);
-
-      if (apiEndpoint) {
-        await callAppsScript('createClient', {
-          client: newClient,
-          defaultWorkspaces
-        });
-      }
-
-      showToast(`Created "${newClient.client_name}" with 4 default workspaces`);
-      setSelectedClientId(newClientId);
-      setActiveNav('clients');
-    } else if (clientModal.mode === 'edit' && clientModal.data) {
-      const updatedClient = {
-        ...clientModal.data,
-        client_name: formData.client_name.trim(),
-        logo_url: formData.logo_url.trim(),
-        description: formData.description.trim()
-      };
-
-      setClients((prev) =>
-        prev.map((c) => (c.client_id === updatedClient.client_id ? updatedClient : c))
-      );
-
-      if (apiEndpoint) {
-        await callAppsScript('updateClient', updatedClient);
-      }
-
-      showToast(`Updated "${updatedClient.client_name}"`);
-    }
-
-    setClientModal({ open: false, mode: 'create', data: null });
-  };
-
-  const handleToggleArchiveClient = async (client) => {
-    if (!isAdmin) return;
-    const updated = { ...client, archived: !client.archived };
-    setClients((prev) =>
-      prev.map((c) => (c.client_id === client.client_id ? updated : c))
-    );
-    if (apiEndpoint) {
-      await callAppsScript('updateClient', updated);
-    }
-    showToast(updated.archived ? `Archived ${client.client_name}` : `Restored ${client.client_name}`);
-  };
-
-  const handleDeleteClient = (client) => {
-    if (!isAdmin) return;
-    setConfirmModal({
-      open: true,
-      title: 'Delete Client Permanently',
-      message: `Are you sure you want to delete "${client.client_name}" and all of its connected workspaces? This action cannot be undone.`,
-      onConfirm: async () => {
-        setClients((prev) => prev.filter((c) => c.client_id !== client.client_id));
-        setWorkspaces((prev) => prev.filter((w) => w.client_id !== client.client_id));
-        if (selectedClientId === client.client_id) {
-          setSelectedClientId(null);
-        }
-        if (apiEndpoint) {
-          await callAppsScript('deleteClient', { client_id: client.client_id });
-        }
-        showToast(`Deleted "${client.client_name}"`);
-        setConfirmModal({ open: false, title: '', message: '', onConfirm: null });
-      }
+      state.currentUser = matched;
+      sessionStorage.setItem('gtt_current_user', JSON.stringify(matched));
+      showToast('Welcome back, ' + matched.name);
+      initWorkspace();
     });
-  };
 
-  // ============================================================================
-  // WORKSPACE CRUD OPERATIONS (ADMIN ONLY)
-  // ============================================================================
-  const handleSaveWorkspace = async (formData) => {
-    if (!isAdmin) return;
-    const today = new Date().toISOString().split('T')[0];
-    const cleanUrl = formatUrl(formData.external_url);
-
-    if (workspaceModal.mode === 'create') {
-      const newWorkspace = {
-        workspace_id: `ws_${Date.now()}`,
-        client_id: workspaceModal.clientId,
-        workspace_name: formData.workspace_name.trim().toUpperCase(),
-        description: formData.description.trim(),
-        icon: formData.icon,
-        color: formData.color,
-        external_url: cleanUrl,
-        created_at: today,
-        updated_at: today
-      };
-
-      setWorkspaces((prev) => [...prev, newWorkspace]);
-
-      if (apiEndpoint) {
-        await callAppsScript('createWorkspace', newWorkspace);
-      }
-
-      showToast(`Added "${newWorkspace.workspace_name}" workspace`);
-    } else if (workspaceModal.mode === 'edit' && workspaceModal.data) {
-      const updatedWorkspace = {
-        ...workspaceModal.data,
-        workspace_name: formData.workspace_name.trim().toUpperCase(),
-        description: formData.description.trim(),
-        icon: formData.icon,
-        color: formData.color,
-        external_url: cleanUrl,
-        updated_at: today
-      };
-
-      setWorkspaces((prev) =>
-        prev.map((w) =>
-          w.workspace_id === updatedWorkspace.workspace_id ? updatedWorkspace : w
-        )
-      );
-
-      if (apiEndpoint) {
-        await callAppsScript('updateWorkspace', updatedWorkspace);
-      }
-
-      showToast(`Saved "${updatedWorkspace.workspace_name}" settings`);
+    function quickLogin(role) {
+      const user = state.users.find(u => u.role === role && u.active !== false) || state.users[0];
+      state.currentUser = user;
+      sessionStorage.setItem('gtt_current_user', JSON.stringify(user));
+      showToast(`Signed in as ${user.name} (${user.role})`);
+      initWorkspace();
     }
 
-    setWorkspaceModal({ open: false, mode: 'create', clientId: null, data: null });
-  };
+    function logout() {
+      state.currentUser = null;
+      state.selectedClientId = null;
+      state.activeNav = 'clients';
+      sessionStorage.removeItem('gtt_current_user');
+      document.getElementById('app-shell').classList.add('hidden');
+      document.getElementById('login-view').classList.remove('hidden');
+      lucide.createIcons();
+    }
 
-  const handleDeleteWorkspace = (workspace) => {
-    if (!isAdmin) return;
-    setConfirmModal({
-      open: true,
-      title: 'Delete Workspace Category',
-      message: `Remove "${workspace.workspace_name}" from this client? Your actual Google Drive files will not be affected.`,
-      onConfirm: async () => {
-        setWorkspaces((prev) =>
-          prev.filter((w) => w.workspace_id !== workspace.workspace_id)
-        );
-        if (apiEndpoint) {
-          await callAppsScript('deleteWorkspace', {
-            workspace_id: workspace.workspace_id
-          });
-        }
-        showToast(`Removed "${workspace.workspace_name}"`);
-        setConfirmModal({ open: false, title: '', message: '', onConfirm: null });
+    // ------------------------------------------------------------------------
+    // NAVIGATION & SIDEBAR CONTROLS
+    // ------------------------------------------------------------------------
+    function navigateTo(nav) {
+      state.activeNav = nav;
+      state.selectedClientId = null;
+      state.mobileMenuOpen = false;
+      renderApp();
+    }
+
+    function openClientWorkspace(clientId) {
+      state.selectedClientId = clientId;
+      renderApp();
+    }
+
+    function toggleSidebarCollapse() {
+      state.sidebarCollapsed = !state.sidebarCollapsed;
+      const sidebar = document.getElementById('sidebar');
+      const labels = document.querySelectorAll('.sidebar-label');
+      const icon = document.getElementById('collapse-icon');
+
+      if (state.sidebarCollapsed) {
+        sidebar.classList.remove('md:w-64');
+        sidebar.classList.add('md:w-20');
+        labels.forEach(el => el.classList.add('hidden'));
+        icon.setAttribute('data-lucide', 'chevron-right');
+      } else {
+        sidebar.classList.remove('md:w-20');
+        sidebar.classList.add('md:w-64');
+        labels.forEach(el => el.classList.remove('hidden'));
+        icon.setAttribute('data-lucide', 'chevron-left');
       }
-    });
-  };
+      lucide.createIcons();
+    }
 
-  // ============================================================================
-  // DERIVED DATA
-  // ============================================================================
-  const filteredClients = useMemo(() => {
-    return clients.filter((c) => {
-      const matchesArchive = showArchivedClients ? c.archived : !c.archived;
-      const matchesQuery =
-        c.client_name.toLowerCase().includes(clientSearch.toLowerCase()) ||
-        (c.description || '').toLowerCase().includes(clientSearch.toLowerCase());
-      return matchesArchive && matchesQuery;
-    });
-  }, [clients, clientSearch, showArchivedClients]);
+    function toggleMobileMenu() {
+      state.mobileMenuOpen = !state.mobileMenuOpen;
+      const sidebar = document.getElementById('sidebar');
+      if (state.mobileMenuOpen) {
+        sidebar.classList.remove('hidden');
+        sidebar.classList.add('fixed', 'inset-0', 'flex');
+      } else {
+        sidebar.classList.add('hidden');
+        sidebar.classList.remove('fixed', 'inset-0', 'flex');
+      }
+    }
 
-  const selectedClient = useMemo(() => {
-    return clients.find((c) => c.client_id === selectedClientId) || null;
-  }, [clients, selectedClientId]);
+    // ------------------------------------------------------------------------
+    // MAIN RENDER CONTROLLER
+    // ------------------------------------------------------------------------
+    function initWorkspace() {
+      if (!state.currentUser) {
+        document.getElementById('login-view').classList.remove('hidden');
+        document.getElementById('app-shell').classList.add('hidden');
+        lucide.createIcons();
+        return;
+      }
 
-  const clientWorkspaces = useMemo(() => {
-    if (!selectedClientId) return [];
-    return workspaces.filter((w) => w.client_id === selectedClientId);
-  }, [workspaces, selectedClientId]);
+      document.getElementById('login-view').classList.add('hidden');
+      document.getElementById('app-shell').classList.remove('hidden');
 
-  // ============================================================================
-  // RENDER: SECURE LOGIN GATE
-  // ============================================================================
-  if (!currentUser) {
-    return (
-      <div className="min-h-screen bg-[#F5F7FA] flex flex-col justify-center items-center p-4 sm:p-6 font-sans text-[#061D42]">
-        <div className="w-full max-w-md bg-white rounded-2xl shadow-xl shadow-[#061D42]/5 border border-slate-200/80 overflow-hidden">
-          {/* Top Navy Brand Header */}
-          <div className="bg-[#061D42] px-8 py-8 text-center relative overflow-hidden">
-            <div className="absolute -right-10 -top-10 w-36 h-36 rounded-full bg-[#2585E8]/10 pointer-events-none" />
-            <div className="absolute -left-10 -bottom-10 w-32 h-32 rounded-full bg-[#50D6B0]/10 pointer-events-none" />
-            <div className="flex justify-center mb-4">
-              <GoToTargetLogo size="lg" collapsed={true} />
+      const isAdmin = state.currentUser.role === 'ADMIN';
+      document.getElementById('user-avatar').textContent = getInitials(state.currentUser.name);
+      document.getElementById('user-name-display').textContent = state.currentUser.name;
+
+      const roleBadge = document.getElementById('user-role-badge');
+      roleBadge.textContent = state.currentUser.role;
+      roleBadge.className = isAdmin
+        ? 'inline-block text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#50D6B0]/20 text-[#50D6B0]'
+        : 'inline-block text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#45B8E8]/20 text-[#45B8E8]';
+
+      const settingsNav = document.getElementById('nav-settings');
+      if (isAdmin) {
+        settingsNav.classList.remove('hidden');
+      } else {
+        settingsNav.classList.add('hidden');
+      }
+
+      if (state.apiEndpoint) {
+        syncFromGoogleSheets();
+      } else {
+        renderApp();
+      }
+    }
+
+    function renderApp() {
+      const isAdmin = state.currentUser?.role === 'ADMIN';
+
+      // Update Sidebar Active Highlight
+      ['clients', 'workspaces', 'settings'].forEach(item => {
+        const el = document.getElementById('nav-' + item);
+        if (!el) return;
+        if (state.activeNav === item && !state.selectedClientId) {
+          el.className = el.className.replace('text-slate-300 hover:text-white hover:bg-white/5', 'bg-[#2585E8] text-white shadow-sm');
+        } else {
+          el.className = el.className.replace('bg-[#2585E8] text-white shadow-sm', 'text-slate-300 hover:text-white hover:bg-white/5');
+        }
+      });
+
+      // Update Top Sync Status
+      const syncArea = document.getElementById('sync-status-area');
+      if (state.apiEndpoint) {
+        syncArea.innerHTML = `
+          <button onclick="syncFromGoogleSheets()" class="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg bg-[#50D6B0]/15 text-[#0F766E] hover:bg-[#50D6B0]/25 transition cursor-pointer">
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+            <span class="hidden sm:inline">Google Sheets Connected</span>
+          </button>`;
+      } else {
+        syncArea.innerHTML = `<span class="text-[11px] text-slate-400 hidden sm:inline">Local Workspace Storage</span>`;
+      }
+
+      const container = document.getElementById('main-container');
+      const breadcrumb = document.getElementById('breadcrumb-current');
+
+      if (state.selectedClientId) {
+        const client = state.clients.find(c => c.client_id === state.selectedClientId);
+        breadcrumb.textContent = client ? client.client_name : 'Client Workspace';
+        container.innerHTML = renderClientDetailView(client, isAdmin);
+      } else if (state.activeNav === 'clients') {
+        breadcrumb.textContent = 'Clients';
+        container.innerHTML = renderClientsDirectoryView(isAdmin);
+      } else if (state.activeNav === 'workspaces') {
+        breadcrumb.textContent = 'Workspaces';
+        container.innerHTML = renderAllWorkspacesView(isAdmin);
+      } else if (state.activeNav === 'settings' && isAdmin) {
+        breadcrumb.textContent = 'Settings';
+        container.innerHTML = renderSettingsView();
+      }
+
+      lucide.createIcons();
+    }
+
+    // ------------------------------------------------------------------------
+    // VIEW 1: CLIENTS DIRECTORY
+    // ------------------------------------------------------------------------
+    function renderClientsDirectoryView(isAdmin) {
+      const filtered = state.clients.filter(c => {
+        const matchArch = state.showArchived ? c.archived : !c.archived;
+        const q = state.clientSearch.toLowerCase();
+        const matchQuery = c.client_name.toLowerCase().includes(q) || (c.description || '').toLowerCase().includes(q);
+        return matchArch && matchQuery;
+      });
+
+      const cardsHtml = filtered.length === 0
+        ? `<div class="bg-white rounded-2xl border border-slate-200/80 p-14 text-center">
+            <i data-lucide="users" class="w-10 h-10 text-slate-300 mx-auto mb-3"></i>
+            <h3 class="text-base font-semibold text-[#061D42]">${state.clientSearch ? 'No matching clients found' : state.showArchived ? 'No archived clients' : 'No active clients yet'}</h3>
+            <p class="text-sm text-slate-500 mt-1">${state.clientSearch ? 'Try adjusting your search query.' : isAdmin ? 'Click "Add Client" to create your first client workspace.' : 'Ask an administrator to add company clients.'}</p>
+          </div>`
+        : `<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            ${filtered.map(client => {
+              const clientWs = state.workspaces.filter(w => w.client_id === client.client_id);
+              const connected = clientWs.filter(w => w.external_url && w.external_url.trim() !== '').length;
+
+              const logoHtml = client.logo_url
+                ? `<img src="${escapeHtml(client.logo_url)}" alt="${escapeHtml(client.client_name)}" class="w-14 h-14 rounded-xl object-cover border border-slate-200 bg-slate-50 flex-shrink-0" />`
+                : `<div class="w-14 h-14 rounded-xl bg-gradient-to-br from-[#061D42] to-[#0f3470] text-white font-bold text-lg flex items-center justify-center flex-shrink-0">${getInitials(client.client_name)}</div>`;
+
+              const adminActions = isAdmin ? `
+                <div onclick="event.stopPropagation()" class="absolute top-4 right-4 flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                  <button onclick="openEditClientModal('${client.client_id}')" title="Edit Client" class="p-1.5 rounded-lg bg-slate-100 hover:bg-[#2585E8] text-slate-600 hover:text-white transition cursor-pointer">
+                    <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
+                  </button>
+                  <button onclick="toggleArchiveClient('${client.client_id}')" title="${client.archived ? 'Restore' : 'Archive'}" class="p-1.5 rounded-lg bg-slate-100 hover:bg-amber-500 text-slate-600 hover:text-white transition cursor-pointer">
+                    <i data-lucide="${client.archived ? 'archive-restore' : 'archive'}" class="w-3.5 h-3.5"></i>
+                  </button>
+                  <button onclick="confirmDeleteClient('${client.client_id}')" title="Delete Client" class="p-1.5 rounded-lg bg-slate-100 hover:bg-red-600 text-slate-600 hover:text-white transition cursor-pointer">
+                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                  </button>
+                </div>` : '';
+
+              return `
+                <div onclick="openClientWorkspace('${client.client_id}')" class="group relative bg-white rounded-2xl border border-slate-200/90 hover:border-[#2585E8] p-6 shadow-xs hover:shadow-lg hover:shadow-[#061D42]/5 transition-all duration-200 cursor-pointer flex flex-col justify-between">
+                  ${adminActions}
+                  <div>
+                    <div class="flex items-center gap-4 mb-4">
+                      ${logoHtml}
+                      <div class="min-w-0 pr-12">
+                        <h3 class="text-lg font-bold text-[#061D42] group-hover:text-[#2585E8] transition-colors truncate">${escapeHtml(client.client_name)}</h3>
+                        <p class="text-xs text-slate-400 mt-0.5">Added ${escapeHtml(client.created_at)}</p>
+                      </div>
+                    </div>
+                    <p class="text-sm text-slate-600 line-clamp-2 min-h-[40px] leading-relaxed">${escapeHtml(client.description) || 'No description provided.'}</p>
+                  </div>
+                  <div class="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#F5F7FA] text-xs font-semibold text-[#061D42]">
+                      <i data-lucide="link-2" class="w-3.5 h-3.5 text-[#2585E8]"></i>
+                      <span>${connected} / ${clientWs.length} Links Connected</span>
+                    </span>
+                    <span class="text-xs font-semibold text-[#2585E8] group-hover:translate-x-0.5 transition-transform">Open →</span>
+                  </div>
+                </div>`;
+            }).join('')}
+          </div>`;
+
+      return `
+        <div class="space-y-6">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-[#061D42]">Clients</h1>
+              <p class="text-sm text-slate-500 mt-1">Select a client to access their working folders, sheets, and creative briefs.</p>
             </div>
-            <h1 className="text-xl font-bold tracking-tight text-white">
-              GO TO TARGET
-            </h1>
-            <p className="text-xs uppercase tracking-[0.2em] text-[#50D6B0] mt-1 font-medium">
-              Internal Client Workspace
-            </p>
+            ${isAdmin ? `
+              <button onclick="openCreateClientModal()" class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#061D42] hover:bg-[#0d2d63] text-white text-sm font-semibold shadow-sm transition cursor-pointer self-start sm:self-auto">
+                <i data-lucide="plus" class="w-4 h-4 text-[#50D6B0]"></i>
+                <span>Add Client</span>
+              </button>` : ''}
           </div>
 
-          {/* Login Form */}
-          <form onSubmit={handleLogin} className="p-8 space-y-5">
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">
-                Company Email
-              </label>
-              <input
-                type="email"
-                required
-                placeholder="name@gototarget.co"
-                value={loginEmail}
-                onChange={(e) => setLoginEmail(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-[#F5F7FA]/60 text-[#061D42] text-sm focus:outline-none focus:ring-2 focus:ring-[#2585E8] focus:bg-white transition"
-              />
+          <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+            <div class="relative flex-1 max-w-md">
+              <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
+              <input type="text" placeholder="Search clients by name or description..." value="${escapeHtml(state.clientSearch)}"
+                oninput="state.clientSearch = this.value; renderApp();"
+                class="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white border border-slate-200/90 text-sm text-[#061D42] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#2585E8] transition" />
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">
-                Workspace Access Key
-              </label>
-              <input
-                type="password"
-                required
-                placeholder="••••••••"
-                value={loginPasscode}
-                onChange={(e) => setLoginPasscode(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-[#F5F7FA]/60 text-[#061D42] text-sm focus:outline-none focus:ring-2 focus:ring-[#2585E8] focus:bg-white transition"
-              />
-            </div>
+            ${isAdmin ? `
+              <button onclick="state.showArchived = !state.showArchived; renderApp();"
+                class="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl border text-xs font-semibold transition cursor-pointer ${state.showArchived ? 'bg-amber-50 border-amber-200 text-amber-800' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}">
+                <i data-lucide="archive" class="w-3.5 h-3.5"></i>
+                <span>${state.showArchived ? 'Viewing Archived' : 'Show Archived'}</span>
+              </button>` : ''}
+          </div>
 
-            {loginError && (
-              <div className="flex items-start gap-2.5 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs">
-                <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                <span>{loginError}</span>
+          ${cardsHtml}
+        </div>`;
+    }
+
+    // ------------------------------------------------------------------------
+    // VIEW 2: DEDICATED CLIENT WORKSPACE PAGE
+    // ------------------------------------------------------------------------
+    function renderClientDetailView(client, isAdmin) {
+      if (!client) return `<p>Client not found.</p>`;
+      const clientWorkspaces = state.workspaces.filter(w => w.client_id === client.client_id);
+
+      const logoHtml = client.logo_url
+        ? `<img src="${escapeHtml(client.logo_url)}" alt="${escapeHtml(client.client_name)}" class="w-20 h-20 rounded-2xl object-cover border border-slate-200 bg-slate-50 flex-shrink-0" />`
+        : `<div class="w-20 h-20 rounded-2xl bg-[#061D42] text-white font-bold text-2xl flex items-center justify-center flex-shrink-0 shadow-inner">${getInitials(client.client_name)}</div>`;
+
+      const wsCardsHtml = clientWorkspaces.map(ws => {
+        const theme = COLOR_STYLES[ws.color] || COLOR_STYLES.blue;
+        const hasLink = Boolean(ws.external_url && ws.external_url.trim());
+        const serviceName = detectLinkService(ws.external_url);
+
+        const adminWsControls = isAdmin ? `
+          <div onclick="event.stopPropagation()" class="absolute top-4 right-4 flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+            <button onclick="openEditWorkspaceModal('${ws.workspace_id}')" title="Edit Workspace & Link" class="p-1.5 rounded-lg bg-slate-100 hover:bg-[#2585E8] text-slate-600 hover:text-white transition cursor-pointer">
+              <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
+            </button>
+            <button onclick="confirmDeleteWorkspace('${ws.workspace_id}')" title="Delete Workspace" class="p-1.5 rounded-lg bg-slate-100 hover:bg-red-600 text-slate-600 hover:text-white transition cursor-pointer">
+              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+            </button>
+          </div>` : '';
+
+        const clickHandler = hasLink
+          ? `window.open('${escapeHtml(ws.external_url)}', '_blank', 'noopener,noreferrer')`
+          : (isAdmin ? `openEditWorkspaceModal('${ws.workspace_id}')` : '');
+
+        return `
+          <div onclick="${clickHandler}"
+            class="group relative bg-white rounded-2xl border transition-all duration-200 p-6 flex flex-col justify-between ${hasLink ? 'border-slate-200/90 hover:border-[#2585E8] hover:shadow-lg hover:shadow-[#061D42]/5 cursor-pointer' : 'border-slate-200/80 bg-slate-50/40'} ${!hasLink && isAdmin ? 'cursor-pointer hover:border-slate-300' : ''}">
+            ${adminWsControls}
+            <div>
+              <div class="flex items-center justify-between mb-5">
+                <div class="w-12 h-12 rounded-xl ${theme.bg} ${theme.text} border ${theme.border} flex items-center justify-center">
+                  <i data-lucide="${escapeHtml(ws.icon || 'folder-open')}" class="w-6 h-6"></i>
+                </div>
+                ${hasLink
+                  ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[#50D6B0]/15 text-[#0F766E]">
+                      <span class="w-1.5 h-1.5 rounded-full bg-[#50D6B0]"></span>
+                      ${serviceName}
+                    </span>`
+                  : `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium bg-slate-100 text-slate-500">Not Linked</span>`
+                }
               </div>
-            )}
+              <h3 class="text-lg font-bold tracking-tight text-[#061D42] group-hover:text-[#2585E8] transition-colors">${escapeHtml(ws.workspace_name)}</h3>
+              <p class="mt-1.5 text-sm text-slate-500 leading-relaxed">${escapeHtml(ws.description)}</p>
+            </div>
+            <div class="mt-6 pt-4 border-t border-slate-100">
+              ${hasLink
+                ? `<div class="w-full py-2.5 px-4 rounded-xl bg-[#061D42] group-hover:bg-[#2585E8] text-white text-xs font-semibold flex items-center justify-center gap-2 transition-colors">
+                    <span>Open Workspace</span>
+                    <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+                  </div>`
+                : `<div class="text-center py-2 px-3 rounded-xl bg-slate-100/80 text-slate-500 text-xs font-medium">
+                    ยังไม่ได้เพิ่มลิงก์สำหรับพื้นที่ทำงานนี้
+                    ${isAdmin ? `<span class="block text-[11px] text-[#2585E8] font-semibold mt-0.5">+ Click to connect link</span>` : ''}
+                  </div>`
+              }
+            </div>
+          </div>`;
+      }).join('');
 
-            <button
-              type="submit"
-              disabled={isAuthenticating}
-              className="w-full py-3 px-4 rounded-xl bg-[#061D42] hover:bg-[#0c2c61] text-white font-semibold text-sm shadow-sm transition flex items-center justify-center gap-2 cursor-pointer"
-            >
-              {isAuthenticating ? (
-                <RefreshCw className="w-4 h-4 animate-spin" />
-              ) : (
-                <Shield className="w-4 h-4 text-[#50D6B0]" />
-              )}
-              <span>Sign In to Workspace</span>
+      return `
+        <div class="space-y-8">
+          <div class="flex flex-wrap items-center justify-between gap-4">
+            <button onclick="navigateTo('clients')" class="inline-flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-[#061D42] bg-white px-4 py-2 rounded-xl border border-slate-200/90 shadow-xs hover:border-slate-300 transition cursor-pointer">
+              <i data-lucide="arrow-left" class="w-4 h-4"></i>
+              <span>Back to Clients</span>
             </button>
 
-            {/* Quick Role Preview Bar for Immediate Testing */}
-            <div className="pt-4 border-t border-slate-100">
-              <p className="text-[11px] text-center text-slate-400 mb-2.5">
-                Internal Quick Access (Preview Mode)
-              </p>
-              <div className="grid grid-cols-2 gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => handleQuickDemoLogin('ADMIN')}
-                  className="py-2 px-3 rounded-lg border border-slate-200 hover:border-[#2585E8] hover:bg-[#2585E8]/5 text-xs font-medium text-[#061D42] transition flex items-center justify-center gap-1.5 cursor-pointer"
-                >
-                  <Shield className="w-3.5 h-3.5 text-[#2585E8]" />
-                  <span>Enter as Admin</span>
+            ${isAdmin ? `
+              <div class="flex items-center gap-2.5">
+                <button onclick="openEditClientModal('${client.client_id}')" class="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 px-3.5 py-2 rounded-xl border border-slate-200 transition cursor-pointer">
+                  <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
+                  <span>Edit Client</span>
                 </button>
-                <button
-                  type="button"
-                  onClick={() => handleQuickDemoLogin('STAFF')}
-                  className="py-2 px-3 rounded-lg border border-slate-200 hover:border-[#50D6B0] hover:bg-[#50D6B0]/10 text-xs font-medium text-[#061D42] transition flex items-center justify-center gap-1.5 cursor-pointer"
-                >
-                  <UserCheck className="w-3.5 h-3.5 text-[#50D6B0]" />
-                  <span>Enter as Staff</span>
+                <button onclick="openCreateWorkspaceModal('${client.client_id}')" class="inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-[#061D42] hover:bg-[#0d2d63] px-4 py-2 rounded-xl shadow-xs transition cursor-pointer">
+                  <i data-lucide="plus" class="w-4 h-4 text-[#50D6B0]"></i>
+                  <span>Add Workspace</span>
                 </button>
+              </div>` : ''}
+          </div>
+
+          <div class="bg-white rounded-2xl border border-slate-200/80 p-6 sm:p-8 shadow-xs flex flex-col sm:flex-row items-start sm:items-center gap-6">
+            ${logoHtml}
+            <div class="flex-1 min-w-0">
+              <div class="flex flex-wrap items-center gap-3">
+                <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-[#061D42]">${escapeHtml(client.client_name)}</h1>
+                ${client.archived ? `<span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">Archived</span>` : ''}
               </div>
+              <p class="mt-2 text-slate-600 text-sm sm:text-base max-w-3xl leading-relaxed">${escapeHtml(client.description) || 'No client description provided.'}</p>
+            </div>
+          </div>
+
+          <div>
+            <h2 class="text-sm font-bold uppercase tracking-wider text-slate-500 mb-4">Client Workspaces (${clientWorkspaces.length})</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+              ${wsCardsHtml}
+            </div>
+          </div>
+        </div>`;
+    }
+
+    // ------------------------------------------------------------------------
+    // VIEW 3: ALL WORKSPACES DIRECTORY
+    // ------------------------------------------------------------------------
+    function renderAllWorkspacesView(isAdmin) {
+      const q = state.workspaceSearch.toLowerCase();
+      const rowsHtml = state.workspaces.filter(ws => {
+        const client = state.clients.find(c => c.client_id === ws.client_id && !c.archived);
+        if (!client) return false;
+        return client.client_name.toLowerCase().includes(q) || ws.workspace_name.toLowerCase().includes(q) || (ws.description || '').toLowerCase().includes(q);
+      }).map(ws => {
+        const client = state.clients.find(c => c.client_id === ws.client_id);
+        const theme = COLOR_STYLES[ws.color] || COLOR_STYLES.blue;
+        const hasLink = Boolean(ws.external_url && ws.external_url.trim());
+
+        return `
+          <tr class="hover:bg-[#F5F7FA]/60 transition-colors">
+            <td class="py-3.5 px-5 font-semibold text-[#061D42]">
+              <button onclick="openClientWorkspace('${client.client_id}')" class="hover:text-[#2585E8] text-left cursor-pointer">${escapeHtml(client.client_name)}</button>
+            </td>
+            <td class="py-3.5 px-5">
+              <div class="inline-flex items-center gap-2">
+                <span class="p-1.5 rounded-lg ${theme.bg} ${theme.text}">
+                  <i data-lucide="${escapeHtml(ws.icon || 'folder-open')}" class="w-4 h-4"></i>
+                </span>
+                <span class="font-bold text-xs tracking-wide text-[#061D42]">${escapeHtml(ws.workspace_name)}</span>
+              </div>
+            </td>
+            <td class="py-3.5 px-5 text-slate-500 hidden md:table-cell">${escapeHtml(ws.description)}</td>
+            <td class="py-3.5 px-5">
+              ${hasLink
+                ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#50D6B0]/15 text-[#0F766E]"><span class="w-1.5 h-1.5 rounded-full bg-[#50D6B0]"></span>${detectLinkService(ws.external_url)}</span>`
+                : `<span class="text-xs text-slate-400">ยังไม่ได้เพิ่มลิงก์</span>`}
+            </td>
+            <td class="py-3.5 px-5 text-right">
+              ${hasLink
+                ? `<a href="${escapeHtml(ws.external_url)}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#061D42] hover:bg-[#2585E8] text-white text-xs font-semibold transition"><span>Open</span><i data-lucide="external-link" class="w-3 h-3"></i></a>`
+                : isAdmin
+                  ? `<button onclick="openEditWorkspaceModal('${ws.workspace_id}')" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 hover:border-[#2585E8] text-xs font-semibold text-[#2585E8] transition cursor-pointer"><i data-lucide="plus" class="w-3 h-3"></i><span>Add Link</span></button>`
+                  : `<span class="text-xs text-slate-300">—</span>`}
+            </td>
+          </tr>`;
+      }).join('');
+
+      return `
+        <div class="space-y-6">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-[#061D42]">All Workspaces</h1>
+              <p class="text-sm text-slate-500 mt-1">Direct one-click access to all connected folders across active clients.</p>
+            </div>
+            <div class="relative w-full sm:w-80">
+              <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
+              <input type="text" placeholder="Filter by client or category..." value="${escapeHtml(state.workspaceSearch)}"
+                oninput="state.workspaceSearch = this.value; renderApp();"
+                class="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white border border-slate-200/90 text-sm text-[#061D42] focus:outline-none focus:ring-2 focus:ring-[#2585E8]" />
+            </div>
+          </div>
+
+          <div class="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-xs">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse">
+                <thead>
+                  <tr class="border-b border-slate-200/80 bg-[#F5F7FA]/70 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                    <th class="py-3.5 px-5">Client</th>
+                    <th class="py-3.5 px-5">Workspace</th>
+                    <th class="py-3.5 px-5 hidden md:table-cell">Description</th>
+                    <th class="py-3.5 px-5">Status</th>
+                    <th class="py-3.5 px-5 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 text-sm">
+                  ${rowsHtml}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    // ------------------------------------------------------------------------
+    // VIEW 4: SETTINGS & ADMIN PANEL (ADMIN ONLY)
+    // ------------------------------------------------------------------------
+    function renderSettingsView() {
+      const usersHtml = state.users.map(u => `
+        <div class="py-3.5 flex items-center justify-between gap-4">
+          <div class="flex items-center gap-3 min-w-0">
+            <div class="w-9 h-9 rounded-full bg-[#061D42] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">${getInitials(u.name)}</div>
+            <div class="min-w-0">
+              <p class="text-sm font-semibold text-[#061D42] truncate">${escapeHtml(u.name)}</p>
+              <p class="text-xs text-slate-500 truncate">${escapeHtml(u.email)}</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2.5">
+            <button onclick="toggleUserRole('${u.user_id}')" title="Click to switch role"
+              class="px-2.5 py-1 rounded-lg text-xs font-bold tracking-wider cursor-pointer transition ${u.role === 'ADMIN' ? 'bg-[#50D6B0]/20 text-[#0F766E]' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">
+              ${u.role}
+            </button>
+            <button onclick="removeUser('${u.user_id}')" title="Revoke Access" class="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition cursor-pointer">
+              <i data-lucide="trash-2" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </div>`).join('');
+
+      return `
+        <div class="space-y-8 max-w-4xl">
+          <div>
+            <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-[#061D42]">Settings & Admin Controls</h1>
+            <p class="text-sm text-slate-500 mt-1">Manage internal team access roles and connect your Google Sheets & Apps Script database.</p>
+          </div>
+
+          <!-- Team Access Section -->
+          <div class="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs space-y-6">
+            <div class="flex items-center gap-3 border-b border-slate-100 pb-4">
+              <div class="p-2.5 rounded-xl bg-[#2585E8]/10 text-[#2585E8]">
+                <i data-lucide="shield" class="w-5 h-5"></i>
+              </div>
+              <div>
+                <h2 class="text-base font-bold text-[#061D42]">Internal Team Access</h2>
+                <p class="text-xs text-slate-500">Only listed company emails can log in. Admins manage clients & links; Staff have view-only access.</p>
+              </div>
+            </div>
+
+            <form onsubmit="handleAddTeamMember(event)" class="grid grid-cols-1 sm:grid-cols-12 gap-3 bg-[#F5F7FA] p-4 rounded-xl">
+              <input id="new-member-name" type="text" required placeholder="Full Name" class="sm:col-span-4 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#2585E8]" />
+              <input id="new-member-email" type="email" required placeholder="staff@gototarget.co" class="sm:col-span-4 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#2585E8]" />
+              <select id="new-member-role" class="sm:col-span-2 px-3 py-2 rounded-xl bg-white border border-slate-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#2585E8]">
+                <option value="STAFF">STAFF</option>
+                <option value="ADMIN">ADMIN</option>
+              </select>
+              <button type="submit" class="sm:col-span-2 py-2 px-4 rounded-xl bg-[#061D42] hover:bg-[#0d2d63] text-white text-xs font-semibold transition cursor-pointer">+ Add User</button>
+            </form>
+
+            <div class="divide-y divide-slate-100">${usersHtml}</div>
+          </div>
+
+          <!-- Google Sheets Backend Section -->
+          <form onsubmit="handleSaveBackendConfig(event)" class="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs space-y-5">
+            <div class="flex items-center gap-3 border-b border-slate-100 pb-4">
+              <div class="p-2.5 rounded-xl bg-[#50D6B0]/20 text-[#0F766E]">
+                <i data-lucide="database" class="w-5 h-5"></i>
+              </div>
+              <div>
+                <h2 class="text-base font-bold text-[#061D42]">Google Sheets Backend & Security Key</h2>
+                <p class="text-xs text-slate-500">Connect your deployed Google Apps Script Web App URL for permanent cloud persistence.</p>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Google Apps Script Web App URL</label>
+              <input id="cfg-api-url" type="url" placeholder="https://script.google.com/macros/s/AKfycb.../exec" value="${escapeHtml(state.apiEndpoint)}"
+                class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm text-[#061D42] focus:outline-none focus:ring-2 focus:ring-[#2585E8]" />
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">API Secret Token (Matches Apps Script)</label>
+                <input id="cfg-api-secret" type="password" placeholder="Optional API token" value="${escapeHtml(state.apiSecret)}"
+                  class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm text-[#061D42] focus:outline-none focus:ring-2 focus:ring-[#2585E8]" />
+              </div>
+              <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Company Login Access Key</label>
+                <input id="cfg-workspace-key" type="text" required value="${escapeHtml(state.workspaceKey)}"
+                  class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm text-[#061D42] focus:outline-none focus:ring-2 focus:ring-[#2585E8]" />
+              </div>
+            </div>
+
+            <div class="pt-2 flex flex-wrap items-center justify-between gap-3">
+              <span class="text-xs text-slate-400">Changes save immediately and persist across refreshes.</span>
+              <button type="submit" class="px-5 py-2.5 rounded-xl bg-[#061D42] hover:bg-[#0d2d63] text-white text-sm font-semibold shadow-sm transition cursor-pointer">Save Configuration</button>
             </div>
           </form>
-        </div>
+        </div>`;
+    }
 
-        <p className="mt-6 text-xs text-slate-400">
-          Authorized GO TO TARGET personnel only.
-        </p>
-      </div>
-    );
-  }
+    // ------------------------------------------------------------------------
+    // CRUD HANDLERS: CLIENTS
+    // ------------------------------------------------------------------------
+    function openCreateClientModal() {
+      document.getElementById('client-modal-title').textContent = 'Add New Client';
+      document.getElementById('client-form-submit').textContent = 'Create Client';
+      document.getElementById('client-form-id').value = '';
+      document.getElementById('client-form-name').value = '';
+      document.getElementById('client-form-logo').value = '';
+      document.getElementById('client-form-desc').value = '';
+      document.getElementById('client-auto-setup-note').classList.remove('hidden');
+      document.getElementById('client-modal').classList.remove('hidden');
+    }
 
-  // ============================================================================
-  // RENDER: MAIN AUTHENTICATED WORKSPACE
-  // ============================================================================
-  return (
-    <div className="min-h-screen bg-[#F5F7FA] text-[#061D42] flex flex-col md:flex-row font-sans">
-      {/* Toast Notification */}
-      {toast && (
-        <div
-          className={`fixed bottom-5 right-5 z-50 flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg border text-sm font-medium transition-all ${
-            toast.type === 'error'
-              ? 'bg-red-950 text-white border-red-800'
-              : 'bg-[#061D42] text-white border-[#2585E8]/40'
-          }`}
-        >
-          {toast.type === 'error' ? (
-            <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
-          ) : (
-            <CheckCircle2 className="w-4 h-4 text-[#50D6B0] flex-shrink-0" />
-          )}
-          <span>{toast.message}</span>
-        </div>
-      )}
+    function openEditClientModal(clientId) {
+      const client = state.clients.find(c => c.client_id === clientId);
+      if (!client) return;
+      document.getElementById('client-modal-title').textContent = 'Edit Client Information';
+      document.getElementById('client-form-submit').textContent = 'Save Changes';
+      document.getElementById('client-form-id').value = client.client_id;
+      document.getElementById('client-form-name').value = client.client_name;
+      document.getElementById('client-form-logo').value = client.logo_url || '';
+      document.getElementById('client-form-desc').value = client.description || '';
+      document.getElementById('client-auto-setup-note').classList.add('hidden');
+      document.getElementById('client-modal').classList.remove('hidden');
+    }
 
-      {/* Mobile Top Header */}
-      <div className="md:hidden bg-[#061D42] text-white px-4 py-3 flex items-center justify-between sticky top-0 z-30 shadow-sm">
-        <GoToTargetLogo collapsed={false} />
-        <button
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="p-2 rounded-lg text-slate-300 hover:text-white hover:bg-white/10"
-          aria-label="Toggle Menu"
-        >
-          {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-        </button>
-      </div>
+    function closeClientModal() {
+      document.getElementById('client-modal').classList.add('hidden');
+    }
 
-      {/* ========================================================================
-          SIDEBAR NAVIGATION (Deep Navy #061D42)
-      ======================================================================== */}
-      <aside
-        className={`${
-          mobileMenuOpen ? 'fixed inset-0 z-40 flex' : 'hidden md:flex'
-        } flex-col bg-[#061D42] text-white transition-all duration-200 flex-shrink-0 ${
-          sidebarCollapsed ? 'md:w-20' : 'md:w-64'
-        } md:sticky md:top-0 md:h-screen select-none`}
-      >
-        {/* Top Brand Area */}
-        <div className="h-16 px-4 flex items-center justify-between border-b border-white/10">
-          <div
-            onClick={() => {
-              setActiveNav('clients');
-              setSelectedClientId(null);
-              setMobileMenuOpen(false);
-            }}
-            className="cursor-pointer"
-          >
-            <GoToTargetLogo collapsed={sidebarCollapsed} />
-          </div>
+    document.getElementById('client-form').addEventListener('submit', async function (e) {
+      e.preventDefault();
+      const id = document.getElementById('client-form-id').value;
+      const name = document.getElementById('client-form-name').value.trim();
+      const logo = document.getElementById('client-form-logo').value.trim();
+      const desc = document.getElementById('client-form-desc').value.trim();
+      const today = new Date().toISOString().split('T')[0];
 
-          <button
-            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="hidden md:flex p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition cursor-pointer"
-            title={sidebarCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
-          >
-            {sidebarCollapsed ? (
-              <ChevronRight className="w-4 h-4" />
-            ) : (
-              <ChevronLeft className="w-4 h-4" />
-            )}
-          </button>
+      if (!id) {
+        const newClientId = 'cli_' + Date.now();
+        const newClient = {
+          client_id: newClientId,
+          client_name: name,
+          logo_url: logo,
+          description: desc,
+          archived: false,
+          created_at: today
+        };
 
-          {mobileMenuOpen && (
-            <button
-              onClick={() => setMobileMenuOpen(false)}
-              className="md:hidden p-1.5 rounded-lg text-slate-300 hover:text-white"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          )}
-        </div>
+        const defaultWorkspaces = DEFAULT_WORKSPACE_TEMPLATES.map((tpl, idx) => ({
+          workspace_id: `ws_${Date.now()}_${idx}`,
+          client_id: newClientId,
+          workspace_name: tpl.workspace_name,
+          description: tpl.description,
+          icon: tpl.icon,
+          color: tpl.color,
+          external_url: '',
+          created_at: today,
+          updated_at: today
+        }));
 
-        {/* Navigation Links (Strictly 3 items: Clients, Workspaces, Settings [Admin only]) */}
-        <nav className="flex-1 px-3 py-6 space-y-1.5 overflow-y-auto">
-          <button
-            onClick={() => {
-              setActiveNav('clients');
-              setSelectedClientId(null);
-              setMobileMenuOpen(false);
-            }}
-            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition cursor-pointer ${
-              activeNav === 'clients'
-                ? 'bg-[#2585E8] text-white shadow-sm'
-                : 'text-slate-300 hover:text-white hover:bg-white/5'
-            }`}
-          >
-            <Users className="w-5 h-5 flex-shrink-0" />
-            {!sidebarCollapsed && <span>Clients</span>}
-          </button>
+        state.clients.unshift(newClient);
+        state.workspaces.push(...defaultWorkspaces);
+        saveState();
+        closeClientModal();
+        state.selectedClientId = newClientId;
+        renderApp();
+        showToast(`Created "${name}" with 4 default workspaces`);
 
-          <button
-            onClick={() => {
-              setActiveNav('workspaces');
-              setSelectedClientId(null);
-              setMobileMenuOpen(false);
-            }}
-            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition cursor-pointer ${
-              activeNav === 'workspaces'
-                ? 'bg-[#2585E8] text-white shadow-sm'
-                : 'text-slate-300 hover:text-white hover:bg-white/5'
-            }`}
-          >
-            <FolderKanban className="w-5 h-5 flex-shrink-0" />
-            {!sidebarCollapsed && <span>Workspaces</span>}
-          </button>
-
-          {isAdmin && (
-            <button
-              onClick={() => {
-                setActiveNav('settings');
-                setSelectedClientId(null);
-                setMobileMenuOpen(false);
-              }}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition cursor-pointer ${
-                activeNav === 'settings'
-                  ? 'bg-[#2585E8] text-white shadow-sm'
-                  : 'text-slate-300 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              <Settings className="w-5 h-5 flex-shrink-0" />
-              {!sidebarCollapsed && <span>Settings</span>}
-            </button>
-          )}
-        </nav>
-
-        {/* Bottom User Profile Area */}
-        <div className="p-3 border-t border-white/10">
-          <div
-            className={`flex items-center ${
-              sidebarCollapsed ? 'justify-center' : 'justify-between'
-            } p-2 rounded-xl bg-white/5`}
-          >
-            <div className="flex items-center gap-2.5 min-w-0">
-              {currentUser.avatar_url ? (
-                <img
-                  src={currentUser.avatar_url}
-                  alt={currentUser.name}
-                  className="w-9 h-9 rounded-full object-cover border border-[#50D6B0]/40 flex-shrink-0"
-                />
-              ) : (
-                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#50D6B0] to-[#2585E8] text-[#061D42] font-bold text-xs flex items-center justify-center flex-shrink-0">
-                  {getInitials(currentUser.name)}
-                </div>
-              )}
-
-              {!sidebarCollapsed && (
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-white truncate">
-                    {currentUser.name}
-                  </p>
-                  <span
-                    className={`inline-block text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${
-                      isAdmin
-                        ? 'bg-[#50D6B0]/20 text-[#50D6B0]'
-                        : 'bg-[#45B8E8]/20 text-[#45B8E8]'
-                    }`}
-                  >
-                    {currentUser.role}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {!sidebarCollapsed && (
-              <button
-                onClick={handleLogout}
-                title="Sign Out"
-                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition cursor-pointer"
-              >
-                <LogOut className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-        </div>
-      </aside>
-
-      {/* ========================================================================
-          MAIN CONTENT AREA
-      ======================================================================== */}
-      <main className="flex-1 min-w-0">
-        {/* Top Subtle Status Bar */}
-        <header className="bg-white border-b border-slate-200/80 px-6 py-3.5 flex items-center justify-between sticky top-0 z-20">
-          <div className="flex items-center gap-2 text-xs text-slate-500">
-            <span className="font-semibold text-[#061D42]">GO TO TARGET</span>
-            <span>/</span>
-            <span className="capitalize font-medium text-slate-700">
-              {selectedClient ? selectedClient.client_name : activeNav}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-3">
-            {apiEndpoint ? (
-              <button
-                onClick={syncFromGoogleSheets}
-                disabled={isSyncing}
-                className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg bg-[#50D6B0]/15 text-[#0F766E] hover:bg-[#50D6B0]/25 transition cursor-pointer"
-                title="Connected to Google Sheets"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-                <span className="hidden sm:inline">Google Sheets Connected</span>
-              </button>
-            ) : (
-              <span className="text-[11px] text-slate-400 hidden sm:inline">
-                Local Workspace Storage
-              </span>
-            )}
-          </div>
-        </header>
-
-        <div className="max-w-7xl mx-auto p-6 sm:p-8">
-          {/* ====================================================================
-              VIEW 1: DEDICATED CLIENT WORKSPACE PAGE
-          ==================================================================== */}
-          {selectedClient ? (
-            <div className="space-y-8 animate-fadeIn">
-              {/* Back Navigation */}
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <button
-                  onClick={() => setSelectedClientId(null)}
-                  className="inline-flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-[#061D42] bg-white px-4 py-2 rounded-xl border border-slate-200/90 shadow-xs hover:border-slate-300 transition cursor-pointer"
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  <span>Back to Clients</span>
-                </button>
-
-                {isAdmin && (
-                  <div className="flex items-center gap-2.5">
-                    <button
-                      onClick={() =>
-                        setClientModal({
-                          open: true,
-                          mode: 'edit',
-                          data: selectedClient
-                        })
-                      }
-                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 px-3.5 py-2 rounded-xl border border-slate-200 transition cursor-pointer"
-                    >
-                      <Pencil className="w-3.5 h-3.5" />
-                      <span>Edit Client</span>
-                    </button>
-
-                    <button
-                      onClick={() =>
-                        setWorkspaceModal({
-                          open: true,
-                          mode: 'create',
-                          clientId: selectedClient.client_id,
-                          data: null
-                        })
-                      }
-                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-[#061D42] hover:bg-[#0d2d63] px-4 py-2 rounded-xl shadow-xs transition cursor-pointer"
-                    >
-                      <Plus className="w-4 h-4 text-[#50D6B0]" />
-                      <span>Add Workspace</span>
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* Client Profile Header Card */}
-              <div className="bg-white rounded-2xl border border-slate-200/80 p-6 sm:p-8 shadow-xs flex flex-col sm:flex-row items-start sm:items-center gap-6">
-                {selectedClient.logo_url ? (
-                  <img
-                    src={selectedClient.logo_url}
-                    alt={selectedClient.client_name}
-                    className="w-20 h-20 rounded-2xl object-cover border border-slate-200 bg-slate-50 flex-shrink-0"
-                  />
-                ) : (
-                  <div className="w-20 h-20 rounded-2xl bg-[#061D42] text-white font-bold text-2xl flex items-center justify-center flex-shrink-0 shadow-inner">
-                    {getInitials(selectedClient.client_name)}
-                  </div>
-                )}
-
-                <div className="flex-1 min-w-0">
-                  <div className="flex flex-wrap items-center gap-3">
-                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#061D42]">
-                      {selectedClient.client_name}
-                    </h1>
-                    {selectedClient.archived && (
-                      <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">
-                        Archived
-                      </span>
-                    )}
-                  </div>
-                  {selectedClient.description ? (
-                    <p className="mt-2 text-slate-600 text-sm sm:text-base max-w-3xl leading-relaxed">
-                      {selectedClient.description}
-                    </p>
-                  ) : (
-                    <p className="mt-1.5 text-slate-400 text-sm italic">
-                      No client description provided.
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {/* Workspaces Grid */}
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-sm font-bold uppercase tracking-wider text-slate-500">
-                    Client Workspaces ({clientWorkspaces.length})
-                  </h2>
-                </div>
-
-                {clientWorkspaces.length === 0 ? (
-                  <div className="bg-white rounded-2xl border border-dashed border-slate-300 p-12 text-center">
-                    <FolderKanban className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-                    <p className="text-slate-600 font-medium">
-                      No workspaces configured for this client yet.
-                    </p>
-                    {isAdmin && (
-                      <button
-                        onClick={() =>
-                          setWorkspaceModal({
-                            open: true,
-                            mode: 'create',
-                            clientId: selectedClient.client_id,
-                            data: null
-                          })
-                        }
-                        className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#2585E8] text-white text-sm font-medium hover:bg-[#1d72cc] transition cursor-pointer"
-                      >
-                        <Plus className="w-4 h-4" />
-                        <span>Add First Workspace</span>
-                      </button>
-                    )}
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                    {clientWorkspaces.map((ws) => {
-                      const IconComponent = WORKSPACE_ICONS[ws.icon] || FolderOpen;
-                      const colorTheme = WORKSPACE_COLORS[ws.color] || WORKSPACE_COLORS.blue;
-                      const hasLink = Boolean(ws.external_url && ws.external_url.trim());
-                      const serviceName = detectLinkService(ws.external_url);
-
-                      return (
-                        <div
-                          key={ws.workspace_id}
-                          onClick={() => {
-                            if (hasLink) {
-                              window.open(ws.external_url, '_blank', 'noopener,noreferrer');
-                            } else if (isAdmin) {
-                              setWorkspaceModal({
-                                open: true,
-                                mode: 'edit',
-                                clientId: selectedClient.client_id,
-                                data: ws
-                              });
-                            }
-                          }}
-                          className={`group relative bg-white rounded-2xl border transition-all duration-200 p-6 flex flex-col justify-between ${
-                            hasLink
-                              ? 'border-slate-200/90 hover:border-[#2585E8] hover:shadow-lg hover:shadow-[#061D42]/5 cursor-pointer'
-                              : 'border-slate-200/80 bg-slate-50/40'
-                          } ${!hasLink && isAdmin ? 'cursor-pointer hover:border-slate-300' : ''}`}
-                        >
-                          {/* Admin Controls (Edit / Delete Workspace) */}
-                          {isAdmin && (
-                            <div
-                              onClick={(e) => e.stopPropagation()}
-                              className="absolute top-4 right-4 flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
-                            >
-                              <button
-                                onClick={() =>
-                                  setWorkspaceModal({
-                                    open: true,
-                                    mode: 'edit',
-                                    clientId: selectedClient.client_id,
-                                    data: ws
-                                  })
-                                }
-                                title="Edit Workspace & Link"
-                                className="p-1.5 rounded-lg bg-slate-100 hover:bg-[#2585E8] text-slate-600 hover:text-white transition cursor-pointer"
-                              >
-                                <Pencil className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteWorkspace(ws)}
-                                title="Delete Workspace"
-                                className="p-1.5 rounded-lg bg-slate-100 hover:bg-red-600 text-slate-600 hover:text-white transition cursor-pointer"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          )}
-
-                          <div>
-                            {/* Category Icon & Connection Status Badge */}
-                            <div className="flex items-center justify-between mb-5">
-                              <div
-                                className={`w-12 h-12 rounded-xl ${colorTheme.bg} ${colorTheme.text} border ${colorTheme.border} flex items-center justify-center`}
-                              >
-                                <IconComponent className="w-6 h-6" />
-                              </div>
-
-                              {hasLink ? (
-                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[#50D6B0]/15 text-[#0F766E]">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-[#50D6B0]" />
-                                  {serviceName}
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium bg-slate-100 text-slate-500">
-                                  Not Linked
-                                </span>
-                              )}
-                            </div>
-
-                            {/* Workspace Title & Description */}
-                            <h3 className="text-lg font-bold tracking-tight text-[#061D42] group-hover:text-[#2585E8] transition-colors">
-                              {ws.workspace_name}
-                            </h3>
-                            <p className="mt-1.5 text-sm text-slate-500 leading-relaxed">
-                              {ws.description}
-                            </p>
-                          </div>
-
-                          {/* Bottom Action Area */}
-                          <div className="mt-6 pt-4 border-t border-slate-100">
-                            {hasLink ? (
-                              <div className="w-full py-2.5 px-4 rounded-xl bg-[#061D42] group-hover:bg-[#2585E8] text-white text-xs font-semibold flex items-center justify-center gap-2 transition-colors">
-                                <span>Open Workspace</span>
-                                <ExternalLink className="w-3.5 h-3.5" />
-                              </div>
-                            ) : (
-                              <div className="text-center py-2 px-3 rounded-xl bg-slate-100/80 text-slate-500 text-xs font-medium">
-                                ยังไม่ได้เพิ่มลิงก์สำหรับพื้นที่ทำงานนี้
-                                {isAdmin && (
-                                  <span className="block text-[11px] text-[#2585E8] font-semibold mt-0.5">
-                                    + Click to connect link
-                                  </span>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
-          ) : activeNav === 'clients' ? (
-            /* ====================================================================
-               VIEW 2: CLIENTS DIRECTORY PAGE
-            ==================================================================== */
-            <div className="space-y-6">
-              {/* Page Header & Actions */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                  <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#061D42]">
-                    Clients
-                  </h1>
-                  <p className="text-sm text-slate-500 mt-1">
-                    Select a client to access their working folders, sheets, and creative briefs.
-                  </p>
-                </div>
-
-                {isAdmin && (
-                  <button
-                    onClick={() =>
-                      setClientModal({ open: true, mode: 'create', data: null })
-                    }
-                    className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#061D42] hover:bg-[#0d2d63] text-white text-sm font-semibold shadow-sm transition cursor-pointer self-start sm:self-auto"
-                  >
-                    <Plus className="w-4 h-4 text-[#50D6B0]" />
-                    <span>Add Client</span>
-                  </button>
-                )}
-              </div>
-
-              {/* Search & Filter Bar */}
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-                <div className="relative flex-1 max-w-md">
-                  <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    placeholder="Search clients by name or description..."
-                    value={clientSearch}
-                    onChange={(e) => setClientSearch(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white border border-slate-200/90 text-sm text-[#061D42] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#2585E8] transition"
-                  />
-                  {clientSearch && (
-                    <button
-                      onClick={() => setClientSearch('')}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-
-                {isAdmin && (
-                  <button
-                    onClick={() => setShowArchivedClients(!showArchivedClients)}
-                    className={`inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl border text-xs font-semibold transition cursor-pointer ${
-                      showArchivedClients
-                        ? 'bg-amber-50 border-amber-200 text-amber-800'
-                        : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                    }`}
-                  >
-                    <Archive className="w-3.5 h-3.5" />
-                    <span>
-                      {showArchivedClients ? 'Viewing Archived' : 'Show Archived'}
-                    </span>
-                  </button>
-                )}
-              </div>
-
-              {/* Client Cards Grid */}
-              {filteredClients.length === 0 ? (
-                <div className="bg-white rounded-2xl border border-slate-200/80 p-14 text-center">
-                  <Users className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-                  <h3 className="text-base font-semibold text-[#061D42]">
-                    {clientSearch
-                      ? 'No matching clients found'
-                      : showArchivedClients
-                      ? 'No archived clients'
-                      : 'No active clients yet'}
-                  </h3>
-                  <p className="text-sm text-slate-500 mt-1">
-                    {clientSearch
-                      ? 'Try adjusting your search query.'
-                      : isAdmin
-                      ? 'Click "Add Client" to create your first client workspace.'
-                      : 'Ask an administrator to add company clients.'}
-                  </p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                  {filteredClients.map((client) => {
-                    const clientWs = workspaces.filter(
-                      (w) => w.client_id === client.client_id
-                    );
-                    const connectedCount = clientWs.filter(
-                      (w) => w.external_url && w.external_url.trim() !== ''
-                    ).length;
-
-                    return (
-                      <div
-                        key={client.client_id}
-                        onClick={() => setSelectedClientId(client.client_id)}
-                        className="group relative bg-white rounded-2xl border border-slate-200/90 hover:border-[#2585E8] p-6 shadow-xs hover:shadow-lg hover:shadow-[#061D42]/5 transition-all duration-200 cursor-pointer flex flex-col justify-between"
-                      >
-                        {/* Admin Quick Actions */}
-                        {isAdmin && (
-                          <div
-                            onClick={(e) => e.stopPropagation()}
-                            className="absolute top-4 right-4 flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
-                          >
-                            <button
-                              onClick={() =>
-                                setClientModal({
-                                  open: true,
-                                  mode: 'edit',
-                                  data: client
-                                })
-                              }
-                              title="Edit Client"
-                              className="p-1.5 rounded-lg bg-slate-100 hover:bg-[#2585E8] text-slate-600 hover:text-white transition cursor-pointer"
-                            >
-                              <Pencil className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => handleToggleArchiveClient(client)}
-                              title={client.archived ? 'Restore Client' : 'Archive Client'}
-                              className="p-1.5 rounded-lg bg-slate-100 hover:bg-amber-500 text-slate-600 hover:text-white transition cursor-pointer"
-                            >
-                              {client.archived ? (
-                                <ArchiveRestore className="w-3.5 h-3.5" />
-                              ) : (
-                                <Archive className="w-3.5 h-3.5" />
-                              )}
-                            </button>
-                            <button
-                              onClick={() => handleDeleteClient(client)}
-                              title="Delete Client"
-                              className="p-1.5 rounded-lg bg-slate-100 hover:bg-red-600 text-slate-600 hover:text-white transition cursor-pointer"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        )}
-
-                        <div>
-                          {/* Client Logo + Name */}
-                          <div className="flex items-center gap-4 mb-4">
-                            {client.logo_url ? (
-                              <img
-                                src={client.logo_url}
-                                alt={client.client_name}
-                                className="w-14 h-14 rounded-xl object-cover border border-slate-200 bg-slate-50 flex-shrink-0"
-                              />
-                            ) : (
-                              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-[#061D42] to-[#0f3470] text-white font-bold text-lg flex items-center justify-center flex-shrink-0">
-                                {getInitials(client.client_name)}
-                              </div>
-                            )}
-
-                            <div className="min-w-0 pr-12">
-                              <h3 className="text-lg font-bold text-[#061D42] group-hover:text-[#2585E8] transition-colors truncate">
-                                {client.client_name}
-                              </h3>
-                              <p className="text-xs text-slate-400 mt-0.5">
-                                Added {client.created_at}
-                              </p>
-                            </div>
-                          </div>
-
-                          {/* Client Description */}
-                          <p className="text-sm text-slate-600 line-clamp-2 min-h-[40px] leading-relaxed">
-                            {client.description || 'No description provided.'}
-                          </p>
-                        </div>
-
-                        {/* Footer: Workspace Link Count */}
-                        <div className="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#F5F7FA] text-xs font-semibold text-[#061D42]">
-                              <Link2 className="w-3.5 h-3.5 text-[#2585E8]" />
-                              <span>
-                                {connectedCount} / {clientWs.length} Links Connected
-                              </span>
-                            </span>
-                          </div>
-
-                          <span className="text-xs font-semibold text-[#2585E8] group-hover:translate-x-0.5 transition-transform">
-                            Open →
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          ) : activeNav === 'workspaces' ? (
-            /* ====================================================================
-               VIEW 3: ALL WORKSPACES QUICK DIRECTORY
-            ==================================================================== */
-            <div className="space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                  <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#061D42]">
-                    All Workspaces
-                  </h1>
-                  <p className="text-sm text-slate-500 mt-1">
-                    Direct one-click access to all connected folders across active clients.
-                  </p>
-                </div>
-
-                <div className="relative w-full sm:w-80">
-                  <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    placeholder="Filter by client or category..."
-                    value={workspaceSearch}
-                    onChange={(e) => setWorkspaceSearch(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white border border-slate-200/90 text-sm text-[#061D42] focus:outline-none focus:ring-2 focus:ring-[#2585E8]"
-                  />
-                </div>
-              </div>
-
-              <div className="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-xs">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="border-b border-slate-200/80 bg-[#F5F7FA]/70 text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                        <th className="py-3.5 px-5">Client</th>
-                        <th className="py-3.5 px-5">Workspace</th>
-                        <th className="py-3.5 px-5 hidden md:table-cell">Description</th>
-                        <th className="py-3.5 px-5">Status</th>
-                        <th className="py-3.5 px-5 text-right">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 text-sm">
-                      {workspaces
-                        .filter((ws) => {
-                          const client = clients.find(
-                            (c) => c.client_id === ws.client_id && !c.archived
-                          );
-                          if (!client) return false;
-                          const q = workspaceSearch.toLowerCase();
-                          return (
-                            client.client_name.toLowerCase().includes(q) ||
-                            ws.workspace_name.toLowerCase().includes(q) ||
-                            (ws.description || '').toLowerCase().includes(q)
-                          );
-                        })
-                        .map((ws) => {
-                          const client = clients.find(
-                            (c) => c.client_id === ws.client_id
-                          );
-                          const IconComp = WORKSPACE_ICONS[ws.icon] || FolderOpen;
-                          const theme =
-                            WORKSPACE_COLORS[ws.color] || WORKSPACE_COLORS.blue;
-                          const hasLink = Boolean(
-                            ws.external_url && ws.external_url.trim()
-                          );
-
-                          return (
-                            <tr
-                              key={ws.workspace_id}
-                              className="hover:bg-[#F5F7FA]/60 transition-colors"
-                            >
-                              <td className="py-3.5 px-5 font-semibold text-[#061D42]">
-                                <button
-                                  onClick={() =>
-                                    setSelectedClientId(client.client_id)
-                                  }
-                                  className="hover:text-[#2585E8] text-left cursor-pointer"
-                                >
-                                  {client?.client_name}
-                                </button>
-                              </td>
-                              <td className="py-3.5 px-5">
-                                <div className="inline-flex items-center gap-2">
-                                  <span
-                                    className={`p-1.5 rounded-lg ${theme.bg} ${theme.text}`}
-                                  >
-                                    <IconComp className="w-4 h-4" />
-                                  </span>
-                                  <span className="font-bold text-xs tracking-wide text-[#061D42]">
-                                    {ws.workspace_name}
-                                  </span>
-                                </div>
-                              </td>
-                              <td className="py-3.5 px-5 text-slate-500 hidden md:table-cell">
-                                {ws.description}
-                              </td>
-                              <td className="py-3.5 px-5">
-                                {hasLink ? (
-                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#50D6B0]/15 text-[#0F766E]">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-[#50D6B0]" />
-                                    {detectLinkService(ws.external_url)}
-                                  </span>
-                                ) : (
-                                  <span className="text-xs text-slate-400">
-                                    ยังไม่ได้เพิ่มลิงก์
-                                  </span>
-                                )}
-                              </td>
-                              <td className="py-3.5 px-5 text-right">
-                                <div className="inline-flex items-center gap-2">
-                                  {hasLink ? (
-                                    <a
-                                      href={ws.external_url}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#061D42] hover:bg-[#2585E8] text-white text-xs font-semibold transition"
-                                    >
-                                      <span>Open</span>
-                                      <ExternalLink className="w-3 h-3" />
-                                    </a>
-                                  ) : isAdmin ? (
-                                    <button
-                                      onClick={() =>
-                                        setWorkspaceModal({
-                                          open: true,
-                                          mode: 'edit',
-                                          clientId: ws.client_id,
-                                          data: ws
-                                        })
-                                      }
-                                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 hover:border-[#2585E8] text-xs font-semibold text-[#2585E8] transition cursor-pointer"
-                                    >
-                                      <Plus className="w-3 h-3" />
-                                      <span>Add Link</span>
-                                    </button>
-                                  ) : (
-                                    <span className="text-xs text-slate-300">—</span>
-                                  )}
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          ) : (
-            /* ====================================================================
-               VIEW 4: SETTINGS & ADMIN PANEL (ADMIN ONLY)
-            ==================================================================== */
-            isAdmin && (
-              <AdminSettingsPanel
-                users={users}
-                setUsers={setUsers}
-                apiEndpoint={apiEndpoint}
-                setApiEndpoint={setApiEndpoint}
-                apiSecret={apiSecret}
-                setApiSecret={setApiSecret}
-                onSyncNow={syncFromGoogleSheets}
-                isSyncing={isSyncing}
-                showToast={showToast}
-                userModal={userModal}
-                setUserModal={setUserModal}
-              />
-            )
-          )}
-        </div>
-      </main>
-
-      {/* ========================================================================
-          MODAL 1: ADD / EDIT CLIENT
-      ======================================================================== */}
-      {clientModal.open && isAdmin && (
-        <ClientFormModal
-          mode={clientModal.mode}
-          initialData={clientModal.data}
-          onClose={() => setClientModal({ open: false, mode: 'create', data: null })}
-          onSave={handleSaveClient}
-        />
-      )}
-
-      {/* ========================================================================
-          MODAL 2: ADD / EDIT WORKSPACE & LINK
-      ======================================================================== */}
-      {workspaceModal.open && isAdmin && (
-        <WorkspaceFormModal
-          mode={workspaceModal.mode}
-          initialData={workspaceModal.data}
-          onClose={() =>
-            setWorkspaceModal({
-              open: false,
-              mode: 'create',
-              clientId: null,
-              data: null
-            })
+        if (state.apiEndpoint) {
+          await callAppsScript('createClient', { client: newClient, defaultWorkspaces });
+        }
+      } else {
+        const idx = state.clients.findIndex(c => c.client_id === id);
+        if (idx !== -1) {
+          state.clients[idx] = { ...state.clients[idx], client_name: name, logo_url: logo, description: desc };
+          saveState();
+          closeClientModal();
+          renderApp();
+          showToast(`Updated "${name}"`);
+          if (state.apiEndpoint) {
+            await callAppsScript('updateClient', state.clients[idx]);
           }
-          onSave={handleSaveWorkspace}
-        />
-      )}
-
-      {/* ========================================================================
-          MODAL 3: CONFIRMATION DIALOG
-      ======================================================================== */}
-      {confirmModal.open && (
-        <div className="fixed inset-0 z-50 bg-[#061D42]/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200">
-            <h3 className="text-lg font-bold text-[#061D42]">{confirmModal.title}</h3>
-            <p className="text-sm text-slate-600 mt-2 leading-relaxed">
-              {confirmModal.message}
-            </p>
-            <div className="mt-6 flex items-center justify-end gap-3">
-              <button
-                onClick={() =>
-                  setConfirmModal({ open: false, title: '', message: '', onConfirm: null })
-                }
-                className="px-4 py-2 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmModal.onConfirm}
-                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-semibold cursor-pointer"
-              >
-                Confirm Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ============================================================================
-// SUB-COMPONENT: CLIENT FORM MODAL
-// ============================================================================
-function ClientFormModal({ mode, initialData, onClose, onSave }) {
-  const [clientName, setClientName] = useState(initialData?.client_name || '');
-  const [logoUrl, setLogoUrl] = useState(initialData?.logo_url || '');
-  const [description, setDescription] = useState(initialData?.description || '');
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!clientName.trim()) return;
-    onSave({
-      client_name: clientName,
-      logo_url: logoUrl,
-      description
+        }
+      }
     });
-  };
 
-  return (
-    <div className="fixed inset-0 z-50 bg-[#061D42]/50 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl border border-slate-200">
-        <div className="px-6 py-4 bg-[#061D42] text-white flex items-center justify-between">
-          <h3 className="font-bold text-base">
-            {mode === 'create' ? 'Add New Client' : 'Edit Client Information'}
-          </h3>
-          <button
-            onClick={onClose}
-            className="text-slate-300 hover:text-white p-1 rounded-lg cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+    async function toggleArchiveClient(clientId) {
+      const idx = state.clients.findIndex(c => c.client_id === clientId);
+      if (idx === -1) return;
+      state.clients[idx].archived = !state.clients[idx].archived;
+      saveState();
+      renderApp();
+      showToast(state.clients[idx].archived ? `Archived ${state.clients[idx].client_name}` : `Restored ${state.clients[idx].client_name}`);
+      if (state.apiEndpoint) {
+        await callAppsScript('updateClient', state.clients[idx]);
+      }
+    }
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-              Client Name *
-            </label>
-            <input
-              type="text"
-              required
-              placeholder="e.g., ABC Company"
-              value={clientName}
-              onChange={(e) => setClientName(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm text-[#061D42] focus:outline-none focus:ring-2 focus:ring-[#2585E8]"
-            />
-          </div>
+    function confirmDeleteClient(clientId) {
+      const client = state.clients.find(c => c.client_id === clientId);
+      if (!client) return;
+      document.getElementById('confirm-title').textContent = 'Delete Client Permanently';
+      document.getElementById('confirm-message').textContent = `Are you sure you want to delete "${client.client_name}" and all of its connected workspaces? This action cannot be undone.`;
+      document.getElementById('confirm-yes-btn').onclick = async function () {
+        state.clients = state.clients.filter(c => c.client_id !== clientId);
+        state.workspaces = state.workspaces.filter(w => w.client_id !== clientId);
+        if (state.selectedClientId === clientId) state.selectedClientId = null;
+        saveState();
+        closeConfirmModal();
+        renderApp();
+        showToast(`Deleted "${client.client_name}"`);
+        if (state.apiEndpoint) {
+          await callAppsScript('deleteClient', { client_id: clientId });
+        }
+      };
+      document.getElementById('confirm-modal').classList.remove('hidden');
+    }
 
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-              Client Logo URL (Optional)
-            </label>
-            <input
-              type="url"
-              placeholder="https://..."
-              value={logoUrl}
-              onChange={(e) => setLogoUrl(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm text-[#061D42] focus:outline-none focus:ring-2 focus:ring-[#2585E8]"
-            />
-            <p className="text-[11px] text-slate-400 mt-1">
-              Leave blank to generate a clean branded monogram badge automatically.
-            </p>
-          </div>
+    // ------------------------------------------------------------------------
+    // CRUD HANDLERS: WORKSPACES
+    // ------------------------------------------------------------------------
+    function openCreateWorkspaceModal(clientId) {
+      document.getElementById('workspace-modal-title').textContent = 'Add Workspace Category';
+      document.getElementById('ws-form-id').value = '';
+      document.getElementById('ws-form-client-id').value = clientId;
+      document.getElementById('ws-form-name').value = '';
+      document.getElementById('ws-form-url').value = '';
+      document.getElementById('ws-form-desc').value = '';
+      document.getElementById('ws-form-icon').value = 'video';
+      document.getElementById('ws-form-color').value = 'blue';
+      updateWsUrlHelper('');
+      document.getElementById('workspace-modal').classList.remove('hidden');
+    }
 
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-              Description (Optional)
-            </label>
-            <textarea
-              rows={3}
-              placeholder="Brief summary of client scope or brand..."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm text-[#061D42] focus:outline-none focus:ring-2 focus:ring-[#2585E8]"
-            />
-          </div>
+    function openEditWorkspaceModal(wsId) {
+      const ws = state.workspaces.find(w => w.workspace_id === wsId);
+      if (!ws) return;
+      document.getElementById('workspace-modal-title').textContent = 'Edit Workspace & Link';
+      document.getElementById('ws-form-id').value = ws.workspace_id;
+      document.getElementById('ws-form-client-id').value = ws.client_id;
+      document.getElementById('ws-form-name').value = ws.workspace_name;
+      document.getElementById('ws-form-url').value = ws.external_url || '';
+      document.getElementById('ws-form-desc').value = ws.description || '';
+      document.getElementById('ws-form-icon').value = ws.icon || 'folder-open';
+      document.getElementById('ws-form-color').value = ws.color || 'blue';
+      updateWsUrlHelper(ws.external_url || '');
+      document.getElementById('workspace-modal').classList.remove('hidden');
+    }
 
-          {mode === 'create' && (
-            <div className="p-3.5 rounded-xl bg-[#50D6B0]/10 border border-[#50D6B0]/30 text-xs text-[#061D42]">
-              <span className="font-semibold">Automatic Setup:</span> Creating this client will automatically generate 4 workspaces: <strong>VIDEO</strong>, <strong>GRAPHIC</strong>, <strong>CONTENT</strong>, and <strong>BRIEF</strong>.
-            </div>
-          )}
+    function closeWorkspaceModal() {
+      document.getElementById('workspace-modal').classList.add('hidden');
+    }
 
-          <div className="pt-2 flex items-center justify-end gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 cursor-pointer"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-5 py-2.5 rounded-xl bg-[#061D42] hover:bg-[#0d2d63] text-white text-sm font-semibold shadow-sm cursor-pointer"
-            >
-              {mode === 'create' ? 'Create Client' : 'Save Changes'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
+    function clearWsUrl() {
+      document.getElementById('ws-form-url').value = '';
+      updateWsUrlHelper('');
+    }
 
-// ============================================================================
-// SUB-COMPONENT: WORKSPACE FORM MODAL
-// ============================================================================
-function WorkspaceFormModal({ mode, initialData, onClose, onSave }) {
-  const [workspaceName, setWorkspaceName] = useState(
-    initialData?.workspace_name || ''
-  );
-  const [description, setDescription] = useState(initialData?.description || '');
-  const [icon, setIcon] = useState(initialData?.icon || 'Video');
-  const [color, setColor] = useState(initialData?.color || 'blue');
-  const [externalUrl, setExternalUrl] = useState(initialData?.external_url || '');
+    function updateWsUrlHelper(val) {
+      const helper = document.getElementById('ws-url-helper');
+      const label = document.getElementById('ws-detected-service');
+      if (val && val.trim()) {
+        label.textContent = 'Detected: ' + detectLinkService(val);
+        helper.classList.remove('hidden');
+      } else {
+        helper.classList.add('hidden');
+      }
+    }
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!workspaceName.trim()) return;
-    onSave({
-      workspace_name: workspaceName,
-      description,
-      icon,
-      color,
-      external_url: externalUrl
+    document.getElementById('ws-form-url').addEventListener('input', function () {
+      updateWsUrlHelper(this.value);
     });
-  };
 
-  return (
-    <div className="fixed inset-0 z-50 bg-[#061D42]/50 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl border border-slate-200">
-        <div className="px-6 py-4 bg-[#061D42] text-white flex items-center justify-between">
-          <h3 className="font-bold text-base">
-            {mode === 'create' ? 'Add Workspace Category' : 'Edit Workspace & Link'}
-          </h3>
-          <button
-            onClick={onClose}
-            className="text-slate-300 hover:text-white p-1 rounded-lg cursor-pointer"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+    document.getElementById('workspace-form').addEventListener('submit', async function (e) {
+      e.preventDefault();
+      const wsId = document.getElementById('ws-form-id').value;
+      const clientId = document.getElementById('ws-form-client-id').value;
+      const name = document.getElementById('ws-form-name').value.trim().toUpperCase();
+      const url = formatUrl(document.getElementById('ws-form-url').value);
+      const desc = document.getElementById('ws-form-desc').value.trim();
+      const icon = document.getElementById('ws-form-icon').value;
+      const color = document.getElementById('ws-form-color').value;
+      const today = new Date().toISOString().split('T')[0];
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-              Workspace Name *
-            </label>
-            <input
-              type="text"
-              required
-              placeholder="e.g., VIDEO, GRAPHIC, CONTENT, BRIEF"
-              value={workspaceName}
-              onChange={(e) => setWorkspaceName(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-[#061D42] focus:outline-none focus:ring-2 focus:ring-[#2585E8]"
-            />
-          </div>
+      if (!wsId) {
+        const newWs = {
+          workspace_id: 'ws_' + Date.now(),
+          client_id: clientId,
+          workspace_name: name,
+          description: desc,
+          icon,
+          color,
+          external_url: url,
+          created_at: today,
+          updated_at: today
+        };
+        state.workspaces.push(newWs);
+        saveState();
+        closeWorkspaceModal();
+        renderApp();
+        showToast(`Added "${name}" workspace`);
+        if (state.apiEndpoint) {
+          await callAppsScript('createWorkspace', newWs);
+        }
+      } else {
+        const idx = state.workspaces.findIndex(w => w.workspace_id === wsId);
+        if (idx !== -1) {
+          state.workspaces[idx] = {
+            ...state.workspaces[idx],
+            workspace_name: name,
+            description: desc,
+            icon,
+            color,
+            external_url: url,
+            updated_at: today
+          };
+          saveState();
+          closeWorkspaceModal();
+          renderApp();
+          showToast(`Saved "${name}" settings`);
+          if (state.apiEndpoint) {
+            await callAppsScript('updateWorkspace', state.workspaces[idx]);
+          }
+        }
+      }
+    });
 
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-              Connected URL (Google Drive, Sheets, Docs, or External Link)
-            </label>
-            <input
-              type="text"
-              placeholder="https://drive.google.com/drive/folders/..."
-              value={externalUrl}
-              onChange={(e) => setExternalUrl(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl border border-[#2585E8]/50 bg-[#2585E8]/5 text-sm text-[#061D42] focus:outline-none focus:ring-2 focus:ring-[#2585E8]"
-            />
-            {externalUrl && (
-              <div className="mt-1.5 flex items-center justify-between text-xs">
-                <span className="text-[#0F766E] font-medium">
-                  Detected: {detectLinkService(externalUrl)}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setExternalUrl('')}
-                  className="text-red-500 hover:underline cursor-pointer"
-                >
-                  Clear Link
-                </button>
-              </div>
-            )}
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-              Short Description
-            </label>
-            <input
-              type="text"
-              placeholder="e.g., Video production and video working files"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm text-[#061D42] focus:outline-none focus:ring-2 focus:ring-[#2585E8]"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                Category Icon
-              </label>
-              <select
-                value={icon}
-                onChange={(e) => setIcon(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-[#061D42] bg-white focus:outline-none focus:ring-2 focus:ring-[#2585E8]"
-              >
-                {Object.keys(WORKSPACE_ICONS).map((iconKey) => (
-                  <option key={iconKey} value={iconKey}>
-                    {iconKey}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-                Accent Color
-              </label>
-              <select
-                value={color}
-                onChange={(e) => setColor(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-[#061D42] bg-white focus:outline-none focus:ring-2 focus:ring-[#2585E8]"
-              >
-                <option value="blue">Brand Blue</option>
-                <option value="cyan">Brand Cyan</option>
-                <option value="mint">Brand Mint</option>
-                <option value="orange">Warm Amber</option>
-                <option value="navy">Deep Navy</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="pt-3 flex items-center justify-end gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 cursor-pointer"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-5 py-2.5 rounded-xl bg-[#061D42] hover:bg-[#0d2d63] text-white text-sm font-semibold shadow-sm cursor-pointer"
-            >
-              Save Workspace
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-// ============================================================================
-// SUB-COMPONENT: ADMIN SETTINGS PANEL (Team Access & Google Sheets Backend)
-// ============================================================================
-function AdminSettingsPanel({
-  users,
-  setUsers,
-  apiEndpoint,
-  setApiEndpoint,
-  apiSecret,
-  setApiSecret,
-  onSyncNow,
-  isSyncing,
-  showToast
-}) {
-  const [endpointInput, setEndpointInput] = useState(apiEndpoint);
-  const [secretInput, setSecretInput] = useState(apiSecret);
-  const [workspaceKeyInput, setWorkspaceKeyInput] = useState(
-    () => localStorage.getItem('gtt_workspace_key') || 'GTT2026'
-  );
-
-  const [newMemberName, setNewMemberName] = useState('');
-  const [newMemberEmail, setNewMemberEmail] = useState('');
-  const [newMemberRole, setNewMemberRole] = useState('STAFF');
-
-  const handleSaveBackendConfig = (e) => {
-    e.preventDefault();
-    const trimmedUrl = endpointInput.trim();
-    const trimmedSecret = secretInput.trim();
-    const trimmedKey = workspaceKeyInput.trim() || 'GTT2026';
-
-    setApiEndpoint(trimmedUrl);
-    setApiSecret(trimmedSecret);
-    localStorage.setItem('gtt_gas_api_url', trimmedUrl);
-    localStorage.setItem('gtt_gas_api_secret', trimmedSecret);
-    localStorage.setItem('gtt_workspace_key', trimmedKey);
-
-    showToast('Workspace & Google Sheets settings saved');
-    if (trimmedUrl) {
-      onSyncNow();
-    }
-  };
-
-  const handleAddMember = (e) => {
-    e.preventDefault();
-    if (!newMemberName.trim() || !newMemberEmail.trim()) return;
-    const exists = users.some(
-      (u) => u.email.toLowerCase() === newMemberEmail.trim().toLowerCase()
-    );
-    if (exists) {
-      showToast('This email is already registered.', 'error');
-      return;
+    function confirmDeleteWorkspace(wsId) {
+      const ws = state.workspaces.find(w => w.workspace_id === wsId);
+      if (!ws) return;
+      document.getElementById('confirm-title').textContent = 'Delete Workspace Category';
+      document.getElementById('confirm-message').textContent = `Remove "${ws.workspace_name}" from this client? Your actual Google Drive files will not be affected.`;
+      document.getElementById('confirm-yes-btn').onclick = async function () {
+        state.workspaces = state.workspaces.filter(w => w.workspace_id !== wsId);
+        saveState();
+        closeConfirmModal();
+        renderApp();
+        showToast(`Removed "${ws.workspace_name}"`);
+        if (state.apiEndpoint) {
+          await callAppsScript('deleteWorkspace', { workspace_id: wsId });
+        }
+      };
+      document.getElementById('confirm-modal').classList.remove('hidden');
     }
 
-    const newUser = {
-      user_id: `usr_${Date.now()}`,
-      name: newMemberName.trim(),
-      email: newMemberEmail.trim().toLowerCase(),
-      role: newMemberRole,
-      avatar_url: '',
-      active: true
-    };
-
-    setUsers((prev) => [...prev, newUser]);
-    setNewMemberName('');
-    setNewMemberEmail('');
-    setNewMemberRole('STAFF');
-    showToast(`Added ${newUser.name} (${newUser.role})`);
-  };
-
-  const toggleUserRole = (userId) => {
-    setUsers((prev) =>
-      prev.map((u) =>
-        u.user_id === userId
-          ? { ...u, role: u.role === 'ADMIN' ? 'STAFF' : 'ADMIN' }
-          : u
-      )
-    );
-    showToast('Updated member role');
-  };
-
-  const removeUser = (userId) => {
-    if (users.length <= 1) {
-      showToast('At least one administrator must remain.', 'error');
-      return;
+    function closeConfirmModal() {
+      document.getElementById('confirm-modal').classList.add('hidden');
     }
-    setUsers((prev) => prev.filter((u) => u.user_id !== userId));
-    showToast('Removed team member access');
-  };
 
-  return (
-    <div className="space-y-8 max-w-4xl">
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#061D42]">
-          Settings & Admin Controls
-        </h1>
-        <p className="text-sm text-slate-500 mt-1">
-          Manage internal team access roles and connect your Google Sheets & Apps Script database.
-        </p>
-      </div>
+    // ------------------------------------------------------------------------
+    // ADMIN SETTINGS HANDLERS
+    // ------------------------------------------------------------------------
+    function handleAddTeamMember(e) {
+      e.preventDefault();
+      const name = document.getElementById('new-member-name').value.trim();
+      const email = document.getElementById('new-member-email').value.trim().toLowerCase();
+      const role = document.getElementById('new-member-role').value;
 
-      {/* Section 1: Internal Team Access */}
-      <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs space-y-6">
-        <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
-          <div className="p-2.5 rounded-xl bg-[#2585E8]/10 text-[#2585E8]">
-            <Shield className="w-5 h-5" />
-          </div>
-          <div>
-            <h2 className="text-base font-bold text-[#061D42]">
-              Internal Team Access
-            </h2>
-            <p className="text-xs text-slate-500">
-              Only listed company emails can log in. Admins can manage clients and links; Staff have view-only workspace access.
-            </p>
-          </div>
-        </div>
+      if (state.users.some(u => u.email.toLowerCase() === email)) {
+        showToast('This email is already registered.', 'error');
+        return;
+      }
 
-        {/* Add Member Inline Form */}
-        <form
-          onSubmit={handleAddMember}
-          className="grid grid-cols-1 sm:grid-cols-12 gap-3 bg-[#F5F7FA] p-4 rounded-xl"
-        >
-          <input
-            type="text"
-            required
-            placeholder="Full Name"
-            value={newMemberName}
-            onChange={(e) => setNewMemberName(e.target.value)}
-            className="sm:col-span-4 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#2585E8]"
-          />
-          <input
-            type="email"
-            required
-            placeholder="staff@gototarget.co"
-            value={newMemberEmail}
-            onChange={(e) => setNewMemberEmail(e.target.value)}
-            className="sm:col-span-4 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#2585E8]"
-          />
-          <select
-            value={newMemberRole}
-            onChange={(e) => setNewMemberRole(e.target.value)}
-            className="sm:col-span-2 px-3 py-2 rounded-xl bg-white border border-slate-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#2585E8]"
-          >
-            <option value="STAFF">STAFF</option>
-            <option value="ADMIN">ADMIN</option>
-          </select>
-          <button
-            type="submit"
-            className="sm:col-span-2 py-2 px-4 rounded-xl bg-[#061D42] hover:bg-[#0d2d63] text-white text-xs font-semibold transition cursor-pointer"
-          >
-            + Add User
-          </button>
-        </form>
+      state.users.push({
+        user_id: 'usr_' + Date.now(),
+        name,
+        email,
+        role,
+        active: true
+      });
+      saveState();
+      renderApp();
+      showToast(`Added ${name} (${role})`);
+    }
 
-        {/* Authorized Users List */}
-        <div className="divide-y divide-slate-100">
-          {users.map((member) => (
-            <div
-              key={member.user_id}
-              className="py-3.5 flex items-center justify-between gap-4"
-            >
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-9 h-9 rounded-full bg-[#061D42] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">
-                  {getInitials(member.name)}
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-[#061D42] truncate">
-                    {member.name}
-                  </p>
-                  <p className="text-xs text-slate-500 truncate">{member.email}</p>
-                </div>
-              </div>
+    function toggleUserRole(userId) {
+      const idx = state.users.findIndex(u => u.user_id === userId);
+      if (idx === -1) return;
+      state.users[idx].role = state.users[idx].role === 'ADMIN' ? 'STAFF' : 'ADMIN';
+      saveState();
+      renderApp();
+      showToast('Updated member role');
+    }
 
-              <div className="flex items-center gap-2.5">
-                <button
-                  onClick={() => toggleUserRole(member.user_id)}
-                  title="Click to switch role"
-                  className={`px-2.5 py-1 rounded-lg text-xs font-bold tracking-wider cursor-pointer transition ${
-                    member.role === 'ADMIN'
-                      ? 'bg-[#50D6B0]/20 text-[#0F766E]'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
-                >
-                  {member.role}
-                </button>
-                <button
-                  onClick={() => removeUser(member.user_id)}
-                  title="Revoke Access"
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition cursor-pointer"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+    function removeUser(userId) {
+      if (state.users.length <= 1) {
+        showToast('At least one administrator must remain.', 'error');
+        return;
+      }
+      state.users = state.users.filter(u => u.user_id !== userId);
+      saveState();
+      renderApp();
+      showToast('Removed team member access');
+    }
 
-      {/* Section 2: Google Sheets & Apps Script API Configuration */}
-      <form
-        onSubmit={handleSaveBackendConfig}
-        className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs space-y-5"
-      >
-        <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
-          <div className="p-2.5 rounded-xl bg-[#50D6B0]/20 text-[#0F766E]">
-            <Database className="w-5 h-5" />
-          </div>
-          <div>
-            <h2 className="text-base font-bold text-[#061D42]">
-              Google Sheets Backend & Security Key
-            </h2>
-            <p className="text-xs text-slate-500">
-              Connect your deployed Google Apps Script Web App URL for permanent cloud persistence.
-            </p>
-          </div>
-        </div>
+    function handleSaveBackendConfig(e) {
+      e.preventDefault();
+      state.apiEndpoint = document.getElementById('cfg-api-url').value.trim();
+      state.apiSecret = document.getElementById('cfg-api-secret').value.trim();
+      state.workspaceKey = document.getElementById('cfg-workspace-key').value.trim() || 'GTT2026';
 
-        <div>
-          <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-            Google Apps Script Web App URL
-          </label>
-          <input
-            type="url"
-            placeholder="https://script.google.com/macros/s/AKfycb.../exec"
-            value={endpointInput}
-            onChange={(e) => setEndpointInput(e.target.value)}
-            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm text-[#061D42] focus:outline-none focus:ring-2 focus:ring-[#2585E8]"
-          />
-        </div>
+      localStorage.setItem('gtt_gas_api_url', state.apiEndpoint);
+      localStorage.setItem('gtt_gas_api_secret', state.apiSecret);
+      localStorage.setItem('gtt_workspace_key', state.workspaceKey);
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-              API Secret Token (Matches Apps Script)
-            </label>
-            <input
-              type="password"
-              placeholder="Optional API token"
-              value={secretInput}
-              onChange={(e) => setSecretInput(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm text-[#061D42] focus:outline-none focus:ring-2 focus:ring-[#2585E8]"
-            />
-          </div>
+      showToast('Workspace & Google Sheets settings saved');
+      if (state.apiEndpoint) {
+        syncFromGoogleSheets();
+      } else {
+        renderApp();
+      }
+    }
 
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">
-              Company Login Access Key
-            </label>
-            <input
-              type="text"
-              required
-              value={workspaceKeyInput}
-              onChange={(e) => setWorkspaceKeyInput(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm text-[#061D42] focus:outline-none focus:ring-2 focus:ring-[#2585E8]"
-            />
-          </div>
-        </div>
-
-        <div className="pt-2 flex flex-wrap items-center justify-between gap-3">
-          {apiEndpoint ? (
-            <button
-              type="button"
-              onClick={onSyncNow}
-              disabled={isSyncing}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-xs font-semibold text-[#061D42] transition cursor-pointer"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-              <span>Sync Now from Google Sheets</span>
-            </button>
-          ) : (
-            <span className="text-xs text-slate-400">
-              Currently using browser local storage until Apps Script URL is added.
-            </span>
-          )}
-
-          <button
-            type="submit"
-            className="px-5 py-2.5 rounded-xl bg-[#061D42] hover:bg-[#0d2d63] text-white text-sm font-semibold shadow-sm transition cursor-pointer"
-          >
-            Save Configuration
-          </button>
-        </div>
-      </form>
-    </div>
-  );
-}
+    // Boot Application
+    window.addEventListener('DOMContentLoaded', () => {
+      initWorkspace();
+    });
+  </script>
+</body>
+</html>
