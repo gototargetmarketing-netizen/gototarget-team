@@ -36,7 +36,8 @@ const GTT_CONFIG = Object.freeze({
     CLIENTS: 'Clients',
     WORKSPACES: 'Workspaces',
     USERS: 'Users',
-    DELIVERABLES: 'Deliverables'
+    DELIVERABLES: 'Deliverables',
+    PACKAGES: 'Packages'
   },
   SESSION_TTL_SECONDS: 21600, // 6 hours
   PASSWORD_MIN_LENGTH: 6,
@@ -47,7 +48,7 @@ const GTT_CONFIG = Object.freeze({
   // or after this many seconds at most.
   CACHE_SECONDS: 300,
   // Bump this when GTT_SCHEMAS changes so every deployment re-checks the sheet columns once.
-  SCHEMA_VERSION: '2026-11-21d',
+  SCHEMA_VERSION: '2026-11-21e',
   DEFAULT_ADMIN: {
     user_id: 'usr_admin_01',
     name: 'GO TO TARGET Admin',
@@ -85,8 +86,16 @@ const GTT_SCHEMAS = [
     // `quantity`. Extra work later is added as a new row. Older rows without quantity count as 1.
     name: GTT_CONFIG.SHEETS.DELIVERABLES,
     headers: ['deliverable_id', 'client_id', 'month', 'type', 'title', 'assignee_id', 'status', 'result_url',
-      'review_note', 'submitted_by', 'submitted_at', 'reviewed_at', 'created_at', 'updated_at', 'quantity'],
-    widths: [150, 140, 90, 110, 220, 140, 100, 320, 280, 140, 140, 140, 140, 140, 90]
+      'review_note', 'submitted_by', 'submitted_at', 'reviewed_at', 'created_at', 'updated_at', 'quantity', 'package_id'],
+    widths: [150, 140, 90, 110, 220, 140, 100, 320, 280, 140, 140, 140, 140, 140, 90, 150]
+  },
+  {
+    // A client's contract: from start_month for <months> months, the same work every month.
+    // items_json = [{type, quantity, assignee_id, title}]. last_generated_month remembers which month
+    // was already created, so deleting a created piece never brings it back.
+    name: GTT_CONFIG.SHEETS.PACKAGES,
+    headers: ['package_id', 'client_id', 'start_month', 'months', 'items_json', 'active', 'last_generated_month', 'created_at', 'updated_at'],
+    widths: [150, 140, 100, 80, 420, 80, 150, 140, 140]
   }
 ];
 
@@ -96,6 +105,8 @@ const GTT_DELIVERABLE_TYPES = ['banner', 'video', 'influencer', 'content', 'othe
 // (REVIEW / REVISE / APPROVED) may still sit in old rows; getDeliverables_() reads them as these two.
 const GTT_STATUS = Object.freeze({ TODO: 'TODO', DONE: 'DONE' });
 const GTT_MAX_PIECES_PER_ADD = 30;
+const GTT_MAX_PACKAGE_MONTHS = 36;
+const GTT_MAX_PACKAGE_ITEMS = 20;
 
 // -----------------------------------------------------------------------------
 // SHEET SETUP
@@ -133,6 +144,7 @@ function warmUp() {
     // (that could put old data back into the cache). If someone is saving right now, skip this round.
     if (!lock.tryLock(5000)) return 'busy';
     try {
+      try { generateDueWork_(); markMonthlyWorkDone_(); } catch (err) { /* never block the warm-up */ }
       const cache = CacheService.getScriptCache();
       GTT_SCHEMAS.forEach(schema => {
         try {
@@ -489,6 +501,7 @@ function doPost(e) {
 
     if (action === 'authenticateUser') {
       ensureReady_();
+      ensureMonthlyWork_();
       const auth = authenticateUser_(payload.username, payload.password || payload.passcode);
       // Send the first page of data with the login reply so the page needs one round trip, not two.
       auth.bootstrap = buildBootstrap_(getUsers_().find(user => user.user_id === auth.user.user_id), payload.month);
@@ -496,6 +509,7 @@ function doPost(e) {
     }
 
     ensureReady_();
+    ensureMonthlyWork_();
     const actor = requireSession_(sessionToken);
     let data;
 
@@ -573,6 +587,18 @@ function doPost(e) {
         requireAdmin_(actor);
         data = withLock_(() => copyDeliverables_(payload));
         break;
+      case 'getPackages':
+        requireAdmin_(actor);
+        data = getPackages_();
+        break;
+      case 'savePackage':
+        requireAdmin_(actor);
+        data = withLock_(() => savePackage_(payload));
+        break;
+      case 'deletePackage':
+        requireAdmin_(actor);
+        data = withLock_(() => deletePackage_(payload.package_id));
+        break;
       case 'createUser':
         requireAdmin_(actor);
         data = withLock_(() => createUser_(payload));
@@ -621,6 +647,8 @@ function buildBootstrap_(actor, requestedMonth) {
     // Names only, so pages can show who is responsible for each piece of work.
     team: users.filter(user => user.active).map(user => ({ user_id: user.user_id, name: user.name, role: user.role })),
     users: isAdmin ? users.map(publicUser_) : [],
+    // Contracts are for admins only (staff simply see the work that gets created each month).
+    packages: isAdmin ? getPackages_() : [],
     deliverables: deliverablesForUser_(actor, month)
   };
 }
@@ -1263,6 +1291,7 @@ function deleteClient_(clientId) {
   if (!deleteRowsWhere_(GTT_CONFIG.SHEETS.CLIENTS, 'client_id', id)) throw new Error('Client not found: ' + id);
   deleteRowsWhere_(GTT_CONFIG.SHEETS.WORKSPACES, 'client_id', id);
   deleteRowsWhere_(GTT_CONFIG.SHEETS.DELIVERABLES, 'client_id', id);
+  deleteRowsWhere_(GTT_CONFIG.SHEETS.PACKAGES, 'client_id', id);
   return { deleted: id };
 }
 
@@ -1519,6 +1548,145 @@ function submitDeliverable_(payload, actor) {
   };
   updateObject_(GTT_CONFIG.SHEETS.DELIVERABLES, 'deliverable_id', item.deliverable_id, patch);
   return Object.assign({}, item, patch);
+}
+
+// -----------------------------------------------------------------------------
+// PACKAGES — contracts that create the same work every month for N months
+// -----------------------------------------------------------------------------
+function addMonths_(month, n) {
+  const parts = String(month).split('-');
+  const total = Number(parts[0]) * 12 + (Number(parts[1]) - 1) + n;
+  return Math.floor(total / 12) + '-' + ('0' + (total % 12 + 1)).slice(-2);
+}
+
+function packageEndMonth_(pkg) {
+  return addMonths_(pkg.start_month, Number(pkg.months) - 1);
+}
+
+function getPackages_() {
+  return sheetRows_(GTT_CONFIG.SHEETS.PACKAGES).map(row => {
+    let items = [];
+    try { items = JSON.parse(String(row.items_json || '[]')); } catch (err) { items = []; }
+    return {
+      package_id: String(row.package_id),
+      client_id: String(row.client_id),
+      start_month: String(row.start_month || '').slice(0, 7),
+      months: Number(row.months) || 1,
+      items: Array.isArray(items) ? items : [],
+      active: bool_(row.active),
+      last_generated_month: String(row.last_generated_month || '').slice(0, 7),
+      created_at: row.created_at,
+      updated_at: row.updated_at
+    };
+  });
+}
+
+function cleanPackageItems_(value) {
+  const list = Array.isArray(value) ? value : [];
+  if (!list.length) throw new Error('แพ็กเกจต้องมีงานอย่างน้อย 1 รายการ');
+  if (list.length > GTT_MAX_PACKAGE_ITEMS) throw new Error('งานในแพ็กเกจมีได้ไม่เกิน ' + GTT_MAX_PACKAGE_ITEMS + ' รายการ');
+  return list.map(item => ({
+    type: cleanDeliverableType_(item && item.type),
+    quantity: cleanQuantity_(item && item.quantity),
+    assignee_id: cleanAssignee_(item && item.assignee_id),
+    title: cleanText_(item && item.title, 'ชื่องาน', 120, false)
+  }));
+}
+
+function cleanPackageMonths_(value) {
+  const n = Number(value);
+  if (!(Math.floor(n) === n && n >= 1 && n <= GTT_MAX_PACKAGE_MONTHS)) {
+    throw new Error('จำนวนเดือนต้องอยู่ระหว่าง 1–' + GTT_MAX_PACKAGE_MONTHS);
+  }
+  return n;
+}
+
+// Create (no package_id) or edit a package. Edits apply to months not created yet; work already
+// created for this month stays as it is (the admin can still edit those pieces directly).
+// If the package covers this month and this month was not created yet, it is created right away.
+function savePackage_(payload) {
+  const start = cleanMonth_(payload.start_month);
+  const months = cleanPackageMonths_(payload.months);
+  const items = cleanPackageItems_(payload.items);
+  const active = payload.active === undefined ? true : bool_(payload.active);
+  const now = nowText_();
+  let pkgId = String(payload.package_id || '').trim();
+
+  if (pkgId) {
+    pkgId = requireId_(pkgId, 'Package ID');
+    const existing = getPackages_().find(pkg => pkg.package_id === pkgId);
+    if (!existing) throw new Error('ไม่พบแพ็กเกจนี้ (อาจถูกลบไปแล้ว)');
+    updateObject_(GTT_CONFIG.SHEETS.PACKAGES, 'package_id', pkgId, {
+      start_month: start, months: months, items_json: JSON.stringify(items), active: active, updated_at: now
+    });
+  } else {
+    const clientId = requireClientExists_(payload.client_id);
+    pkgId = makeId_('pkg');
+    appendObject_(GTT_CONFIG.SHEETS.PACKAGES, {
+      package_id: pkgId, client_id: clientId, start_month: start, months: months,
+      items_json: JSON.stringify(items), active: active, last_generated_month: '', created_at: now, updated_at: now
+    });
+  }
+  const created = generateDueWork_(pkgId);
+  return { package: getPackages_().find(pkg => pkg.package_id === pkgId), created: created };
+}
+
+function deletePackage_(packageId) {
+  const id = requireId_(packageId, 'Package ID');
+  if (!deleteRowsWhere_(GTT_CONFIG.SHEETS.PACKAGES, 'package_id', id)) throw new Error('ไม่พบแพ็กเกจนี้ (อาจถูกลบไปแล้ว)');
+  // Work already created from the package stays: it was real work for those months.
+  return { deleted: id };
+}
+
+// Creates this month's work for every running package that has not been created yet.
+// Must run under the script lock. Safe to call many times: last_generated_month stops repeats.
+function generateDueWork_(onlyPackageId) {
+  const month = thisMonth_();
+  const activeClients = new Set(getClients_().filter(client => !client.archived).map(client => String(client.client_id)));
+  const activeUsers = new Set(getUsers_().filter(user => user.active).map(user => String(user.user_id)));
+  const rows = [];
+  getPackages_().forEach(pkg => {
+    if (onlyPackageId && pkg.package_id !== onlyPackageId) return;
+    if (!pkg.active || !activeClients.has(pkg.client_id)) return;
+    if (!/^\d{4}-\d{2}$/.test(pkg.start_month)) return;
+    if (month < pkg.start_month || month > packageEndMonth_(pkg)) return;
+    if (pkg.last_generated_month && pkg.last_generated_month >= month) return;
+    const pkgRows = pkg.items.map(item => newDeliverable_({
+      client_id: pkg.client_id,
+      month: month,
+      type: cleanChoice_(item.type, GTT_DELIVERABLE_TYPES, 'other'),
+      title: isFormulaLike_(String(item.title || '')) ? '' : String(item.title || '').slice(0, 120),
+      // Someone who left (account disabled) is not given new work; the admin sees it unassigned.
+      assignee_id: activeUsers.has(String(item.assignee_id)) ? String(item.assignee_id) : '',
+      quantity: quantityOf_(item.quantity),
+      package_id: pkg.package_id
+    }));
+    // Mark first, then write: if writing fails half-way the month is still not doubled next time.
+    updateObject_(GTT_CONFIG.SHEETS.PACKAGES, 'package_id', pkg.package_id, { last_generated_month: month });
+    rows.push.apply(rows, pkgRows);
+  });
+  if (rows.length) {
+    appendObjects_(GTT_CONFIG.SHEETS.DELIVERABLES, rows);
+    addToClientTeams_(teamAdditionsFrom_(rows));
+  }
+  return rows;
+}
+
+function monthlyWorkKey_() { return 'GTT_PKG_DONE_' + thisMonth_(); }
+
+function markMonthlyWorkDone_() {
+  CacheService.getScriptCache().put(monthlyWorkKey_(), '1', 21600);
+}
+
+// Called on every request: a cheap cache check, and once per month (or every 6 hours at most)
+// it creates the due work. The 5-minute warm-up normally does this first, so people rarely wait.
+function ensureMonthlyWork_() {
+  if (CacheService.getScriptCache().get(monthlyWorkKey_())) return;
+  try {
+    withLock_(() => { generateDueWork_(); markMonthlyWorkDone_(); });
+  } catch (err) {
+    // Creating package work must never block sign-in or other requests; it is retried next request.
+  }
 }
 
 // -----------------------------------------------------------------------------

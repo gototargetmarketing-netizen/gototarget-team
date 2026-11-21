@@ -541,6 +541,49 @@
     </div>
   </div>
 
+  <!-- Package Modal (Admin): a client's contract — the same work every month for N months -->
+  <div id="package-modal" class="hidden fixed inset-0 z-50 bg-[#0B1F44]/50 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200">
+      <div class="px-6 py-4 bg-[#0B1F44] text-white flex items-center justify-between sticky top-0 z-10">
+        <h3 id="pkg-modal-title" class="font-bold text-base">แพ็กเกจรายเดือน</h3>
+        <button type="button" onclick="closeModal('package-modal')" class="text-slate-300 hover:text-white p-1 rounded-lg cursor-pointer">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <form id="package-form" class="p-5 sm:p-6 space-y-5">
+        <input type="hidden" id="pkg-id" />
+        <input type="hidden" id="pkg-client" />
+        <p id="pkg-client-name" class="text-sm font-bold text-[#0B1F44]"></p>
+        <div class="grid grid-cols-5 gap-3">
+          <div class="col-span-3">
+            <label for="pkg-start" class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">เริ่มเดือน *</label>
+            <select id="pkg-start" onchange="updatePackageEndNote()" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-[#0B1F44] bg-white focus:outline-none focus:ring-2 focus:ring-[#1E6FFF]"></select>
+          </div>
+          <div class="col-span-2">
+            <label for="pkg-months" class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">จำนวนเดือน *</label>
+            <input id="pkg-months" type="number" inputmode="numeric" min="1" max="36" required oninput="updatePackageEndNote()"
+              class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-[#0B1F44] focus:outline-none focus:ring-2 focus:ring-[#1E6FFF]" />
+          </div>
+        </div>
+        <p id="pkg-end-note" class="-mt-2 text-xs font-semibold text-[#1557D6]"></p>
+
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <p class="text-xs font-bold uppercase tracking-wider text-slate-500">งานต่อเดือน *</p>
+            <button type="button" onclick="addPackageItemRow()" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#1E6FFF]/10 hover:bg-[#1E6FFF]/20 text-xs font-semibold text-[#1E6FFF] cursor-pointer"><i data-lucide="plus" class="w-3.5 h-3.5"></i>เพิ่มรายการ</button>
+          </div>
+          <div id="pkg-items" class="space-y-2.5"></div>
+          <p class="mt-2 text-[11px] text-slate-400">ทุกต้นเดือนระบบจะสร้างงานตามรายการนี้ให้เอง จนครบจำนวนเดือน · เดือนไหนต่างไป แก้ที่งานของเดือนนั้นได้</p>
+        </div>
+
+        <div class="pt-1 flex items-center justify-end gap-3">
+          <button type="button" onclick="closeModal('package-modal')" class="px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 cursor-pointer">ยกเลิก</button>
+          <button type="submit" class="px-5 py-2.5 rounded-xl bg-[#0B1F44] hover:bg-[#16346B] text-white text-sm font-semibold shadow-sm cursor-pointer">บันทึกแพ็กเกจ</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Set Password Modal (Admin) -->
   <div id="password-modal" class="hidden fixed inset-0 z-50 bg-[#0B1F44]/50 backdrop-blur-xs flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200">
@@ -661,7 +704,8 @@
       workspaces: [],
       users: [],        // full list, admins only (Settings page)
       team: [],         // active members' names, for "who is responsible"
-      deliverables: []  // pieces of work for state.month (staff: own pieces only)
+      deliverables: [], // pieces of work for state.month (staff: own pieces only)
+      packages: []      // client contracts (admins only): same work every month for N months
     };
 
     // Keeps a copy in this browser tab so a page refresh shows data instantly while fresh data loads.
@@ -676,7 +720,8 @@
           workspaces: state.workspaces,
           users: state.users,
           team: state.team,
-          deliverables: state.deliverables
+          deliverables: state.deliverables,
+          packages: state.packages
         }));
       } catch (e) {}
     }
@@ -691,7 +736,8 @@
           workspaces: cached.workspaces || [],
           users: cached.users || [],
           team: cached.team || [],
-          deliverables: cached.deliverables || []
+          deliverables: cached.deliverables || [],
+          packages: cached.packages || []
         });
         return true;
       } catch (e) {
@@ -1017,6 +1063,7 @@
       state.team = Array.isArray(data.team) ? data.team : [];
       state.users = Array.isArray(data.users) ? data.users : [];
       state.deliverables = Array.isArray(data.deliverables) ? data.deliverables : [];
+      state.packages = Array.isArray(data.packages) ? data.packages : [];
       saveState();
     }
 
@@ -1068,6 +1115,7 @@
           applyBootstrap(authResult.bootstrap);
           showShell();
           renderApp();
+          writeRoute(currentRoute(), true);
         } else {
           state.currentUser = authResult.user;
           await refreshData(false);
@@ -1084,10 +1132,11 @@
       state.currentUser = null;
       state.selectedClientId = null;
       state.activeNav = null;
-      Object.assign(state, { clients: [], workspaces: [], users: [], team: [], deliverables: [], month: currentMonth() });
+      Object.assign(state, { clients: [], workspaces: [], users: [], team: [], deliverables: [], packages: [], month: currentMonth() });
       sessionStorage.removeItem('gtt_current_user');
       sessionStorage.removeItem('gtt_session_token');
       sessionStorage.removeItem(CACHE_KEY);
+      if (location.hash) history.replaceState(null, '', location.pathname + location.search);
       showLogin();
     }
 
@@ -1128,14 +1177,130 @@
       state.selectedClientId = null;
       if (state.mobileMenuOpen) toggleMobileMenu();
       renderApp();
+      recordRoute();
     }
 
     function openClientWorkspace(clientId) {
       state.selectedClientId = clientId;
       if (state.mobileMenuOpen) toggleMobileMenu();
       renderApp();
+      recordRoute();
       window.scrollTo(0, 0);
     }
+
+    // ------------------------------------------------------------------------
+    // BROWSER BACK BUTTON
+    // Each page (Dashboard, a client, Settings ...) gets its own history entry: #/dashboard,
+    // #/client/<id>. An open popup (a form, a confirm box, the phone menu) adds one extra entry,
+    // so Back closes the popup first instead of leaving the page — what phone users expect.
+    // ------------------------------------------------------------------------
+    const NAV_ROUTES = ['dashboard', 'mywork', 'clients', 'workspaces', 'settings'];
+    let historyBackPending = false; // we called history.back() ourselves (a popup was closed by a button)
+    let queuedRoute = null;         // a page opened while that back() was still running
+
+    function overlayIds() {
+      return [...document.querySelectorAll('[id$="-modal"]')].map(el => el.id);
+    }
+
+    function currentRoute() {
+      return state.selectedClientId ? 'client/' + state.selectedClientId : (state.activeNav || 'clients');
+    }
+
+    function anyOverlayOpen() {
+      return state.mobileMenuOpen || overlayIds().some(id => !document.getElementById(id).classList.contains('hidden'));
+    }
+
+    function writeRoute(route, replace) {
+      const entry = { gtt: 1, r: route };
+      if (replace) history.replaceState(entry, '', '#/' + route);
+      else history.pushState(entry, '', '#/' + route);
+    }
+
+    // Called after the app itself changes page.
+    function recordRoute() {
+      const route = currentRoute();
+      if (historyBackPending) { queuedRoute = route; return; }
+      const st = history.state;
+      // Page changed from inside a popup (e.g. "create client" opens the new client): reuse its entry.
+      if (st && st.gtt && st.m) { writeRoute(route, true); return; }
+      if (st && st.gtt && st.r === route) return;
+      writeRoute(route, false);
+    }
+
+    // Keeps one extra history entry while any popup is open, and removes it when the popup closes.
+    function syncOverlayHistory() {
+      if (!state.currentUser) return;
+      const st = history.state;
+      const open = anyOverlayOpen();
+      if (open && !(st && st.m)) {
+        history.pushState({ gtt: 1, r: currentRoute(), m: 1 }, '', location.hash || '#/' + currentRoute());
+      } else if (!open && st && st.m && !historyBackPending) {
+        historyBackPending = true;
+        history.back();
+        // popstate normally arrives within a few ms; this only guards against it never coming.
+        setTimeout(() => { if (historyBackPending) finishOwnBack(); }, 1000);
+      }
+    }
+
+    function finishOwnBack() {
+      historyBackPending = false;
+      if (queuedRoute !== null) {
+        const route = queuedRoute;
+        queuedRoute = null;
+        if (!(history.state && history.state.r === route)) writeRoute(route, false);
+      }
+    }
+
+    // Sets the page from a route without adding history (used by Back/Forward and on page load).
+    function applyRoute(route) {
+      const r = String(route || '');
+      if (r.indexOf('client/') === 0) {
+        state.selectedClientId = r.slice(7);
+      } else if (NAV_ROUTES.includes(r)) {
+        state.activeNav = r;
+        state.selectedClientId = null;
+      } else {
+        return false;
+      }
+      return true;
+    }
+
+    function routeFromHash() {
+      return decodeURIComponent(location.hash.replace(/^#\/?/, ''));
+    }
+
+    window.addEventListener('popstate', e => {
+      if (historyBackPending) {
+        finishOwnBack();
+        syncOverlayHistory(); // another popup may have opened meanwhile
+        return;
+      }
+      if (!state.currentUser) return;
+      // Back with a popup open: close it (without touching history again).
+      if (state.mobileMenuOpen) toggleMobileMenu(true);
+      overlayIds().forEach(id => document.getElementById(id).classList.add('hidden'));
+      closeConfirmModal(); // also resets its buttons
+      const st = e.state;
+      const route = st && st.gtt ? st.r : routeFromHash();
+      const before = currentRoute();
+      if (applyRoute(route) && currentRoute() !== before) {
+        renderApp();
+        window.scrollTo(0, 0);
+      }
+      // Arrived on a popup entry with Forward: make it a plain page entry.
+      if (st && st.m) writeRoute(currentRoute(), true);
+    });
+
+    // Popups are opened and closed from many places; watching their "hidden" class covers all of them.
+    (function watchOverlays() {
+      let scheduled = false;
+      const observer = new MutationObserver(() => {
+        if (scheduled) return;
+        scheduled = true;
+        Promise.resolve().then(() => { scheduled = false; syncOverlayHistory(); });
+      });
+      overlayIds().forEach(id => observer.observe(document.getElementById(id), { attributes: true, attributeFilter: ['class'] }));
+    })();
 
     function toggleSidebarCollapse() {
       state.sidebarCollapsed = !state.sidebarCollapsed;
@@ -1157,8 +1322,10 @@
       lucide.createIcons();
     }
 
-    function toggleMobileMenu() {
+    // fromHistory = closed by the Back button (history already moved, so do not sync again).
+    function toggleMobileMenu(fromHistory) {
       state.mobileMenuOpen = !state.mobileMenuOpen;
+      if (fromHistory !== true) Promise.resolve().then(syncOverlayHistory);
       const sidebar = document.getElementById('sidebar');
       if (state.mobileMenuOpen) {
         sidebar.classList.remove('hidden');
@@ -1178,6 +1345,8 @@
         logout();
         return;
       }
+      // A refresh keeps you on the same page (the address says which one, e.g. #/client/cli_x).
+      applyRoute(routeFromHash());
       // Show the copy saved in this tab immediately, then replace it with fresh data.
       const shownFromCache = restoreCachedState();
       if (shownFromCache) {
@@ -1186,6 +1355,7 @@
       }
       const ok = await refreshData(false);
       if (!ok && !shownFromCache && state.currentUser) showLogin();
+      if (state.currentUser) writeRoute(currentRoute(), true);
     }
 
     function renderApp() {
@@ -1213,6 +1383,12 @@
 
       const container = document.getElementById('main-container');
       const breadcrumb = document.getElementById('breadcrumb-current');
+
+      // A client that no longer exists (deleted, or taken off your team) -> back to the client list.
+      if (state.selectedClientId && !state.clients.some(c => c.client_id === state.selectedClientId)) {
+        state.selectedClientId = null;
+        state.activeNav = 'clients';
+      }
 
       if (state.selectedClientId) {
         const client = state.clients.find(c => c.client_id === state.selectedClientId);
@@ -1297,6 +1473,7 @@
               <h3 class="text-[15px] sm:text-base font-bold text-[#0B1F44] leading-snug line-clamp-2">${escapeHtml(client.client_name)}</h3>
               ${count ? `<span class="shrink-0 px-2.5 py-0.5 rounded-full bg-[#F3F6FA] border border-slate-200/80 text-[11px] font-semibold text-slate-600 whitespace-nowrap">รวม ${count} ชิ้น</span>` : ''}
             </div>
+            ${(() => { const cp = currentPackage(client.client_id); return cp ? `<span class="mt-1 inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold ${cp.st.cls}">สัญญา: ${escapeHtml(cp.st.label)}</span>` : ''; })()}
             <p class="mt-0.5 text-xs text-slate-500 truncate">
               ${count
                 ? `งานทั้งหมด <b class="text-[#0B1F44]">${count}</b> ชิ้น <span class="text-slate-300">•</span> ${escapeHtml(typeSummaryText(clientItems))}`
@@ -1493,6 +1670,223 @@
           </div>
           ${groups.length ? `<div class="space-y-4">${groupsHtml}</div>` : emptyHtml}
         </div>`;
+    }
+
+    // ------------------------------------------------------------------------
+    // PACKAGES — a client's contract: the same work every month for N months (admins only)
+    // ------------------------------------------------------------------------
+    function packageEnd(pkg) { return shiftMonth(pkg.start_month, Number(pkg.months) - 1); }
+
+    function monthIndex(month) {
+      const [y, m] = String(month).split('-').map(Number);
+      return y * 12 + m;
+    }
+
+    // Where a contract stands this month: running (month 3 of 6), not started, finished or stopped.
+    function packageStatus(pkg) {
+      const now = currentMonth();
+      const end = packageEnd(pkg);
+      if (!pkg.active) return { key: 'stopped', label: 'หยุดแล้ว', cls: 'bg-slate-100 text-slate-500' };
+      if (now < pkg.start_month) return { key: 'upcoming', label: 'เริ่ม ' + monthLabel(pkg.start_month), cls: 'bg-[#1E6FFF]/10 text-[#1557D6]' };
+      if (now > end) return { key: 'ended', label: 'หมดสัญญาแล้ว', cls: 'bg-slate-100 text-slate-500' };
+      const n = monthIndex(now) - monthIndex(pkg.start_month) + 1;
+      if (now === end) return { key: 'last', label: `เดือนสุดท้าย (${n}/${pkg.months}) — สัญญาหมดเดือนนี้`, cls: 'bg-amber-100 text-amber-800', n };
+      return { key: 'running', label: `เดือนที่ ${n}/${pkg.months}`, cls: 'bg-[#00C7A7]/15 text-[#0B8F74]', n };
+    }
+
+    function clientPackages(clientId) {
+      return state.packages.filter(p => p.client_id === clientId)
+        .sort((a, b) => b.start_month.localeCompare(a.start_month));
+    }
+
+    // The contract that matters most right now for a client (running, else the next one to start).
+    function currentPackage(clientId) {
+      const list = clientPackages(clientId).map(p => ({ p, st: packageStatus(p) }));
+      const pick = list.find(x => x.st.key === 'running' || x.st.key === 'last') || list.find(x => x.st.key === 'upcoming');
+      return pick || null;
+    }
+
+    function packageItemsText(pkg) {
+      return pkg.items.map(it => `${typeMeta(it.type).short} ×${it.quantity}`).join(', ');
+    }
+
+    function renderPackagesSection(client) {
+      const list = clientPackages(client.client_id);
+      const cards = list.map(pkg => {
+        const st = packageStatus(pkg);
+        const items = pkg.items.map(it => `
+          <li class="flex items-center gap-2 text-sm text-[#0B1F44]">
+            <span class="px-2 py-0.5 rounded-md bg-[#EAF3FD] text-[#1557D6] text-xs font-bold">×${it.quantity}</span>
+            <span class="font-semibold">${escapeHtml(it.title || typeMeta(it.type).short)}</span>
+            <span class="text-xs text-slate-400">· ${escapeHtml(memberName(it.assignee_id) || 'ยังไม่ระบุ')}</span>
+          </li>`).join('');
+        return `
+          <div class="gtt-card p-4 sm:p-5">
+            <div class="flex flex-wrap items-start justify-between gap-2">
+              <div>
+                <p class="text-sm font-bold text-[#0B1F44]">${escapeHtml(monthLabel(pkg.start_month))} – ${escapeHtml(monthLabel(packageEnd(pkg)))} <span class="font-medium text-slate-500">(${pkg.months} เดือน)</span></p>
+                <span class="mt-1 inline-block px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${st.cls}">${escapeHtml(st.label)}</span>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <button onclick="openPackageModal(${jsArg(client.client_id)}, ${jsArg(pkg.package_id)})" title="แก้ไขแพ็กเกจ" class="w-8 h-8 rounded-xl bg-[#F3F6FA] hover:bg-[#1E6FFF] text-[#0B1F44] hover:text-white flex items-center justify-center cursor-pointer"><i data-lucide="pencil" class="w-4 h-4"></i></button>
+                <button onclick="togglePackageActive(${jsArg(pkg.package_id)})" title="${pkg.active ? 'หยุดแพ็กเกจ' : 'เริ่มแพ็กเกจอีกครั้ง'}" class="w-8 h-8 rounded-xl bg-[#F3F6FA] hover:bg-amber-500 text-[#0B1F44] hover:text-white flex items-center justify-center cursor-pointer"><i data-lucide="${pkg.active ? 'pause' : 'play'}" class="w-4 h-4"></i></button>
+                <button onclick="confirmDeletePackage(${jsArg(pkg.package_id)})" title="ลบแพ็กเกจ" class="w-8 h-8 rounded-xl bg-[#F3F6FA] hover:bg-red-600 text-[#0B1F44] hover:text-white flex items-center justify-center cursor-pointer"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+              </div>
+            </div>
+            <ul class="mt-3 space-y-1.5">${items}</ul>
+          </div>`;
+      }).join('');
+      return `
+        <div>
+          <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+            <h2 class="text-sm font-bold uppercase tracking-wider text-slate-500">แพ็กเกจรายเดือน (สัญญา)</h2>
+            <button onclick="openPackageModal(${jsArg(client.client_id)}, '')" class="gtt-btn-dark inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-white text-xs font-semibold cursor-pointer"><i data-lucide="plus" class="w-4 h-4 text-[#9FF3D6]"></i>เพิ่มแพ็กเกจ</button>
+          </div>
+          ${list.length ? `<div class="grid grid-cols-1 md:grid-cols-2 gap-3">${cards}</div>`
+            : `<div class="gtt-card p-6 text-center text-sm text-slate-500">ยังไม่มีแพ็กเกจ — ถ้าลูกค้าจ้างเป็นรายเดือน ตั้งแพ็กเกจไว้ ระบบจะสร้างงานให้ทุกต้นเดือนจนครบสัญญา</div>`}
+        </div>`;
+    }
+
+    function packageItemRowHtml(item) {
+      const it = item || { type: 'video', quantity: 1, assignee_id: '', title: '' };
+      const typeOptions = DELIVERABLE_TYPES.map(t => `<option value="${escapeHtml(t.id)}" ${t.id === it.type ? 'selected' : ''}>${escapeHtml(t.label)}</option>`).join('');
+      const userOptions = `<option value="">— ยังไม่ระบุ —</option>` + state.team.map(u =>
+        `<option value="${escapeHtml(u.user_id)}" ${u.user_id === it.assignee_id ? 'selected' : ''}>${escapeHtml(u.name)}</option>`).join('');
+      const field = 'w-full px-3 py-2 rounded-xl border border-slate-200 text-sm text-[#0B1F44] bg-white focus:outline-none focus:ring-2 focus:ring-[#1E6FFF]';
+      return `
+        <div class="pkg-item relative rounded-2xl border border-slate-200 bg-[#F7FAFE] p-3 pr-11 grid grid-cols-3 gap-2">
+          <select class="pkg-type col-span-2 ${field}">${typeOptions}</select>
+          <input class="pkg-qty ${field}" type="number" inputmode="numeric" min="1" max="30" value="${escapeHtml(String(it.quantity || 1))}" aria-label="จำนวนชิ้นต่อเดือน" />
+          <select class="pkg-assignee col-span-3 sm:col-span-1 ${field}">${userOptions}</select>
+          <input class="pkg-title col-span-3 sm:col-span-2 ${field}" type="text" maxlength="120" value="${escapeHtml(it.title || '')}" placeholder="ชื่องาน (ไม่บังคับ)" />
+          <button type="button" onclick="this.closest('.pkg-item').remove()" title="ลบรายการ" class="absolute top-3 right-2.5 w-7 h-7 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 flex items-center justify-center cursor-pointer"><i data-lucide="x" class="w-4 h-4"></i></button>
+        </div>`;
+    }
+
+    function addPackageItemRow(item) {
+      document.getElementById('pkg-items').insertAdjacentHTML('beforeend', packageItemRowHtml(item));
+      lucide.createIcons();
+    }
+
+    function updatePackageEndNote() {
+      const start = document.getElementById('pkg-start').value;
+      const n = parseInt(document.getElementById('pkg-months').value, 10);
+      document.getElementById('pkg-end-note').textContent = start && n >= 1 && n <= 36
+        ? `ถึง ${monthLabel(shiftMonth(start, n - 1))} · สร้างงานให้ ${n} เดือน` : '';
+    }
+
+    function openPackageModal(clientId, packageId) {
+      const pkg = packageId ? state.packages.find(p => p.package_id === packageId) : null;
+      const now = currentMonth();
+      const start = pkg ? pkg.start_month : now;
+      // Choices: 6 months back (contract already running) to 12 months ahead.
+      const months = [];
+      for (let k = -6; k <= 12; k++) months.push(shiftMonth(now, k));
+      if (!months.includes(start)) months.unshift(start);
+      document.getElementById('pkg-start').innerHTML = months.map(m =>
+        `<option value="${m}" ${m === start ? 'selected' : ''}>${escapeHtml(monthLabel(m))}${m === now ? ' (เดือนนี้)' : ''}</option>`).join('');
+      document.getElementById('pkg-id').value = pkg ? pkg.package_id : '';
+      document.getElementById('pkg-client').value = clientId;
+      document.getElementById('pkg-client-name').textContent = clientName(clientId);
+      document.getElementById('pkg-modal-title').textContent = pkg ? 'แก้ไขแพ็กเกจ' : 'เพิ่มแพ็กเกจรายเดือน';
+      document.getElementById('pkg-months').value = String(pkg ? pkg.months : 6);
+      document.getElementById('pkg-items').innerHTML = '';
+      (pkg ? pkg.items : [null]).forEach(item => addPackageItemRow(item));
+      updatePackageEndNote();
+      openModal('package-modal');
+    }
+
+    function readPackageItems() {
+      return [...document.querySelectorAll('#pkg-items .pkg-item')].map(row => ({
+        type: row.querySelector('.pkg-type').value,
+        quantity: Number(row.querySelector('.pkg-qty').value),
+        assignee_id: row.querySelector('.pkg-assignee').value,
+        title: row.querySelector('.pkg-title').value.trim()
+      }));
+    }
+
+    // Puts work the server just created into the page (only if it belongs to the month on screen).
+    function addCreatedWork(created) {
+      (created || []).forEach(d => {
+        if (d.month === state.month && !state.deliverables.some(x => x.deliverable_id === d.deliverable_id)) state.deliverables.push(d);
+        addToTeamLocal(d.client_id, d.assignee_id);
+      });
+    }
+
+    async function savePackageRequest(payload) {
+      const result = await callAppsScript('savePackage', payload);
+      if (!result || !result.package) return null;
+      const idx = state.packages.findIndex(p => p.package_id === result.package.package_id);
+      if (idx >= 0) state.packages[idx] = result.package; else state.packages.push(result.package);
+      addCreatedWork(result.created);
+      saveState();
+      return result;
+    }
+
+    document.getElementById('package-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      const form = this;
+      withFormBusy(form, async () => {
+        const items = readPackageItems();
+        const months = Number(document.getElementById('pkg-months').value);
+        if (!items.length) { showToast('เพิ่มงานอย่างน้อย 1 รายการ', 'error'); return; }
+        if (!(Number.isInteger(months) && months >= 1 && months <= 36)) { showToast('จำนวนเดือนต้องเป็น 1–36', 'error'); return; }
+        if (items.some(it => !(Number.isInteger(it.quantity) && it.quantity >= 1 && it.quantity <= 30))) { showToast('จำนวนชิ้นต้องเป็น 1–30', 'error'); return; }
+        const id = document.getElementById('pkg-id').value;
+        const existing = id ? state.packages.find(p => p.package_id === id) : null;
+        const result = await savePackageRequest({
+          package_id: id,
+          client_id: document.getElementById('pkg-client').value,
+          start_month: document.getElementById('pkg-start').value,
+          months,
+          items,
+          active: existing ? existing.active : true
+        });
+        if (!result) return;
+        closeModal('package-modal');
+        renderApp();
+        const made = sumQty(result.created || []);
+        showToast(made ? `บันทึกแพ็กเกจแล้ว · สร้างงานเดือนนี้ ${made} ชิ้น` : 'บันทึกแพ็กเกจแล้ว');
+      });
+    });
+
+    function togglePackageActive(packageId) {
+      const pkg = state.packages.find(p => p.package_id === packageId);
+      if (!pkg) return;
+      const stopping = pkg.active;
+      askConfirm({
+        title: stopping ? 'หยุดแพ็กเกจ' : 'เริ่มแพ็กเกจอีกครั้ง',
+        message: stopping
+          ? `หยุดแพ็กเกจของ ${clientName(pkg.client_id)}? ตั้งแต่เดือนหน้าระบบจะไม่สร้างงานให้อีก (งานที่สร้างไปแล้วยังอยู่)`
+          : `เริ่มแพ็กเกจของ ${clientName(pkg.client_id)} อีกครั้ง? ระบบจะสร้างงานให้ในเดือนที่ยังอยู่ในสัญญา`,
+        yesLabel: stopping ? 'หยุดแพ็กเกจ' : 'เริ่มอีกครั้ง',
+        danger: stopping,
+        onYes: async () => {
+          const result = await savePackageRequest({ package_id: pkg.package_id, start_month: pkg.start_month, months: pkg.months, items: pkg.items, active: !stopping });
+          if (!result) return;
+          renderApp();
+          showToast(stopping ? 'หยุดแพ็กเกจแล้ว' : 'เริ่มแพ็กเกจอีกครั้งแล้ว');
+        }
+      });
+    }
+
+    function confirmDeletePackage(packageId) {
+      const pkg = state.packages.find(p => p.package_id === packageId);
+      if (!pkg) return;
+      askConfirm({
+        title: 'ลบแพ็กเกจ',
+        message: `ลบแพ็กเกจ ${monthLabel(pkg.start_month)} – ${monthLabel(packageEnd(pkg))} ของ ${clientName(pkg.client_id)}? งานที่สร้างไปแล้วยังอยู่ แต่จะไม่สร้างเดือนต่อไปอีก`,
+        yesLabel: 'ลบแพ็กเกจ',
+        danger: true,
+        onYes: async () => {
+          const result = await callAppsScript('deletePackage', { package_id: packageId });
+          if (!result) return;
+          state.packages = state.packages.filter(p => p.package_id !== packageId);
+          saveState();
+          renderApp();
+          showToast('ลบแพ็กเกจแล้ว');
+        }
+      });
     }
 
     // ------------------------------------------------------------------------
@@ -1894,6 +2288,8 @@
             </div>
           </div>
 
+          ${isAdmin ? renderPackagesSection(client) : ''}
+
           <div>
             <h2 class="text-sm font-bold uppercase tracking-wider text-slate-500 mb-4">Client Workspaces (${clientWorkspaces.length})</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
@@ -2205,6 +2601,7 @@
           closeClientModal();
           state.selectedClientId = newClientId;
           renderApp();
+          recordRoute();
           showToast(`Created "${name}" with 4 default workspaces`);
         } else {
           const idx = state.clients.findIndex(c => c.client_id === id);
@@ -2248,6 +2645,7 @@
         saveState();
         closeConfirmModal();
         renderApp();
+        recordRoute();
         showToast(`Deleted "${client.client_name}"`);
       };
       document.getElementById('confirm-modal').classList.remove('hidden');
