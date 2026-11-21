@@ -88,35 +88,50 @@
   <!-- ========================================================================
        1. LOGIN VIEW (SECURE INTERNAL ACCESS)
   ======================================================================== -->
-  <!-- Phones: card starts near the top (just below Safari's floating address bar) instead of being
-       centred — centring left a big empty gap above it on iPhone. Larger screens stay centred. -->
-  <div id="login-view" class="min-h-screen min-h-[100svh] bg-[#F3F6FA] flex flex-col justify-start sm:justify-center items-center px-4 pb-6 pt-[calc(env(safe-area-inset-top)+4rem)] sm:p-6">
-    <div class="w-full max-w-md bg-white rounded-2xl shadow-xl shadow-[#0B1F44]/5 border border-slate-200/80 overflow-hidden">
-      <!-- Top Navy Brand Header -->
-      <div class="bg-[#0B1F44] pt-4 sm:pt-6 text-center relative overflow-hidden">
-        <div class="absolute -right-10 -top-10 w-36 h-36 rounded-full bg-[#1E6FFF]/15 pointer-events-none"></div>
-        <div class="absolute -left-10 top-4 w-28 h-28 rounded-full bg-[#00C7A7]/10 pointer-events-none"></div>
-        <img src="assets/go-logo-full.png" alt="Go To Target — Digital marketing that delivers results" class="relative w-32 sm:w-56 h-auto mx-auto -my-3 sm:-my-6" />
-        <p class="relative text-[10px] sm:text-[11px] uppercase tracking-[0.25em] text-[#9FF3D6] font-semibold pb-2 sm:pb-4">Internal Client Workspace</p>
-        <svg class="block w-full h-6" viewBox="0 0 400 24" preserveAspectRatio="none" aria-hidden="true">
-          <defs><linearGradient id="gttWaveLogin" x1="0" x2="1"><stop offset="0" stop-color="#1E6FFF"/><stop offset="1" stop-color="#00C7A7"/></linearGradient></defs>
-          <path d="M0 24V14C120 30 260 -4 400 10V24Z" fill="url(#gttWaveLogin)"/>
-          <path d="M0 24V18C130 32 270 2 400 16V24Z" fill="#fff"/>
+  <!-- Full-page navy -> light background with brand waves; the card floats on top (frosted glass).
+       Phones: card starts just below Safari's floating address bar; larger screens: centred. -->
+  <div id="login-view" class="relative min-h-screen min-h-[100svh] overflow-hidden flex flex-col justify-start sm:justify-center items-center px-5 pb-8 pt-[calc(env(safe-area-inset-top)+3.5rem)] sm:p-6 bg-gradient-to-b from-[#0B1F44] via-[#16407F] to-[#EAF2FB]">
+    <svg class="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 400 800" preserveAspectRatio="none" aria-hidden="true">
+      <defs>
+        <linearGradient id="gttLgA" x1="0" x2="1"><stop offset="0" stop-color="#1E6FFF"/><stop offset="1" stop-color="#00C7A7"/></linearGradient>
+        <linearGradient id="gttLgB" x1="0" x2="1"><stop offset="0" stop-color="#00C7A7"/><stop offset="1" stop-color="#1E6FFF"/></linearGradient>
+      </defs>
+      <path d="M260 0C300 40 340 50 400 40V0Z" fill="url(#gttLgB)" opacity="0.85"/>
+      <path d="M0 300C110 250 210 380 400 280V420C250 470 120 360 0 430Z" fill="url(#gttLgA)" opacity="0.45"/>
+      <path d="M0 360C140 320 230 430 400 350V470C240 520 130 420 0 470Z" fill="#EAF2FB" opacity="0.55"/>
+      <path d="M220 800C290 740 340 720 400 700V800Z" fill="url(#gttLgA)" opacity="0.9"/>
+      <path d="M0 760C70 740 120 760 160 800H0Z" fill="url(#gttLgB)" opacity="0.35"/>
+    </svg>
+
+    <div class="relative w-full max-w-md rounded-[28px] overflow-hidden border border-white/60 bg-white/80 backdrop-blur-xl shadow-[0_30px_60px_-20px_rgba(11,31,68,0.55)]">
+      <!-- Navy brand header with a wavy bottom edge -->
+      <div class="relative bg-gradient-to-b from-[#0B1F44] to-[#123066] pt-5 sm:pt-7 text-center">
+        <img src="assets/go-logo-full.png" alt="Go To Target — Digital marketing that delivers results" class="relative w-36 sm:w-52 h-auto mx-auto -my-4 sm:-my-6" />
+        <p class="relative mt-1 text-[10px] sm:text-xs uppercase tracking-[0.3em] text-[#9FF3D6] font-semibold">Internal Client Workspace</p>
+        <svg class="block w-full h-10 sm:h-12 mt-3" viewBox="0 0 400 48" preserveAspectRatio="none" aria-hidden="true">
+          <defs><linearGradient id="gttLoginWave" x1="0" x2="1"><stop offset="0" stop-color="#1E6FFF"/><stop offset="1" stop-color="#00C7A7"/></linearGradient></defs>
+          <path d="M0 48V22C90 6 190 40 290 26C340 19 375 6 400 0V48Z" fill="url(#gttLoginWave)"/>
+          <path d="M0 48V32C100 18 200 46 300 34C345 29 378 18 400 12V48Z" fill="#F7FAFE"/>
         </svg>
       </div>
 
       <!-- Login Form -->
-      <form id="login-form" class="p-8 space-y-5">
+      <form id="login-form" class="px-6 sm:px-8 pt-3 pb-7 sm:pb-8 space-y-5 bg-[#F7FAFE]">
         <div>
-          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Username</label>
-          <input id="login-username" type="text" required autocomplete="username" minlength="3" maxlength="30" placeholder="Enter your username"
-            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-[#F3F6FA]/60 text-[#0B1F44] text-sm focus:outline-none focus:ring-2 focus:ring-[#1E6FFF] focus:bg-white transition" />
+          <label for="login-username" class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#0B1F44] mb-2"><i data-lucide="user" class="w-4 h-4"></i>Username</label>
+          <input id="login-username" type="text" required autocomplete="username" minlength="3" maxlength="30" placeholder="Enter your username" autocapitalize="none" spellcheck="false"
+            class="w-full px-4 py-3 rounded-2xl border border-slate-200 bg-white/80 text-[#0B1F44] text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1E6FFF] focus:bg-white transition" />
         </div>
 
         <div>
-          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Password</label>
-          <input id="login-passcode" type="password" required autocomplete="current-password" placeholder="Enter your password"
-            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-[#F3F6FA]/60 text-[#0B1F44] text-sm focus:outline-none focus:ring-2 focus:ring-[#1E6FFF] focus:bg-white transition" />
+          <label for="login-passcode" class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#0B1F44] mb-2"><i data-lucide="lock" class="w-4 h-4"></i>Password</label>
+          <div class="relative">
+            <input id="login-passcode" type="password" required autocomplete="current-password" placeholder="Enter your password"
+              class="w-full pl-4 pr-12 py-3 rounded-2xl border border-slate-200 bg-white/80 text-[#0B1F44] text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1E6FFF] focus:bg-white transition" />
+            <button type="button" id="login-eye" onclick="toggleLoginPassword()" aria-label="แสดงรหัสผ่าน" class="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-xl text-slate-400 hover:text-[#0B1F44] cursor-pointer">
+              <i data-lucide="eye-off" class="w-5 h-5"></i>
+            </button>
+          </div>
         </div>
 
         <div id="login-error" class="hidden flex items-start gap-2.5 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs">
@@ -125,14 +140,14 @@
         </div>
 
         <button type="submit" id="login-submit-btn"
-          class="w-full py-3 px-4 rounded-xl bg-[#0B1F44] hover:bg-[#16346B] text-white font-semibold text-sm shadow-sm transition flex items-center justify-center gap-2 cursor-pointer">
+          class="gtt-btn-dark w-full py-3.5 px-4 rounded-2xl text-white font-semibold text-sm shadow-[0_12px_24px_-10px_rgba(30,111,255,0.7)] transition flex items-center justify-center gap-2 cursor-pointer">
           <i data-lucide="shield" class="w-4 h-4 text-[#00C7A7]"></i>
           <span>Sign In to Workspace</span>
+          <i data-lucide="arrow-right" class="w-4 h-4"></i>
         </button>
-
       </form>
     </div>
-    <p class="mt-6 text-xs text-slate-400">Authorized GO TO TARGET personnel only.</p>
+    <p class="relative mt-6 text-xs text-[#0B1F44]/50">Authorized GO TO TARGET personnel only.</p>
   </div>
 
   <!-- ========================================================================
@@ -1056,6 +1071,7 @@
           await refreshData(false);
         }
         document.getElementById('login-passcode').value = '';
+        if (document.getElementById('login-passcode').type !== 'password') toggleLoginPassword();
       } finally {
         submitBtn.disabled = false;
         submitBtn.classList.remove('opacity-60');
@@ -1682,79 +1698,92 @@
             <h3 class="text-base font-semibold text-[#0B1F44]">${state.clientSearch ? 'No matching clients found' : state.showArchived ? 'No archived clients' : 'No active clients yet'}</h3>
             <p class="text-sm text-slate-500 mt-1">${state.clientSearch ? 'Try adjusting your search query.' : isAdmin ? 'Click "Add Client" to create your first client workspace.' : 'ยังไม่มีลูกค้าที่คุณดูแล — ให้แอดมินเพิ่มชื่อคุณในทีมของลูกค้า'}</p>
           </div>`
-        : `<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            ${filtered.map(client => {
+        : `<div class="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
+            ${filtered.map((client, index) => {
               const clientWs = state.workspaces.filter(w => w.client_id === client.client_id);
               const connected = clientWs.filter(w => safeUrl(w.external_url)).length;
-
-              const logoHtml = safeUrl(client.logo_url)
-                ? `<img src="${escapeHtml(safeUrl(client.logo_url))}" alt="${escapeHtml(client.client_name)}" referrerpolicy="no-referrer" class="w-14 h-14 rounded-xl object-cover border border-slate-200 bg-slate-50 flex-shrink-0" />`
-                : `<div class="w-14 h-14 rounded-xl bg-gradient-to-br from-[#0B1F44] to-[#0f3470] text-white font-bold text-lg flex items-center justify-center flex-shrink-0">${escapeHtml(getInitials(client.client_name))}</div>`;
+              // Alternate blue / mint like the mockup: bar, link pill and Open button share the colour.
+              const mint = index % 2 === 1;
+              const accent = mint ? '#00C7A7' : '#1E6FFF';
+              const pill = mint ? 'bg-[#00C7A7]/15 text-[#0B8F74]' : 'bg-[#1E6FFF]/10 text-[#1557D6]';
+              const team = clientTeamNames(client);
 
               const adminActions = isAdmin ? `
-                <div onclick="event.stopPropagation()" class="absolute top-4 right-4 flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                  <button onclick="openEditClientModal(${jsArg(client.client_id)})" title="Edit Client" class="p-1.5 rounded-lg bg-slate-100 hover:bg-[#1E6FFF] text-slate-600 hover:text-white transition cursor-pointer">
-                    <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
+                <div onclick="event.stopPropagation()" class="flex items-center gap-1 sm:gap-1.5 shrink-0">
+                  <button onclick="openEditClientModal(${jsArg(client.client_id)})" title="Edit Client" class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-[#F3F6FA] hover:bg-[#1E6FFF] text-[#0B1F44] hover:text-white flex items-center justify-center transition cursor-pointer">
+                    <i data-lucide="pencil" class="w-4 h-4"></i>
                   </button>
-                  <button onclick="toggleArchiveClient(${jsArg(client.client_id)})" title="${client.archived ? 'Restore' : 'Archive'}" class="p-1.5 rounded-lg bg-slate-100 hover:bg-amber-500 text-slate-600 hover:text-white transition cursor-pointer">
-                    <i data-lucide="${client.archived ? 'archive-restore' : 'archive'}" class="w-3.5 h-3.5"></i>
+                  <button onclick="toggleArchiveClient(${jsArg(client.client_id)})" title="${client.archived ? 'Restore' : 'Archive'}" class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-[#F3F6FA] hover:bg-amber-500 text-[#0B1F44] hover:text-white flex items-center justify-center transition cursor-pointer">
+                    <i data-lucide="${client.archived ? 'archive-restore' : 'archive'}" class="w-4 h-4"></i>
                   </button>
-                  <button onclick="confirmDeleteClient(${jsArg(client.client_id)})" title="Delete Client" class="p-1.5 rounded-lg bg-slate-100 hover:bg-red-600 text-slate-600 hover:text-white transition cursor-pointer">
-                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                  <button onclick="confirmDeleteClient(${jsArg(client.client_id)})" title="Delete Client" class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-[#F3F6FA] hover:bg-red-600 text-[#0B1F44] hover:text-white flex items-center justify-center transition cursor-pointer">
+                    <i data-lucide="trash-2" class="w-4 h-4"></i>
                   </button>
                 </div>` : '';
 
               return `
-                <div onclick="openClientWorkspace(${jsArg(client.client_id)})" class="group relative bg-white rounded-2xl border border-slate-200/90 hover:border-[#1E6FFF] p-6 shadow-xs hover:shadow-lg hover:shadow-[#0B1F44]/5 transition-all duration-200 cursor-pointer flex flex-col justify-between">
-                  ${adminActions}
-                  <div>
-                    <div class="flex items-center gap-4 mb-4">
-                      ${logoHtml}
-                      <div class="min-w-0 pr-12">
-                        <h3 class="text-lg font-bold text-[#0B1F44] group-hover:text-[#1E6FFF] transition-colors truncate">${escapeHtml(client.client_name)}</h3>
-                        <p class="text-xs text-slate-400 mt-0.5">Added ${escapeHtml(client.created_at)}</p>
-                        ${isAdmin ? `<p class="text-xs mt-0.5 truncate ${clientTeamNames(client).length ? 'text-slate-500' : 'text-amber-600'}">ทีม: ${clientTeamNames(client).length ? escapeHtml(clientTeamNames(client).join(', ')) : 'ยังไม่มี'}</p>` : ''}
+                <div onclick="openClientWorkspace(${jsArg(client.client_id)})" style="--deco:${mint ? 'rgba(0,199,167,0.16)' : 'rgba(30,111,255,0.12)'}"
+                  class="gtt-card group relative overflow-hidden pl-5 pr-4 py-4 cursor-pointer hover:-translate-y-0.5 hover:shadow-lg transition">
+                  <span class="absolute left-0 top-0 bottom-0 w-1.5" style="background:${accent}"></span>
+                  <span class="absolute right-0 bottom-0 w-40 h-20 rounded-tl-[80px] pointer-events-none" style="background:linear-gradient(135deg,transparent 15%,var(--deco))"></span>
+                  <div class="relative flex items-start gap-3.5">
+                    <div class="p-1 rounded-2xl bg-white border border-slate-200/80 shadow-xs shrink-0">${clientLogoHtml(client, 'w-12 h-12 sm:w-[72px] sm:h-[72px]')}</div>
+                    <div class="flex-1 min-w-0">
+                      <div class="flex items-start justify-between gap-2">
+                        <h3 class="text-[15px] sm:text-lg font-bold text-[#0B1F44] leading-snug line-clamp-2 pt-1">${escapeHtml(client.client_name)}</h3>
+                        ${adminActions}
+                      </div>
+                      <p class="mt-0.5 text-xs text-slate-500 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                        <span class="inline-flex items-center gap-1"><i data-lucide="calendar" class="w-3.5 h-3.5"></i>Added ${escapeHtml(client.created_at)}</span>
+                        ${isAdmin ? `<span class="text-slate-300">|</span><span class="${team.length ? '' : 'text-amber-600 font-semibold'}">ทีม: ${team.length ? escapeHtml(team.join(', ')) : 'ยังไม่มี'}</span>` : ''}
+                      </p>
+                      ${client.description ? `<p class="mt-1 text-sm text-slate-600 line-clamp-2">${escapeHtml(client.description)}</p>` : ''}
+                      <div class="mt-2.5 flex items-center justify-between gap-2">
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] sm:text-xs font-bold whitespace-nowrap ${pill}">
+                          <i data-lucide="link-2" class="w-3.5 h-3.5"></i>${connected} / ${clientWs.length} Links Connected
+                        </span>
+                        <span class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white/90 shadow-xs text-[13px] sm:text-sm font-bold whitespace-nowrap group-hover:translate-x-0.5 transition-transform" style="color:${accent}">Open<i data-lucide="arrow-right" class="w-4 h-4"></i></span>
                       </div>
                     </div>
-                    <p class="text-sm text-slate-600 line-clamp-2 min-h-[40px] leading-relaxed">${escapeHtml(client.description) || 'No description provided.'}</p>
-                  </div>
-                  <div class="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between">
-                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#F3F6FA] text-xs font-semibold text-[#0B1F44]">
-                      <i data-lucide="link-2" class="w-3.5 h-3.5 text-[#1E6FFF]"></i>
-                      <span>${connected} / ${clientWs.length} Links Connected</span>
-                    </span>
-                    <span class="text-xs font-semibold text-[#1E6FFF] group-hover:translate-x-0.5 transition-transform">Open →</span>
                   </div>
                 </div>`;
             }).join('')}
           </div>`;
 
       return `
-        <div class="space-y-6">
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-[#0B1F44]">Clients</h1>
-              <p class="text-sm text-slate-500 mt-1">Select a client to access their working folders, sheets, and creative briefs.</p>
+        <div class="space-y-5">
+          <section class="relative px-1 sm:px-2 py-2">
+            <div class="relative flex items-center justify-between gap-3">
+              <div class="min-w-0">
+                <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-[#0B1F44] flex items-center gap-3"><span class="w-1.5 h-8 rounded-full bg-[#00C7A7]"></span>Clients</h1>
+                <p class="mt-1.5 text-[13px] sm:text-sm text-slate-500 max-w-md">Select a client to access their working folders, sheets, and creative briefs.</p>
+                ${isAdmin ? `
+                  <button onclick="openCreateClientModal()" class="gtt-btn-dark mt-4 inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl text-white text-sm font-semibold shadow-[0_10px_20px_-10px_rgba(11,31,68,0.7)] cursor-pointer">
+                    <i data-lucide="plus" class="w-4 h-4 text-[#00C7A7]"></i><span>Add Client</span>
+                  </button>` : ''}
+              </div>
+              <!-- Stacked cards with the GO mark (stands in for the illustration in the mockup) -->
+              <div class="relative w-28 h-24 sm:w-40 sm:h-32 shrink-0" aria-hidden="true">
+                <div class="absolute right-0 top-0 w-[78%] h-[68%] rounded-2xl bg-gradient-to-br from-[#9FF3D6] to-[#00C7A7] opacity-70 rotate-[-8deg]"></div>
+                <div class="absolute right-2 top-3 w-[78%] h-[68%] rounded-2xl bg-gradient-to-br from-[#7FD8FF] to-[#3E8CFF] opacity-80 rotate-[-4deg]"></div>
+                <div class="absolute right-5 top-6 w-[78%] h-[68%] rounded-2xl bg-gradient-to-br from-[#5AA5FF] to-[#1E6FFF] shadow-xl flex items-center justify-center">
+                  <img src="assets/go-mark.png" alt="" class="w-1/2 h-auto opacity-90 brightness-[2.2] grayscale" />
+                </div>
+              </div>
             </div>
-            ${isAdmin ? `
-              <button onclick="openCreateClientModal()" class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#0B1F44] hover:bg-[#16346B] text-white text-sm font-semibold shadow-sm transition cursor-pointer self-start sm:self-auto">
-                <i data-lucide="plus" class="w-4 h-4 text-[#00C7A7]"></i>
-                <span>Add Client</span>
-              </button>` : ''}
-          </div>
+          </section>
 
-          <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-            <div class="relative flex-1 max-w-md">
-              <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
+          <div class="flex items-stretch gap-2.5">
+            <div class="relative flex-1">
+              <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2"></i>
               <input type="text" placeholder="Search clients by name or description..." value="${escapeHtml(state.clientSearch)}"
                 oninput="state.clientSearch = this.value; renderApp();"
-                class="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white border border-slate-200/90 text-sm text-[#0B1F44] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1E6FFF] transition" />
+                class="w-full pl-11 pr-4 py-3 rounded-2xl bg-white border border-slate-200/80 shadow-xs text-sm text-[#0B1F44] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1E6FFF] transition" />
             </div>
-
             ${isAdmin ? `
               <button onclick="state.showArchived = !state.showArchived; renderApp();"
-                class="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl border text-xs font-semibold transition cursor-pointer ${state.showArchived ? 'bg-amber-50 border-amber-200 text-amber-800' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}">
-                <i data-lucide="archive" class="w-3.5 h-3.5"></i>
+                class="inline-flex items-center gap-2 px-3.5 rounded-2xl border shadow-xs text-xs font-semibold whitespace-nowrap transition cursor-pointer ${state.showArchived ? 'bg-amber-50 border-amber-200 text-amber-800' : 'bg-white border-slate-200/80 text-slate-700 hover:bg-slate-50'}">
+                <i data-lucide="archive" class="w-4 h-4"></i>
                 <span>${state.showArchived ? 'Viewing Archived' : 'Show Archived'}</span>
               </button>` : ''}
           </div>
@@ -2359,6 +2388,17 @@
 
     const CONFIRM_YES_DANGER = 'px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-semibold cursor-pointer disabled:opacity-60';
     const CONFIRM_YES_NORMAL = 'px-4 py-2 rounded-xl bg-[#0B1F44] hover:bg-[#16346B] text-white text-sm font-semibold cursor-pointer disabled:opacity-60';
+
+    // Show / hide the password while typing (handy on phones).
+    function toggleLoginPassword() {
+      const input = document.getElementById('login-passcode');
+      const show = input.type === 'password';
+      input.type = show ? 'text' : 'password';
+      const btn = document.getElementById('login-eye');
+      btn.setAttribute('aria-label', show ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน');
+      btn.innerHTML = `<i data-lucide="${show ? 'eye' : 'eye-off'}" class="w-5 h-5"></i>`;
+      lucide.createIcons();
+    }
 
     function closeConfirmModal() {
       document.getElementById('confirm-modal').classList.add('hidden');
