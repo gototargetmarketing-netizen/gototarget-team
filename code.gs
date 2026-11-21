@@ -120,6 +120,52 @@ function onEdit(e) {
   }
 }
 
+// -----------------------------------------------------------------------------
+// KEEP WARM — a time trigger refreshes the cached sheet rows every 5 minutes, so people opening
+// the website rarely wait for the sheet to be read. Install once: Run installWarmUpTrigger().
+// -----------------------------------------------------------------------------
+function warmUp() {
+  // Never fail loudly: a failing trigger would email the owner every time.
+  try {
+    ensureReady_();
+    const lock = LockService.getScriptLock();
+    // Under the lock so a save cannot happen between reading the sheet and storing the copy
+    // (that could put old data back into the cache). If someone is saving right now, skip this round.
+    if (!lock.tryLock(5000)) return 'busy';
+    try {
+      const cache = CacheService.getScriptCache();
+      GTT_SCHEMAS.forEach(schema => {
+        try {
+          // Slightly longer than the 5-minute trigger so the copy never runs out between rounds.
+          cache.put(rowsCacheKey_(schema.name), JSON.stringify(readSheetRows_(schema.name)), GTT_CONFIG.CACHE_SECONDS + 120);
+        } catch (err) { /* too big for the cache: that sheet is just read on demand */ }
+      });
+    } finally {
+      lock.releaseLock();
+    }
+    jsSha256Ok_();
+    return 'ok';
+  } catch (err) {
+    return 'error: ' + (err && err.message ? err.message : err);
+  }
+}
+
+/** Run once from the Apps Script editor (asks for permission to manage triggers). Safe to run again. */
+function installWarmUpTrigger() {
+  removeWarmUpTrigger();
+  ScriptApp.newTrigger('warmUp').timeBased().everyMinutes(5).create();
+  const result = warmUp();
+  Logger.log('Warm-up trigger installed (every 5 minutes). First run: ' + result);
+  return 'Installed';
+}
+
+function removeWarmUpTrigger() {
+  ScriptApp.getProjectTriggers()
+    .filter(trigger => trigger.getHandlerFunction() === 'warmUp')
+    .forEach(trigger => ScriptApp.deleteTrigger(trigger));
+  return 'Removed';
+}
+
 function clearAllCaches() {
   GTT_SCHEMAS.forEach(schema => invalidateRows_(schema.name));
   CacheService.getScriptCache().remove(readyCacheKey_());
@@ -197,7 +243,8 @@ function testSetup() {
 
   const started = Date.now();
   hashPassword_('timing-test', 'salt');
-  lines.push('INFO One password hash takes ' + (Date.now() - started) + ' ms (' + GTT_CONFIG.HASH_ITERATIONS + ' rounds)');
+  lines.push('INFO One password hash takes ' + (Date.now() - started) + ' ms (' + GTT_CONFIG.HASH_ITERATIONS + ' rounds, ' +
+    (jsSha256Ok_() ? 'fast JavaScript SHA-256' : 'SLOW: JavaScript SHA-256 self-check failed, using Utilities') + ')');
 
   Logger.log(lines.join('\n'));
   return allSheetsOk ? 'OK' : 'NEEDS SETUP';
@@ -658,12 +705,99 @@ function toHex_(bytes) {
   return bytes.map(b => ('0' + (b & 0xff).toString(16)).slice(-2)).join('');
 }
 
+// Round 1 uses Utilities (it handles the UTF-8 text). Rounds 2..N hash the previous 32 bytes.
+// Each Utilities.computeDigest call costs about 1.2 ms in Apps Script, so 1000 rounds took ~1.2 s
+// on every sign-in (measured 21 Nov 2026). The same SHA-256 written in plain JavaScript gives
+// byte-for-byte the same result in a few ms, so stored hashes stay valid. If the JavaScript version
+// ever disagrees with Utilities (self-check below), the slow Utilities loop is used instead,
+// so a bug here can only make sign-in slow — never lock anyone out.
 function iteratedHashHex_(password, salt, rounds) {
   let bytes = sha256Bytes_(password, salt);
+  if (rounds > 1 && jsSha256Ok_()) {
+    let digest = bytes.map(b => b & 0xff);
+    for (let i = 1; i < rounds; i++) digest = sha256Js_(digest);
+    return toHex_(digest);
+  }
   for (let i = 1; i < rounds; i++) {
     bytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, bytes);
   }
   return toHex_(bytes);
+}
+
+let gttJsSha256Ok_ = null;
+
+// Compares the JavaScript SHA-256 with Utilities once per request (two known inputs).
+function jsSha256Ok_() {
+  if (gttJsSha256Ok_ !== null) return gttJsSha256Ok_;
+  try {
+    const samples = [
+      [],
+      Array.from({ length: 32 }, (_, i) => (i * 37 + 11) & 0xff),
+      Array.from({ length: 100 }, (_, i) => (i * 101 + 7) & 0xff)
+    ];
+    gttJsSha256Ok_ = samples.every(input => {
+      const expected = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, input.map(b => (b > 127 ? b - 256 : b)));
+      return toHex_(sha256Js_(input)) === toHex_(expected);
+    });
+  } catch (err) {
+    gttJsSha256Ok_ = false;
+  }
+  return gttJsSha256Ok_;
+}
+
+const GTT_SHA256_K = [
+  0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+  0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+  0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+  0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+  0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+  0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+  0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+  0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
+];
+
+// Standard SHA-256 (FIPS 180-4). Input: array of byte values 0..255. Output: 32 values 0..255.
+function sha256Js_(input) {
+  const len = input.length;
+  const blocks = Math.ceil((len + 9) / 64);
+  const msg = new Array(blocks * 64).fill(0);
+  for (let i = 0; i < len; i++) msg[i] = input[i];
+  msg[len] = 0x80;
+  const bitLen = len * 8;
+  msg[msg.length - 4] = (bitLen >>> 24) & 0xff;
+  msg[msg.length - 3] = (bitLen >>> 16) & 0xff;
+  msg[msg.length - 2] = (bitLen >>> 8) & 0xff;
+  msg[msg.length - 1] = bitLen & 0xff;
+
+  const h = [0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19];
+  const w = new Array(64);
+  for (let b = 0; b < blocks; b++) {
+    for (let t = 0; t < 16; t++) {
+      const o = b * 64 + t * 4;
+      w[t] = ((msg[o] << 24) | (msg[o + 1] << 16) | (msg[o + 2] << 8) | msg[o + 3]) | 0;
+    }
+    for (let t = 16; t < 64; t++) {
+      const x = w[t - 15], y = w[t - 2];
+      const s0 = ((x >>> 7) | (x << 25)) ^ ((x >>> 18) | (x << 14)) ^ (x >>> 3);
+      const s1 = ((y >>> 17) | (y << 15)) ^ ((y >>> 19) | (y << 13)) ^ (y >>> 10);
+      w[t] = (w[t - 16] + s0 + w[t - 7] + s1) | 0;
+    }
+    let a = h[0], c1 = h[1], c = h[2], d = h[3], e = h[4], f = h[5], g = h[6], hh = h[7];
+    for (let t = 0; t < 64; t++) {
+      const S1 = ((e >>> 6) | (e << 26)) ^ ((e >>> 11) | (e << 21)) ^ ((e >>> 25) | (e << 7));
+      const ch = (e & f) ^ (~e & g);
+      const t1 = (hh + S1 + ch + GTT_SHA256_K[t] + w[t]) | 0;
+      const S0 = ((a >>> 2) | (a << 30)) ^ ((a >>> 13) | (a << 19)) ^ ((a >>> 22) | (a << 10));
+      const maj = (a & c1) ^ (a & c) ^ (c1 & c);
+      const t2 = (S0 + maj) | 0;
+      hh = g; g = f; f = e; e = (d + t1) | 0; d = c; c = c1; c1 = a; a = (t1 + t2) | 0;
+    }
+    h[0] = (h[0] + a) | 0; h[1] = (h[1] + c1) | 0; h[2] = (h[2] + c) | 0; h[3] = (h[3] + d) | 0;
+    h[4] = (h[4] + e) | 0; h[5] = (h[5] + f) | 0; h[6] = (h[6] + g) | 0; h[7] = (h[7] + hh) | 0;
+  }
+  const out = [];
+  h.forEach(v => out.push((v >>> 24) & 0xff, (v >>> 16) & 0xff, (v >>> 8) & 0xff, v & 0xff));
+  return out;
 }
 
 function hashPassword_(password, salt) {
