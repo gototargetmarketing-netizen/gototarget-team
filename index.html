@@ -18,6 +18,10 @@
     body {
       font-family: 'Inter', 'Noto Sans Thai', sans-serif;
     }
+    @keyframes gttbusy {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(300%); }
+    }
     .line-clamp-2 {
       display: -webkit-box;
       -webkit-line-clamp: 2;
@@ -34,6 +38,11 @@
       <i id="toast-icon" data-lucide="check-circle-2" class="w-4 h-4 text-[#50D6B0] flex-shrink-0"></i>
       <span id="toast-message"></span>
     </div>
+  </div>
+
+  <!-- Thin loading bar shown while waiting for Apps Script (each call can take 1–3 seconds) -->
+  <div id="busy-bar" class="hidden fixed top-0 left-0 right-0 h-1 z-[60] overflow-hidden bg-[#2585E8]/15">
+    <div class="h-full w-1/3 bg-[#2585E8] animate-[gttbusy_1.1s_ease-in-out_infinite]"></div>
   </div>
 
   <!-- ========================================================================
@@ -154,10 +163,22 @@
         </button>
       </div>
 
-      <!-- Menu Items (Clients, Workspaces, Settings [Admin only]) -->
+      <!-- Menu Items (Dashboard [Admin only], My Work, Clients, Workspaces, Settings [Admin only]) -->
       <nav class="flex-1 px-3 py-6 space-y-1.5 overflow-y-auto">
+        <button id="nav-dashboard" onclick="navigateTo('dashboard')"
+          class="hidden w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition cursor-pointer text-slate-300 hover:text-white hover:bg-white/5">
+          <i data-lucide="layout-dashboard" class="w-5 h-5 flex-shrink-0"></i>
+          <span class="sidebar-label">Dashboard</span>
+        </button>
+
+        <button id="nav-mywork" onclick="navigateTo('mywork')"
+          class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition cursor-pointer text-slate-300 hover:text-white hover:bg-white/5">
+          <i data-lucide="list-checks" class="w-5 h-5 flex-shrink-0"></i>
+          <span class="sidebar-label">งานของฉัน</span>
+        </button>
+
         <button id="nav-clients" onclick="navigateTo('clients')"
-          class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition cursor-pointer bg-[#2585E8] text-white shadow-sm">
+          class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition cursor-pointer text-slate-300 hover:text-white hover:bg-white/5">
           <i data-lucide="users" class="w-5 h-5 flex-shrink-0"></i>
           <span class="sidebar-label">Clients</span>
         </button>
@@ -237,10 +258,24 @@
             class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm text-[#061D42] focus:outline-none focus:ring-2 focus:ring-[#2585E8]" />
         </div>
         <div>
-          <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Client Logo URL (Optional)</label>
-          <input id="client-form-logo" type="url" placeholder="https://..."
-            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm text-[#061D42] focus:outline-none focus:ring-2 focus:ring-[#2585E8]" />
-          <p class="text-[11px] text-slate-400 mt-1">Leave blank to generate a clean branded monogram badge automatically.</p>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Client Logo (Optional)</label>
+          <div class="flex items-center gap-4">
+            <div id="client-logo-preview" class="w-16 h-16 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden flex-shrink-0 text-slate-300">
+              <i data-lucide="image" class="w-6 h-6"></i>
+            </div>
+            <div class="min-w-0 space-y-1.5">
+              <div class="flex flex-wrap items-center gap-2">
+                <label class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 hover:border-[#2585E8] text-xs font-semibold text-[#061D42] cursor-pointer transition">
+                  <i data-lucide="upload" class="w-3.5 h-3.5"></i>
+                  <span>เลือกรูปโลโก้</span>
+                  <input id="client-form-logo-file" type="file" accept="image/png,image/jpeg,image/webp" class="hidden" />
+                </label>
+                <button type="button" id="client-logo-clear" onclick="clearClientLogo()" class="hidden text-xs text-red-500 hover:underline cursor-pointer">ลบโลโก้</button>
+              </div>
+              <p class="text-[11px] text-slate-400">PNG / JPG / WebP — ระบบย่อรูปให้อัตโนมัติ และเก็บไว้ใน Google Drive บริษัท ถ้าไม่ใส่จะแสดงตัวอักษรย่อแทน</p>
+            </div>
+          </div>
+          <input type="hidden" id="client-form-logo" />
         </div>
         <div>
           <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Description (Optional)</label>
@@ -333,6 +368,137 @@
     </div>
   </div>
 
+  <!-- Add Deliverables Modal (Admin): e.g. "VDO x 4 for ABC, Nov 2026" -->
+  <div id="deliverable-modal" class="hidden fixed inset-0 z-50 bg-[#061D42]/50 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl border border-slate-200">
+      <div class="px-6 py-4 bg-[#061D42] text-white flex items-center justify-between">
+        <h3 class="font-bold text-base">เพิ่มงานให้ลูกค้า</h3>
+        <button onclick="closeModal('deliverable-modal')" class="text-slate-300 hover:text-white p-1 rounded-lg cursor-pointer">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <form id="deliverable-form" class="p-6 space-y-4">
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">ลูกค้า *</label>
+          <select id="dlv-form-client" required class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-[#061D42] bg-white focus:outline-none focus:ring-2 focus:ring-[#2585E8]"></select>
+        </div>
+        <div class="grid grid-cols-3 gap-4">
+          <div class="col-span-2">
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">ประเภทงาน *</label>
+            <select id="dlv-form-type" required class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-[#061D42] bg-white focus:outline-none focus:ring-2 focus:ring-[#2585E8]"></select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">จำนวนชิ้น *</label>
+            <input id="dlv-form-count" type="number" min="1" max="30" value="1" required
+              class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-[#061D42] focus:outline-none focus:ring-2 focus:ring-[#2585E8]" />
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">ผู้รับผิดชอบ</label>
+          <select id="dlv-form-assignee" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-[#061D42] bg-white focus:outline-none focus:ring-2 focus:ring-[#2585E8]"></select>
+        </div>
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">ชื่องาน (ไม่บังคับ)</label>
+          <input id="dlv-form-title" type="text" maxlength="120" placeholder="เช่น โปรวันแม่ — ถ้าไม่ใส่จะตั้งชื่อเป็น VDO #1, #2 ..."
+            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm text-[#061D42] focus:outline-none focus:ring-2 focus:ring-[#2585E8]" />
+        </div>
+        <p id="dlv-form-month-note" class="text-xs text-slate-500"></p>
+        <div class="pt-2 flex items-center justify-end gap-3">
+          <button type="button" onclick="closeModal('deliverable-modal')" class="px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 cursor-pointer">ยกเลิก</button>
+          <button type="submit" class="px-5 py-2.5 rounded-xl bg-[#061D42] hover:bg-[#0d2d63] text-white text-sm font-semibold shadow-sm cursor-pointer">เพิ่มงาน</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Submit Work Modal (Staff + Admin): paste the finished link -->
+  <div id="submit-modal" class="hidden fixed inset-0 z-50 bg-[#061D42]/50 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl border border-slate-200">
+      <div class="px-6 py-4 bg-[#061D42] text-white flex items-center justify-between">
+        <h3 class="font-bold text-base">ส่งงาน</h3>
+        <button onclick="closeModal('submit-modal')" class="text-slate-300 hover:text-white p-1 rounded-lg cursor-pointer">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <form id="submit-form" class="p-6 space-y-4">
+        <input type="hidden" id="submit-form-id" />
+        <div>
+          <p id="submit-form-title" class="text-base font-bold text-[#061D42]"></p>
+          <p id="submit-form-client" class="text-xs text-slate-500 mt-0.5"></p>
+        </div>
+        <div id="submit-form-note" class="hidden p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-800 whitespace-pre-line"></div>
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">ลิงก์ผลงาน *</label>
+          <input id="submit-form-url" type="text" required placeholder="https://drive.google.com/..."
+            class="w-full px-4 py-2.5 rounded-xl border border-[#2585E8]/50 bg-[#2585E8]/5 text-sm text-[#061D42] focus:outline-none focus:ring-2 focus:ring-[#2585E8]" />
+          <p class="text-[11px] text-slate-400 mt-1">ตรวจว่าตั้งค่าแชร์ลิงก์ให้แอดมินเปิดดูได้แล้ว</p>
+        </div>
+        <div class="pt-2 flex items-center justify-end gap-3">
+          <button type="button" onclick="closeModal('submit-modal')" class="px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 cursor-pointer">ยกเลิก</button>
+          <button type="submit" class="px-5 py-2.5 rounded-xl bg-[#2585E8] hover:bg-[#1d6fc4] text-white text-sm font-semibold shadow-sm cursor-pointer">ส่งงาน</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Review Modal (Admin): approve or send back with a note -->
+  <div id="review-modal" class="hidden fixed inset-0 z-50 bg-[#061D42]/50 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl border border-slate-200">
+      <div class="px-6 py-4 bg-[#061D42] text-white flex items-center justify-between">
+        <h3 class="font-bold text-base">ตรวจงาน</h3>
+        <button onclick="closeModal('review-modal')" class="text-slate-300 hover:text-white p-1 rounded-lg cursor-pointer">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <div class="p-6 space-y-4">
+        <input type="hidden" id="review-form-id" />
+        <div>
+          <p id="review-form-title" class="text-base font-bold text-[#061D42]"></p>
+          <p id="review-form-meta" class="text-xs text-slate-500 mt-0.5"></p>
+        </div>
+        <button type="button" id="review-form-open" class="w-full py-2.5 px-4 rounded-xl bg-[#061D42] hover:bg-[#2585E8] text-white text-sm font-semibold flex items-center justify-center gap-2 transition cursor-pointer">
+          <span>เปิดดูผลงาน</span>
+          <i data-lucide="external-link" class="w-4 h-4"></i>
+        </button>
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">ความเห็น (ต้องใส่ถ้าส่งกลับแก้)</label>
+          <textarea id="review-form-note" rows="3" maxlength="1000" placeholder="เช่น ขอปรับสีโลโก้ให้เข้มขึ้น และเปลี่ยนเพลงประกอบ"
+            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm text-[#061D42] focus:outline-none focus:ring-2 focus:ring-[#2585E8]"></textarea>
+        </div>
+        <div class="pt-1 grid grid-cols-2 gap-3">
+          <button type="button" onclick="submitReview('REVISE')" class="py-2.5 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 text-sm font-semibold cursor-pointer">ส่งกลับแก้</button>
+          <button type="button" onclick="submitReview('APPROVED')" class="py-2.5 rounded-xl bg-[#0F766E] hover:bg-[#0b5c56] text-white text-sm font-semibold cursor-pointer">ผ่าน</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Set Password Modal (Admin) -->
+  <div id="password-modal" class="hidden fixed inset-0 z-50 bg-[#061D42]/50 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full overflow-hidden shadow-2xl border border-slate-200">
+      <div class="px-6 py-4 bg-[#061D42] text-white flex items-center justify-between">
+        <h3 class="font-bold text-base">ตั้งรหัสผ่านใหม่</h3>
+        <button onclick="closeModal('password-modal')" class="text-slate-300 hover:text-white p-1 rounded-lg cursor-pointer">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <form id="password-form" class="p-6 space-y-4">
+        <input type="hidden" id="password-form-id" />
+        <p id="password-form-user" class="text-sm text-slate-600"></p>
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">รหัสผ่านใหม่ (อย่างน้อย 6 ตัว) *</label>
+          <input id="password-form-value" type="text" required minlength="6" maxlength="100" autocomplete="new-password"
+            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm text-[#061D42] focus:outline-none focus:ring-2 focus:ring-[#2585E8]" />
+          <p class="text-[11px] text-slate-400 mt-1">คนนี้จะถูกออกจากระบบทุกเครื่อง แล้วเข้าใหม่ด้วยรหัสนี้</p>
+        </div>
+        <div class="pt-2 flex items-center justify-end gap-3">
+          <button type="button" onclick="closeModal('password-modal')" class="px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 cursor-pointer">ยกเลิก</button>
+          <button type="submit" class="px-5 py-2.5 rounded-xl bg-[#061D42] hover:bg-[#0d2d63] text-white text-sm font-semibold shadow-sm cursor-pointer">บันทึกรหัสผ่าน</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- ========================================================================
        4. APPLICATION JAVASCRIPT LOGIC
   ======================================================================== -->
@@ -364,55 +530,21 @@
       { workspace_name: 'BRIEF', description: 'Brief, references and client information', icon: 'clipboard-list', color: 'orange' }
     ];
 
-    const SEED_USERS = [
-      { user_id: 'usr_admin_01', name: 'Narin Srisai', username: 'admin', email: 'admin@gototarget.co', role: 'ADMIN', active: true },
-      { user_id: 'usr_staff_01', name: 'Ploypailin K.', username: 'staff', email: 'staff@gototarget.co', role: 'STAFF', active: true },
-      { user_id: 'usr_staff_02', name: 'Thanawat M.', username: 'creative', email: 'creative@gototarget.co', role: 'STAFF', active: true }
+    // Work types must match GTT_DELIVERABLE_TYPES in code.gs (the server rejects anything else).
+    const DELIVERABLE_TYPES = [
+      { id: 'banner', label: 'Banner / กราฟิก', short: 'Banner', icon: 'image' },
+      { id: 'video', label: 'VDO', short: 'VDO', icon: 'video' },
+      { id: 'influencer', label: 'รีวิวอินฟลูเอนเซอร์', short: 'รีวิว', icon: 'star' },
+      { id: 'content', label: 'คอนเทนต์ / แคปชัน', short: 'Content', icon: 'file-text' },
+      { id: 'other', label: 'อื่นๆ', short: 'อื่นๆ', icon: 'package' }
     ];
 
-    const SEED_CLIENTS = [
-      {
-        client_id: 'cli_001',
-        client_name: 'Aether Botanics',
-        logo_url: '',
-        description: 'Organic skincare & wellness brand — Full-funnel social media & video campaigns.',
-        archived: false,
-        created_at: '2026-01-12'
-      },
-      {
-        client_id: 'cli_002',
-        client_name: 'Krono Mobility',
-        logo_url: '',
-        description: 'Electric urban commuter bikes — Performance ads, launch films & content calendar.',
-        archived: false,
-        created_at: '2026-02-04'
-      },
-      {
-        client_id: 'cli_003',
-        client_name: 'Siam Artisan Roasters',
-        logo_url: '',
-        description: 'Specialty coffee roastery — Brand storytelling, packaging visuals & monthly reels.',
-        archived: false,
-        created_at: '2026-03-18'
-      }
-    ];
-
-    const SEED_WORKSPACES = [
-      { workspace_id: 'ws_101', client_id: 'cli_001', workspace_name: 'VIDEO', description: 'Video production and video working files', icon: 'video', color: 'blue', external_url: 'https://drive.google.com', created_at: '2026-01-12', updated_at: '2026-01-12' },
-      { workspace_id: 'ws_102', client_id: 'cli_001', workspace_name: 'GRAPHIC', description: 'Graphic design and artwork files', icon: 'image', color: 'cyan', external_url: 'https://drive.google.com', created_at: '2026-01-12', updated_at: '2026-01-12' },
-      { workspace_id: 'ws_103', client_id: 'cli_001', workspace_name: 'CONTENT', description: 'Content, captions, copywriting and content planning', icon: 'file-text', color: 'mint', external_url: 'https://docs.google.com/spreadsheets', created_at: '2026-01-12', updated_at: '2026-01-12' },
-      { workspace_id: 'ws_104', client_id: 'cli_001', workspace_name: 'BRIEF', description: 'Brief, references and client information', icon: 'clipboard-list', color: 'orange', external_url: 'https://docs.google.com/document', created_at: '2026-01-12', updated_at: '2026-01-12' },
-
-      { workspace_id: 'ws_201', client_id: 'cli_002', workspace_name: 'VIDEO', description: 'Video production and video working files', icon: 'video', color: 'blue', external_url: 'https://drive.google.com', created_at: '2026-02-04', updated_at: '2026-02-04' },
-      { workspace_id: 'ws_202', client_id: 'cli_002', workspace_name: 'GRAPHIC', description: 'Graphic design and artwork files', icon: 'image', color: 'cyan', external_url: '', created_at: '2026-02-04', updated_at: '2026-02-04' },
-      { workspace_id: 'ws_203', client_id: 'cli_002', workspace_name: 'CONTENT', description: 'Content, captions, copywriting and content planning', icon: 'file-text', color: 'mint', external_url: 'https://docs.google.com/spreadsheets', created_at: '2026-02-04', updated_at: '2026-02-04' },
-      { workspace_id: 'ws_204', client_id: 'cli_002', workspace_name: 'BRIEF', description: 'Brief, references and client information', icon: 'clipboard-list', color: 'orange', external_url: '', created_at: '2026-02-04', updated_at: '2026-02-04' },
-
-      { workspace_id: 'ws_301', client_id: 'cli_003', workspace_name: 'VIDEO', description: 'Video production and video working files', icon: 'video', color: 'blue', external_url: '', created_at: '2026-03-18', updated_at: '2026-03-18' },
-      { workspace_id: 'ws_302', client_id: 'cli_003', workspace_name: 'GRAPHIC', description: 'Graphic design and artwork files', icon: 'image', color: 'cyan', external_url: 'https://drive.google.com', created_at: '2026-03-18', updated_at: '2026-03-18' },
-      { workspace_id: 'ws_303', client_id: 'cli_003', workspace_name: 'CONTENT', description: 'Content, captions, copywriting and content planning', icon: 'file-text', color: 'mint', external_url: '', created_at: '2026-03-18', updated_at: '2026-03-18' },
-      { workspace_id: 'ws_304', client_id: 'cli_003', workspace_name: 'BRIEF', description: 'Brief, references and client information', icon: 'clipboard-list', color: 'orange', external_url: 'https://docs.google.com/document', created_at: '2026-03-18', updated_at: '2026-03-18' }
-    ];
+    const STATUS_META = {
+      TODO: { label: 'ยังไม่ส่ง', cls: 'bg-slate-100 text-slate-600' },
+      REVIEW: { label: 'รอตรวจ', cls: 'bg-amber-100 text-amber-800' },
+      REVISE: { label: 'ต้องแก้', cls: 'bg-red-100 text-red-700' },
+      APPROVED: { label: 'ผ่านแล้ว', cls: 'bg-[#50D6B0]/20 text-[#0F766E]' }
+    };
 
     const COLOR_STYLES = {
       blue: { bg: 'bg-[#2585E8]/10', text: 'text-[#2585E8]', border: 'border-[#2585E8]/20' },
@@ -422,12 +554,22 @@
       navy: { bg: 'bg-[#061D42]/10', text: 'text-[#061D42]', border: 'border-[#061D42]/20' }
     };
 
+    function currentMonth() {
+      const now = new Date();
+      return now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+    }
+
+    // The first version kept client data in localStorage (it stayed on the computer after sign-out).
+    // Remove those leftovers; data now lives only in this tab (sessionStorage) and in Google Sheets.
+    ['gtt_clients', 'gtt_workspaces', 'gtt_users', 'gtt_workspace_key', 'gtt_gas_api_url', 'gtt_gas_api_secret']
+      .forEach(key => { try { localStorage.removeItem(key); } catch (e) {} });
+
     // ------------------------------------------------------------------------
     // APPLICATION STATE
     // ------------------------------------------------------------------------
     let state = {
       currentUser: JSON.parse(sessionStorage.getItem('gtt_current_user') || 'null'),
-      activeNav: 'clients',
+      activeNav: null, // set after sign-in: Dashboard for admins, My Work for staff
       selectedClientId: null,
       sidebarCollapsed: false,
       mobileMenuOpen: false,
@@ -435,17 +577,47 @@
       showArchived: false,
       workspaceSearch: '',
       apiEndpoint: (GTT_APPS_SCRIPT_URL.startsWith('https://script.google.com/macros/s/') && GTT_APPS_SCRIPT_URL.endsWith('/exec')) ? GTT_APPS_SCRIPT_URL : '',
-      apiSecret: '',
-      workspaceKey: localStorage.getItem('gtt_workspace_key') || 'GTT2026',
-      clients: JSON.parse(localStorage.getItem('gtt_clients') || 'null') || SEED_CLIENTS,
-      workspaces: JSON.parse(localStorage.getItem('gtt_workspaces') || 'null') || SEED_WORKSPACES,
-      users: JSON.parse(localStorage.getItem('gtt_users') || 'null') || SEED_USERS
+      month: currentMonth(),
+      clients: [],
+      workspaces: [],
+      users: [],        // full list, admins only (Settings page)
+      team: [],         // active members' names, for "who is responsible"
+      deliverables: []  // pieces of work for state.month (staff: own pieces only)
     };
 
+    // Keeps a copy in this browser tab so a page refresh shows data instantly while fresh data loads.
+    // sessionStorage is cleared when the tab closes, and on sign-out.
+    const CACHE_KEY = 'gtt_cache_v2';
     function saveState() {
-      localStorage.setItem('gtt_clients', JSON.stringify(state.clients));
-      localStorage.setItem('gtt_workspaces', JSON.stringify(state.workspaces));
-      localStorage.setItem('gtt_users', JSON.stringify(state.users));
+      try {
+        sessionStorage.setItem(CACHE_KEY, JSON.stringify({
+          user_id: state.currentUser && state.currentUser.user_id,
+          month: state.month,
+          clients: state.clients,
+          workspaces: state.workspaces,
+          users: state.users,
+          team: state.team,
+          deliverables: state.deliverables
+        }));
+      } catch (e) {}
+    }
+
+    function restoreCachedState() {
+      try {
+        const cached = JSON.parse(sessionStorage.getItem(CACHE_KEY) || 'null');
+        if (!cached || !state.currentUser || cached.user_id !== state.currentUser.user_id) return false;
+        Object.assign(state, {
+          month: cached.month || state.month,
+          clients: cached.clients || [],
+          workspaces: cached.workspaces || [],
+          users: cached.users || [],
+          team: cached.team || [],
+          deliverables: cached.deliverables || []
+        });
+        return true;
+      } catch (e) {
+        return false;
+      }
     }
 
     // ------------------------------------------------------------------------
@@ -539,17 +711,132 @@
     }
 
     // ------------------------------------------------------------------------
+    // MODAL, LOADING & FORM HELPERS
+    // ------------------------------------------------------------------------
+    function openModal(id) {
+      document.getElementById(id).classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.add('hidden');
+    }
+
+    let pendingCalls = 0;
+    function setBusy(delta) {
+      pendingCalls = Math.max(0, pendingCalls + delta);
+      document.getElementById('busy-bar').classList.toggle('hidden', pendingCalls === 0);
+    }
+
+    // Each Apps Script call takes 1–3 seconds. Lock the form meanwhile so a second click
+    // cannot send the same request twice (e.g. create the same client twice).
+    async function withFormBusy(container, task) {
+      if (container.dataset.busy === '1') return;
+      container.dataset.busy = '1';
+      const buttons = container.querySelectorAll('button');
+      buttons.forEach(btn => { btn.disabled = true; });
+      container.classList.add('opacity-70');
+      try {
+        return await task();
+      } finally {
+        container.dataset.busy = '';
+        buttons.forEach(btn => { btn.disabled = false; });
+        container.classList.remove('opacity-70');
+      }
+    }
+
+    // ------------------------------------------------------------------------
+    // WORK (DELIVERABLE) HELPERS
+    // ------------------------------------------------------------------------
+    function typeMeta(typeId) {
+      return DELIVERABLE_TYPES.find(t => t.id === typeId) || DELIVERABLE_TYPES[DELIVERABLE_TYPES.length - 1];
+    }
+
+    function statusBadge(status) {
+      const meta = STATUS_META[status] || STATUS_META.TODO;
+      return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold whitespace-nowrap ${meta.cls}">${meta.label}</span>`;
+    }
+
+    function monthLabel(month) {
+      const [y, m] = String(month || '').split('-').map(Number);
+      if (!y || !m) return String(month || '');
+      return new Date(y, m - 1, 1).toLocaleDateString('th-TH', { month: 'long', year: 'numeric' });
+    }
+
+    function shiftMonth(month, delta) {
+      const [y, m] = month.split('-').map(Number);
+      const d = new Date(y, m - 1 + delta, 1);
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+    }
+
+    function memberName(userId) {
+      if (!userId) return '';
+      const member = state.team.find(u => u.user_id === userId) || state.users.find(u => u.user_id === userId);
+      return member ? member.name : 'บัญชีที่ถูกปิด/ลบ';
+    }
+
+    function clientName(clientId) {
+      const client = state.clients.find(c => c.client_id === clientId);
+      return client ? client.client_name : 'ลูกค้าที่ถูกลบ';
+    }
+
+    function clientLogoHtml(client, sizeClass) {
+      const url = client ? safeUrl(client.logo_url) : '';
+      return url
+        ? `<img src="${escapeHtml(url)}" alt="" referrerpolicy="no-referrer" class="${sizeClass} rounded-lg object-cover border border-slate-200 bg-slate-50 flex-shrink-0" />`
+        : `<div class="${sizeClass} rounded-lg bg-[#061D42] text-white font-bold text-[11px] flex items-center justify-center flex-shrink-0">${escapeHtml(getInitials(client ? client.client_name : '?'))}</div>`;
+    }
+
+    // Untitled pieces are shown as "VDO #2": a running number among the same client, month and type,
+    // in the order they were added.
+    function deliverableTitle(d) {
+      if (d.title) return d.title;
+      const same = state.deliverables.filter(x => x.client_id === d.client_id && x.month === d.month && x.type === d.type);
+      const n = same.findIndex(x => x.deliverable_id === d.deliverable_id) + 1;
+      return typeMeta(d.type).short + ' #' + (n || 1);
+    }
+
+    function monthDeliverables(clientId) {
+      return state.deliverables.filter(d => d.month === state.month && (!clientId || d.client_id === clientId));
+    }
+
+    function replaceDeliverable(updated) {
+      const idx = state.deliverables.findIndex(d => d.deliverable_id === updated.deliverable_id);
+      if (idx !== -1) state.deliverables[idx] = updated;
+    }
+
+    function renderMonthPicker() {
+      return `
+        <div class="inline-flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-1">
+          <button onclick="changeMonth(-1)" title="เดือนก่อน" class="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 cursor-pointer"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
+          <span class="px-2 text-sm font-semibold text-[#061D42] min-w-[130px] text-center">${escapeHtml(monthLabel(state.month))}</span>
+          <button onclick="changeMonth(1)" title="เดือนถัดไป" class="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 cursor-pointer"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
+          ${state.month !== currentMonth() ? `<button onclick="changeMonth(0)" class="px-2 py-1 rounded-lg text-xs font-semibold text-[#2585E8] hover:bg-blue-50 cursor-pointer">เดือนนี้</button>` : ''}
+        </div>`;
+    }
+
+    async function changeMonth(delta) {
+      const next = delta === 0 ? currentMonth() : shiftMonth(state.month, delta);
+      const data = await callAppsScript('getDeliverables', { month: next });
+      if (!Array.isArray(data)) return;
+      state.month = next;
+      state.deliverables = data;
+      saveState();
+      renderApp();
+    }
+
+    // ------------------------------------------------------------------------
     // GOOGLE APPS SCRIPT API CONNECTOR
     // ------------------------------------------------------------------------
     async function callAppsScript(action, payload = {}) {
       if (!state.apiEndpoint) return null;
+      setBusy(1);
       try {
         const res = await fetch(state.apiEndpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({
             action,
-            token: state.apiSecret,
             session_token: sessionStorage.getItem('gtt_session_token') || '',
             payload
           })
@@ -559,50 +846,41 @@
         if (!result.success) throw new Error(result.error || 'Apps Script Error');
         return result.data;
       } catch (err) {
-        window.gttLastApiError = err && err.message ? err.message : String(err);
-        showToast('Apps Script: ' + window.gttLastApiError, 'error');
+        const message = err && err.message ? err.message : String(err);
+        window.gttLastApiError = message;
+        // Expired or revoked session (6 hours, password changed, account disabled): back to sign-in.
+        if (action !== 'authenticateUser' && /session/i.test(message)) {
+          logout();
+          showToast('หมดเวลาการใช้งาน กรุณาเข้าสู่ระบบใหม่', 'error');
+          return null;
+        }
+        showToast(action === 'authenticateUser' ? message : 'Apps Script: ' + message, 'error');
         return null;
+      } finally {
+        setBusy(-1);
       }
     }
 
-    async function syncFromGoogleSheets() {
-      if (!state.apiEndpoint) return false;
-      let [remoteClients, remoteWorkspaces] = await Promise.all([
-        callAppsScript('getClients'),
-        callAppsScript('getAllWorkspaces')
-      ]);
-      if (!Array.isArray(remoteClients) || !Array.isArray(remoteWorkspaces)) return false;
-
-      // Preserve previously saved browser data: import it once only when the cloud database is empty.
-      const hasPreviouslySavedLocalData = Boolean(localStorage.getItem('gtt_clients'));
-      if (state.currentUser && state.currentUser.role === 'ADMIN' &&
-          remoteClients.length === 0 && remoteWorkspaces.length === 0 &&
-          hasPreviouslySavedLocalData && (state.clients.length || state.workspaces.length)) {
-        const importResult = await callAppsScript('importLocalDataIfEmpty', {
-          clients: state.clients,
-          workspaces: state.workspaces,
-          users: state.users
-        });
-        if (!importResult) return false;
-        [remoteClients, remoteWorkspaces] = await Promise.all([
-          callAppsScript('getClients'),
-          callAppsScript('getAllWorkspaces')
-        ]);
-        if (!Array.isArray(remoteClients) || !Array.isArray(remoteWorkspaces)) return false;
-      }
-
-      state.clients = remoteClients;
-      state.workspaces = remoteWorkspaces;
-
-      if (state.currentUser && state.currentUser.role === 'ADMIN') {
-        const remoteUsers = await callAppsScript('getUsers');
-        if (!Array.isArray(remoteUsers)) return false;
-        state.users = remoteUsers;
-      }
-
+    function applyBootstrap(data) {
+      state.currentUser = data.user;
+      sessionStorage.setItem('gtt_current_user', JSON.stringify(data.user));
+      state.month = data.month || state.month;
+      state.clients = Array.isArray(data.clients) ? data.clients : [];
+      state.workspaces = Array.isArray(data.workspaces) ? data.workspaces : [];
+      state.team = Array.isArray(data.team) ? data.team : [];
+      state.users = Array.isArray(data.users) ? data.users : [];
+      state.deliverables = Array.isArray(data.deliverables) ? data.deliverables : [];
       saveState();
+    }
+
+    // One request loads everything the pages need (was 3–4 separate requests).
+    async function refreshData(showMessage) {
+      const data = await callAppsScript('bootstrap', { month: state.month });
+      if (!data) return false;
+      applyBootstrap(data);
+      showShell();
       renderApp();
-      showToast('Synced latest data from Google Sheets');
+      if (showMessage) showToast('โหลดข้อมูลล่าสุดจาก Google Sheets แล้ว');
       return true;
     }
 
@@ -629,7 +907,7 @@
           return;
         }
 
-        const authResult = await callAppsScript('authenticateUser', { username, password });
+        const authResult = await callAppsScript('authenticateUser', { username, password, month: currentMonth() });
         if (!authResult || !authResult.user || !authResult.session_token) {
           errText.textContent = window.gttLastApiError || 'เข้าสู่ระบบไม่สำเร็จ กรุณาตรวจสอบ Username และ Password';
           errBox.classList.remove('hidden');
@@ -637,9 +915,17 @@
         }
 
         sessionStorage.setItem('gtt_session_token', authResult.session_token);
-        state.currentUser = authResult.user;
-        sessionStorage.setItem('gtt_current_user', JSON.stringify(authResult.user));
-        await initWorkspace();
+        state.activeNav = null;
+        state.selectedClientId = null;
+        if (authResult.bootstrap) {
+          applyBootstrap(authResult.bootstrap);
+          showShell();
+          renderApp();
+        } else {
+          state.currentUser = authResult.user;
+          await refreshData(false);
+        }
+        document.getElementById('login-passcode').value = '';
       } finally {
         submitBtn.disabled = false;
         submitBtn.classList.remove('opacity-60');
@@ -649,12 +935,41 @@
     function logout() {
       state.currentUser = null;
       state.selectedClientId = null;
-      state.activeNav = 'clients';
+      state.activeNav = null;
+      Object.assign(state, { clients: [], workspaces: [], users: [], team: [], deliverables: [], month: currentMonth() });
       sessionStorage.removeItem('gtt_current_user');
       sessionStorage.removeItem('gtt_session_token');
+      sessionStorage.removeItem(CACHE_KEY);
+      showLogin();
+    }
+
+    function showLogin() {
       document.getElementById('app-shell').classList.add('hidden');
       document.getElementById('login-view').classList.remove('hidden');
       lucide.createIcons();
+    }
+
+    function showShell() {
+      const user = state.currentUser;
+      const isAdmin = user.role === 'ADMIN';
+      // Dashboard and Settings are for admins only.
+      if (!state.activeNav || (!isAdmin && (state.activeNav === 'settings' || state.activeNav === 'dashboard'))) {
+        state.activeNav = isAdmin ? 'dashboard' : 'mywork';
+      }
+
+      document.getElementById('login-view').classList.add('hidden');
+      document.getElementById('app-shell').classList.remove('hidden');
+      document.getElementById('user-avatar').textContent = getInitials(user.name);
+      document.getElementById('user-name-display').textContent = user.name;
+
+      const roleBadge = document.getElementById('user-role-badge');
+      roleBadge.textContent = user.role;
+      roleBadge.className = isAdmin
+        ? 'inline-block text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#50D6B0]/20 text-[#0F766E]'
+        : 'inline-block text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#45B8E8]/20 text-[#2585E8]';
+
+      document.getElementById('nav-settings').classList.toggle('hidden', !isAdmin);
+      document.getElementById('nav-dashboard').classList.toggle('hidden', !isAdmin);
     }
 
     // ------------------------------------------------------------------------
@@ -663,13 +978,15 @@
     function navigateTo(nav) {
       state.activeNav = nav;
       state.selectedClientId = null;
-      state.mobileMenuOpen = false;
+      if (state.mobileMenuOpen) toggleMobileMenu();
       renderApp();
     }
 
     function openClientWorkspace(clientId) {
       state.selectedClientId = clientId;
+      if (state.mobileMenuOpen) toggleMobileMenu();
       renderApp();
+      window.scrollTo(0, 0);
     }
 
     function toggleSidebarCollapse() {
@@ -708,62 +1025,27 @@
     // MAIN RENDER CONTROLLER
     // ------------------------------------------------------------------------
     async function initWorkspace() {
-      if (!state.apiEndpoint) {
-        state.currentUser = null;
-        sessionStorage.removeItem('gtt_current_user');
-        sessionStorage.removeItem('gtt_session_token');
-      } else {
-        const sessionToken = sessionStorage.getItem('gtt_session_token') || '';
-        if (!sessionToken) {
-          state.currentUser = null;
-          sessionStorage.removeItem('gtt_current_user');
-        } else {
-          const verifiedUser = await callAppsScript('validateSession');
-          if (!verifiedUser || !verifiedUser.active) {
-            state.currentUser = null;
-            sessionStorage.removeItem('gtt_current_user');
-            sessionStorage.removeItem('gtt_session_token');
-          } else {
-            state.currentUser = verifiedUser;
-            sessionStorage.setItem('gtt_current_user', JSON.stringify(verifiedUser));
-          }
-        }
-      }
-
-      if (!state.currentUser) {
-        document.getElementById('login-view').classList.remove('hidden');
-        document.getElementById('app-shell').classList.add('hidden');
-        lucide.createIcons();
+      const token = sessionStorage.getItem('gtt_session_token') || '';
+      if (!state.apiEndpoint || !token || !state.currentUser) {
+        logout();
         return;
       }
-
-      document.getElementById('login-view').classList.add('hidden');
-      document.getElementById('app-shell').classList.remove('hidden');
-
-      const isAdmin = state.currentUser.role === 'ADMIN';
-      if (!isAdmin && state.activeNav === 'settings') state.activeNav = 'clients';
-      document.getElementById('user-avatar').textContent = getInitials(state.currentUser.name);
-      document.getElementById('user-name-display').textContent = state.currentUser.name;
-
-      const roleBadge = document.getElementById('user-role-badge');
-      roleBadge.textContent = state.currentUser.role;
-      roleBadge.className = isAdmin
-        ? 'inline-block text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#50D6B0]/20 text-[#0F766E]'
-        : 'inline-block text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#45B8E8]/20 text-[#2585E8]';
-
-      const settingsNav = document.getElementById('nav-settings');
-      if (isAdmin) settingsNav.classList.remove('hidden');
-      else settingsNav.classList.add('hidden');
-
-      if (state.apiEndpoint) await syncFromGoogleSheets();
-      else renderApp();
+      // Show the copy saved in this tab immediately, then replace it with fresh data.
+      const shownFromCache = restoreCachedState();
+      if (shownFromCache) {
+        showShell();
+        renderApp();
+      }
+      const ok = await refreshData(false);
+      if (!ok && !shownFromCache && state.currentUser) showLogin();
     }
 
     function renderApp() {
-      const isAdmin = state.currentUser?.role === 'ADMIN';
+      if (!state.currentUser) return;
+      const isAdmin = state.currentUser.role === 'ADMIN';
 
       // Update Sidebar Active Highlight
-      ['clients', 'workspaces', 'settings'].forEach(item => {
+      ['dashboard', 'mywork', 'clients', 'workspaces', 'settings'].forEach(item => {
         const el = document.getElementById('nav-' + item);
         if (!el) return;
         if (state.activeNav === item && !state.selectedClientId) {
@@ -775,15 +1057,11 @@
 
       // Update Top Sync Status
       const syncArea = document.getElementById('sync-status-area');
-      if (state.apiEndpoint) {
-        syncArea.innerHTML = `
-          <button onclick="syncFromGoogleSheets()" class="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg bg-[#50D6B0]/15 text-[#0F766E] hover:bg-[#50D6B0]/25 transition cursor-pointer">
-            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
-            <span class="hidden sm:inline">Google Sheets Connected</span>
-          </button>`;
-      } else {
-        syncArea.innerHTML = `<span class="text-[11px] text-slate-400 hidden sm:inline">Local Workspace Storage</span>`;
-      }
+      syncArea.innerHTML = `
+        <button onclick="refreshData(true)" class="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg bg-[#50D6B0]/15 text-[#0F766E] hover:bg-[#50D6B0]/25 transition cursor-pointer">
+          <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+          <span class="hidden sm:inline">โหลดข้อมูลล่าสุด</span>
+        </button>`;
 
       const container = document.getElementById('main-container');
       const breadcrumb = document.getElementById('breadcrumb-current');
@@ -792,18 +1070,452 @@
         const client = state.clients.find(c => c.client_id === state.selectedClientId);
         breadcrumb.textContent = client ? client.client_name : 'Client Workspace';
         container.innerHTML = renderClientDetailView(client, isAdmin);
-      } else if (state.activeNav === 'clients') {
-        breadcrumb.textContent = 'Clients';
-        container.innerHTML = renderClientsDirectoryView(isAdmin);
+      } else if (state.activeNav === 'dashboard' && isAdmin) {
+        breadcrumb.textContent = 'Dashboard';
+        container.innerHTML = renderDashboardView();
+      } else if (state.activeNav === 'mywork') {
+        breadcrumb.textContent = 'งานของฉัน';
+        container.innerHTML = renderMyWorkView();
       } else if (state.activeNav === 'workspaces') {
         breadcrumb.textContent = 'Workspaces';
         container.innerHTML = renderAllWorkspacesView(isAdmin);
       } else if (state.activeNav === 'settings' && isAdmin) {
         breadcrumb.textContent = 'Settings';
         container.innerHTML = renderSettingsView();
+      } else {
+        state.activeNav = 'clients';
+        breadcrumb.textContent = 'Clients';
+        container.innerHTML = renderClientsDirectoryView(isAdmin);
       }
 
       lucide.createIcons();
+    }
+
+    // ------------------------------------------------------------------------
+    // VIEW: DASHBOARD (ADMIN ONLY) — work count per client for the month
+    // ------------------------------------------------------------------------
+    function renderDashboardView() {
+      const items = monthDeliverables();
+      const countStatus = status => items.filter(d => d.status === status).length;
+      const usedTypes = DELIVERABLE_TYPES.filter(t => items.some(d => d.type === t.id));
+      const columns = usedTypes.length ? usedTypes : DELIVERABLE_TYPES.filter(t => t.id === 'banner' || t.id === 'video');
+      // Clients with work this month first, then the rest (so new clients are easy to find and fill in).
+      const clients = state.clients.filter(c => !c.archived)
+        .map(c => ({ client: c, items: items.filter(d => d.client_id === c.client_id) }))
+        .sort((a, b) => (b.items.length > 0) - (a.items.length > 0) || a.client.client_name.localeCompare(b.client.client_name, 'th'));
+
+      const stat = (label, value, cls, icon) => `
+        <div class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs">
+          <div class="flex items-center justify-between">
+            <p class="text-xs font-semibold text-slate-500">${label}</p>
+            <i data-lucide="${icon}" class="w-4 h-4 ${cls}"></i>
+          </div>
+          <p class="text-3xl font-bold text-[#061D42] mt-2">${value}</p>
+        </div>`;
+
+      const rowsHtml = clients.map(({ client, items: clientItems }) => {
+        const cells = columns.map(type => {
+          const ofType = clientItems.filter(d => d.type === type.id);
+          if (!ofType.length) return `<td class="py-3.5 px-4 text-center text-slate-300">—</td>`;
+          const done = ofType.filter(d => d.status === 'APPROVED').length;
+          const pct = Math.round(done / ofType.length * 100);
+          return `
+            <td class="py-3.5 px-4 text-center">
+              <span class="font-bold text-[#061D42]">${done}</span><span class="text-slate-400">/${ofType.length}</span>
+              <div class="mt-1 h-1 w-14 mx-auto rounded-full bg-slate-100 overflow-hidden"><div class="h-full bg-[#50D6B0]" style="width:${pct}%"></div></div>
+            </td>`;
+        }).join('');
+        const waiting = clientItems.filter(d => d.status === 'REVIEW').length;
+        const unassigned = clientItems.filter(d => !d.assignee_id).length;
+        const flags = [
+          waiting ? `<span class="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-800 whitespace-nowrap">รอตรวจ ${waiting}</span>` : '',
+          unassigned ? `<span class="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-600 whitespace-nowrap">ยังไม่ระบุคน ${unassigned}</span>` : '',
+          !clientItems.length ? `<span class="text-xs text-slate-400">ยังไม่มีงานเดือนนี้</span>` : ''
+        ].join(' ');
+        return `
+          <tr class="hover:bg-[#F5F7FA]/60 transition-colors">
+            <td class="py-3.5 px-5">
+              <button onclick="openClientWorkspace(${jsArg(client.client_id)})" class="flex items-center gap-2.5 text-left font-semibold text-[#061D42] hover:text-[#2585E8] cursor-pointer">
+                ${clientLogoHtml(client, 'w-8 h-8')}
+                <span>${escapeHtml(client.client_name)}</span>
+              </button>
+            </td>
+            ${cells}
+            <td class="py-3.5 px-4"><div class="flex flex-wrap gap-1.5">${flags}</div></td>
+            <td class="py-3.5 px-5 text-right whitespace-nowrap">
+              <button onclick="openAddDeliverableModal(${jsArg(client.client_id)})" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 hover:border-[#2585E8] text-xs font-semibold text-[#2585E8] transition cursor-pointer">
+                <i data-lucide="plus" class="w-3 h-3"></i><span>เพิ่มงาน</span>
+              </button>
+            </td>
+          </tr>`;
+      }).join('');
+
+      const waitingList = items.filter(d => d.status === 'REVIEW');
+      const waitingHtml = waitingList.length ? `
+        <div class="bg-white rounded-2xl border border-amber-200 shadow-xs overflow-hidden">
+          <div class="px-5 py-3.5 bg-amber-50 border-b border-amber-200 flex items-center gap-2">
+            <i data-lucide="inbox" class="w-4 h-4 text-amber-700"></i>
+            <h2 class="text-sm font-bold text-amber-900">รอตรวจ (${waitingList.length})</h2>
+          </div>
+          <div class="divide-y divide-slate-100">
+            ${waitingList.map(d => `
+              <div class="px-5 py-3 flex flex-wrap items-center justify-between gap-3">
+                <div class="min-w-0">
+                  <p class="text-sm font-semibold text-[#061D42]">${escapeHtml(clientName(d.client_id))} · ${escapeHtml(deliverableTitle(d))}</p>
+                  <p class="text-xs text-slate-500">ส่งโดย ${escapeHtml(memberName(d.submitted_by) || '-')} · ${escapeHtml(d.submitted_at || '')}</p>
+                </div>
+                <button onclick="openReviewModal(${jsArg(d.deliverable_id)})" class="px-3.5 py-1.5 rounded-lg bg-[#061D42] hover:bg-[#2585E8] text-white text-xs font-semibold cursor-pointer">ตรวจงาน</button>
+              </div>`).join('')}
+          </div>
+        </div>` : '';
+
+      return `
+        <div class="space-y-6">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-[#061D42]">Dashboard งาน</h1>
+              <p class="text-sm text-slate-500 mt-1">จำนวนงานที่ต้องทำให้ลูกค้าแต่ละรายในเดือนนี้ (ตัวเลข = ผ่านแล้ว / ทั้งหมด)</p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              ${renderMonthPicker()}
+              <button onclick="copyFromPreviousMonth('')" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 cursor-pointer" title="คัดลอกรายการงานของทุกลูกค้าจากเดือนก่อน">
+                <i data-lucide="copy" class="w-3.5 h-3.5"></i><span>คัดลอกจากเดือนก่อน</span>
+              </button>
+              <button onclick="openAddDeliverableModal('')" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#061D42] hover:bg-[#0d2d63] text-white text-xs font-semibold cursor-pointer">
+                <i data-lucide="plus" class="w-4 h-4 text-[#50D6B0]"></i><span>เพิ่มงาน</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            ${stat('งานทั้งหมด', items.length, 'text-[#2585E8]', 'layers')}
+            ${stat('ผ่านแล้ว', countStatus('APPROVED'), 'text-[#0F766E]', 'check-circle-2')}
+            ${stat('รอตรวจ', countStatus('REVIEW'), 'text-amber-600', 'inbox')}
+            ${stat('ยังไม่เสร็จ / ต้องแก้', countStatus('TODO') + countStatus('REVISE'), 'text-red-500', 'clock')}
+          </div>
+
+          ${waitingHtml}
+
+          <div class="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-xs">
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse">
+                <thead>
+                  <tr class="border-b border-slate-200/80 bg-[#F5F7FA]/70 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                    <th class="py-3.5 px-5">ลูกค้า</th>
+                    ${columns.map(t => `<th class="py-3.5 px-4 text-center whitespace-nowrap">${escapeHtml(t.short)}</th>`).join('')}
+                    <th class="py-3.5 px-4">สถานะ</th>
+                    <th class="py-3.5 px-5"></th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 text-sm">
+                  ${rowsHtml || `<tr><td colspan="${columns.length + 3}" class="py-10 text-center text-sm text-slate-400">ยังไม่มีลูกค้า — เพิ่มลูกค้าที่หน้า Clients ก่อน</td></tr>`}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    // ------------------------------------------------------------------------
+    // VIEW: MY WORK — pieces assigned to the signed-in person, with the "ส่งงาน" button
+    // ------------------------------------------------------------------------
+    function renderMyWorkView() {
+      const me = state.currentUser.user_id;
+      const order = { REVISE: 0, TODO: 1, REVIEW: 2, APPROVED: 3 };
+      const mine = state.deliverables
+        .filter(d => d.assignee_id === me && (d.month === state.month || (d.month < state.month && d.status !== 'APPROVED')))
+        .sort((a, b) => (order[a.status] - order[b.status]) || a.month.localeCompare(b.month) || clientName(a.client_id).localeCompare(clientName(b.client_id), 'th'));
+
+      const cards = mine.map(d => {
+        const client = state.clients.find(c => c.client_id === d.client_id);
+        const canSubmit = d.status !== 'APPROVED';
+        const resultUrl = safeUrl(d.result_url);
+        return `
+          <div class="bg-white rounded-2xl border ${d.status === 'REVISE' ? 'border-red-200' : 'border-slate-200/80'} p-5 shadow-xs flex flex-col gap-3">
+            <div class="flex items-start justify-between gap-3">
+              <div class="flex items-center gap-3 min-w-0">
+                ${clientLogoHtml(client, 'w-10 h-10')}
+                <div class="min-w-0">
+                  <p class="text-xs text-slate-500 truncate">${escapeHtml(clientName(d.client_id))}</p>
+                  <p class="text-base font-bold text-[#061D42] truncate">${escapeHtml(deliverableTitle(d))}</p>
+                </div>
+              </div>
+              ${statusBadge(d.status)}
+            </div>
+            <div class="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+              <span class="inline-flex items-center gap-1"><i data-lucide="${typeMeta(d.type).icon}" class="w-3.5 h-3.5"></i>${escapeHtml(typeMeta(d.type).label)}</span>
+              ${d.month !== state.month ? `<span class="px-2 py-0.5 rounded-full bg-red-50 text-red-700 font-semibold">ค้างจาก ${escapeHtml(monthLabel(d.month))}</span>` : ''}
+            </div>
+            ${d.review_note && d.status !== 'APPROVED' ? `<div class="p-3 rounded-xl ${d.status === 'REVISE' ? 'bg-red-50 border border-red-200 text-red-800' : 'bg-slate-50 border border-slate-200 text-slate-600'} text-xs whitespace-pre-line"><span class="font-semibold">ความเห็นจากแอดมิน:</span> ${escapeHtml(d.review_note)}</div>` : ''}
+            <div class="mt-auto pt-2 flex flex-wrap gap-2">
+              <button onclick="openClientWorkspace(${jsArg(d.client_id)})" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 hover:border-[#2585E8] text-xs font-semibold text-[#061D42] cursor-pointer">
+                <i data-lucide="folder-open" class="w-3.5 h-3.5"></i><span>ไฟล์/บรีฟลูกค้า</span>
+              </button>
+              ${resultUrl ? `<button onclick="openExternalLink(${jsArg(resultUrl)})" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 hover:border-[#2585E8] text-xs font-semibold text-slate-600 cursor-pointer"><i data-lucide="external-link" class="w-3.5 h-3.5"></i><span>ลิงก์ที่ส่ง</span></button>` : ''}
+              ${canSubmit ? `<button onclick="openSubmitModal(${jsArg(d.deliverable_id)})" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#2585E8] hover:bg-[#1d6fc4] text-white text-xs font-semibold cursor-pointer"><i data-lucide="send" class="w-3.5 h-3.5"></i><span>${resultUrl ? 'ส่งงานใหม่' : 'ส่งงาน'}</span></button>` : ''}
+            </div>
+          </div>`;
+      }).join('');
+
+      return `
+        <div class="space-y-6">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-[#061D42]">งานของฉัน</h1>
+              <p class="text-sm text-slate-500 mt-1">ทำเสร็จแล้วกด "ส่งงาน" แล้ววางลิงก์ผลงาน แอดมินจะตรวจจากลิงก์นั้น</p>
+            </div>
+            ${renderMonthPicker()}
+          </div>
+          ${mine.length
+            ? `<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">${cards}</div>`
+            : `<div class="bg-white rounded-2xl border border-slate-200/80 p-14 text-center">
+                <i data-lucide="party-popper" class="w-10 h-10 text-slate-300 mx-auto mb-3"></i>
+                <h3 class="text-base font-semibold text-[#061D42]">ไม่มีงานที่มอบหมายให้คุณในเดือนนี้</h3>
+                <p class="text-sm text-slate-500 mt-1">ถ้าคิดว่าควรมี ลองกด "โหลดข้อมูลล่าสุด" ด้านบน หรือแจ้งแอดมิน</p>
+              </div>`}
+        </div>`;
+    }
+
+    // ------------------------------------------------------------------------
+    // CLIENT PAGE SECTION: work for this client in the selected month
+    // ------------------------------------------------------------------------
+    function renderClientDeliverablesSection(client, isAdmin) {
+      const me = state.currentUser.user_id;
+      let items = monthDeliverables(client.client_id);
+      if (!isAdmin) items = items.filter(d => d.assignee_id === me);
+
+      const groups = DELIVERABLE_TYPES.map(type => ({ type, items: items.filter(d => d.type === type.id) })).filter(g => g.items.length);
+      const assigneeOptions = selected => `<option value="">— ยังไม่ระบุ —</option>` + state.team.map(u =>
+        `<option value="${escapeHtml(u.user_id)}" ${u.user_id === selected ? 'selected' : ''}>${escapeHtml(u.name)}</option>`).join('');
+
+      const groupsHtml = groups.map(group => {
+        const done = group.items.filter(d => d.status === 'APPROVED').length;
+        const rows = group.items.map(d => {
+          const resultUrl = safeUrl(d.result_url);
+          const mine = d.assignee_id === me;
+          return `
+            <div class="py-3 flex flex-col lg:flex-row lg:items-center gap-3">
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2">
+                  <p class="text-sm font-semibold text-[#061D42] truncate">${escapeHtml(deliverableTitle(d))}</p>
+                  ${isAdmin ? `<button onclick="renameDeliverable(${jsArg(d.deliverable_id)})" title="แก้ชื่องาน" class="p-1 rounded text-slate-400 hover:text-[#2585E8] cursor-pointer"><i data-lucide="pencil" class="w-3 h-3"></i></button>` : ''}
+                </div>
+                ${d.review_note && d.status !== 'APPROVED' ? `<p class="text-xs ${d.status === 'REVISE' ? 'text-red-600' : 'text-slate-500'} mt-0.5 line-clamp-2">ความเห็น: ${escapeHtml(d.review_note)}</p>` : ''}
+              </div>
+              <div class="flex flex-wrap items-center gap-2">
+                ${isAdmin
+                  ? `<select onchange="assignDeliverable(${jsArg(d.deliverable_id)}, this.value)" class="px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs bg-white text-[#061D42] max-w-[180px]">${assigneeOptions(d.assignee_id)}</select>`
+                  : `<span class="text-xs text-slate-500">${escapeHtml(memberName(d.assignee_id) || 'ยังไม่ระบุ')}</span>`}
+                ${statusBadge(d.status)}
+                ${resultUrl ? `<button onclick="openExternalLink(${jsArg(resultUrl)})" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 hover:border-[#2585E8] text-xs font-semibold text-slate-600 cursor-pointer"><i data-lucide="external-link" class="w-3 h-3"></i>ผลงาน</button>` : ''}
+                ${isAdmin && resultUrl ? `<button onclick="openReviewModal(${jsArg(d.deliverable_id)})" class="px-2.5 py-1.5 rounded-lg bg-[#061D42] hover:bg-[#2585E8] text-white text-xs font-semibold cursor-pointer">ตรวจ</button>` : ''}
+                ${(mine || isAdmin) && d.status !== 'APPROVED' ? `<button onclick="openSubmitModal(${jsArg(d.deliverable_id)})" class="px-2.5 py-1.5 rounded-lg bg-[#2585E8] hover:bg-[#1d6fc4] text-white text-xs font-semibold cursor-pointer">ส่งงาน</button>` : ''}
+                ${isAdmin ? `<button onclick="confirmDeleteDeliverable(${jsArg(d.deliverable_id)})" title="ลบงานชิ้นนี้" class="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 cursor-pointer"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>` : ''}
+              </div>
+            </div>`;
+        }).join('');
+        return `
+          <div class="bg-white rounded-2xl border border-slate-200/80 px-5 py-2 shadow-xs">
+            <div class="py-2 flex items-center justify-between border-b border-slate-100">
+              <h3 class="text-sm font-bold text-[#061D42] inline-flex items-center gap-2"><i data-lucide="${group.type.icon}" class="w-4 h-4 text-[#2585E8]"></i>${escapeHtml(group.type.label)}</h3>
+              <span class="text-xs font-semibold text-slate-500">ผ่าน ${done}/${group.items.length}</span>
+            </div>
+            <div class="divide-y divide-slate-100">${rows}</div>
+          </div>`;
+      }).join('');
+
+      const emptyHtml = `
+        <div class="bg-white rounded-2xl border border-dashed border-slate-300 p-8 text-center">
+          <p class="text-sm text-slate-500">${isAdmin ? 'ยังไม่มีงานของลูกค้ารายนี้ในเดือนนี้' : 'ไม่มีงานของคุณสำหรับลูกค้ารายนี้ในเดือนนี้'}</p>
+          ${isAdmin ? `
+            <div class="mt-3 flex flex-wrap justify-center gap-2">
+              <button onclick="openAddDeliverableModal(${jsArg(client.client_id)})" class="px-4 py-2 rounded-xl bg-[#061D42] hover:bg-[#0d2d63] text-white text-xs font-semibold cursor-pointer">+ เพิ่มงาน</button>
+              <button onclick="copyFromPreviousMonth(${jsArg(client.client_id)})" class="px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-xs font-semibold text-slate-700 cursor-pointer">คัดลอกจากเดือนก่อน</button>
+            </div>` : ''}
+        </div>`;
+
+      return `
+        <div>
+          <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <h2 class="text-sm font-bold uppercase tracking-wider text-slate-500">งานประจำเดือน (${items.length})</h2>
+            <div class="flex flex-wrap items-center gap-2">
+              ${renderMonthPicker()}
+              ${isAdmin && items.length ? `<button onclick="openAddDeliverableModal(${jsArg(client.client_id)})" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#061D42] hover:bg-[#0d2d63] text-white text-xs font-semibold cursor-pointer"><i data-lucide="plus" class="w-4 h-4 text-[#50D6B0]"></i>เพิ่มงาน</button>` : ''}
+            </div>
+          </div>
+          ${groups.length ? `<div class="space-y-4">${groupsHtml}</div>` : emptyHtml}
+        </div>`;
+    }
+
+    // ------------------------------------------------------------------------
+    // DELIVERABLE HANDLERS
+    // ------------------------------------------------------------------------
+    function openAddDeliverableModal(clientId) {
+      const clients = state.clients.filter(c => !c.archived).sort((a, b) => a.client_name.localeCompare(b.client_name, 'th'));
+      if (!clients.length) {
+        showToast('ยังไม่มีลูกค้า เพิ่มลูกค้าที่หน้า Clients ก่อน', 'error');
+        return;
+      }
+      document.getElementById('dlv-form-client').innerHTML = clients.map(c =>
+        `<option value="${escapeHtml(c.client_id)}">${escapeHtml(c.client_name)}</option>`).join('');
+      if (clientId) document.getElementById('dlv-form-client').value = clientId;
+      document.getElementById('dlv-form-type').innerHTML = DELIVERABLE_TYPES.map(t =>
+        `<option value="${escapeHtml(t.id)}">${escapeHtml(t.label)}</option>`).join('');
+      document.getElementById('dlv-form-assignee').innerHTML = `<option value="">— ยังไม่ระบุ —</option>` + state.team.map(u =>
+        `<option value="${escapeHtml(u.user_id)}">${escapeHtml(u.name)} (${escapeHtml(u.role)})</option>`).join('');
+      document.getElementById('dlv-form-count').value = '1';
+      document.getElementById('dlv-form-title').value = '';
+      document.getElementById('dlv-form-month-note').textContent = 'งานจะถูกเพิ่มในเดือน ' + monthLabel(state.month) + ' (เปลี่ยนเดือนได้ที่ปุ่มเลือกเดือนก่อนกดเพิ่มงาน)';
+      openModal('deliverable-modal');
+    }
+
+    document.getElementById('deliverable-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      const form = this;
+      withFormBusy(form, async () => {
+        const count = Number(document.getElementById('dlv-form-count').value);
+        if (!(count >= 1 && count <= 30)) {
+          showToast('จำนวนชิ้นต้องอยู่ระหว่าง 1–30', 'error');
+          return;
+        }
+        const created = await callAppsScript('createDeliverables', {
+          client_id: document.getElementById('dlv-form-client').value,
+          month: state.month,
+          type: document.getElementById('dlv-form-type').value,
+          count,
+          assignee_id: document.getElementById('dlv-form-assignee').value,
+          title: document.getElementById('dlv-form-title').value.trim()
+        });
+        if (!Array.isArray(created)) return;
+        state.deliverables.push(...created);
+        saveState();
+        closeModal('deliverable-modal');
+        renderApp();
+        showToast(`เพิ่มงาน ${created.length} ชิ้นแล้ว`);
+      });
+    });
+
+    async function assignDeliverable(deliverableId, userId) {
+      const updated = await callAppsScript('updateDeliverable', { deliverable_id: deliverableId, assignee_id: userId });
+      if (updated) {
+        replaceDeliverable(updated);
+        saveState();
+        showToast(userId ? 'ระบุผู้รับผิดชอบแล้ว: ' + memberName(userId) : 'ล้างผู้รับผิดชอบแล้ว');
+      }
+      renderApp(); // also resets the dropdown if saving failed
+    }
+
+    async function renameDeliverable(deliverableId) {
+      const item = state.deliverables.find(d => d.deliverable_id === deliverableId);
+      if (!item) return;
+      const title = window.prompt('ชื่องาน (เว้นว่างเพื่อใช้ชื่ออัตโนมัติ เช่น VDO #1)', item.title || '');
+      if (title === null) return;
+      const updated = await callAppsScript('updateDeliverable', { deliverable_id: deliverableId, title: title.trim() });
+      if (!updated) return;
+      replaceDeliverable(updated);
+      saveState();
+      renderApp();
+    }
+
+    function confirmDeleteDeliverable(deliverableId) {
+      const item = state.deliverables.find(d => d.deliverable_id === deliverableId);
+      if (!item) return;
+      document.getElementById('confirm-title').textContent = 'ลบงานชิ้นนี้';
+      document.getElementById('confirm-message').textContent = `ลบ "${deliverableTitle(item)}" ของ ${clientName(item.client_id)}? ลิงก์ผลงานที่ส่งมาจะหายจากระบบ (ไฟล์ใน Drive ไม่ถูกลบ)`;
+      document.getElementById('confirm-yes-btn').onclick = async function () {
+        const result = await callAppsScript('deleteDeliverable', { deliverable_id: deliverableId });
+        if (!result) return;
+        state.deliverables = state.deliverables.filter(d => d.deliverable_id !== deliverableId);
+        saveState();
+        closeConfirmModal();
+        renderApp();
+        showToast('ลบงานแล้ว');
+      };
+      document.getElementById('confirm-modal').classList.remove('hidden');
+    }
+
+    async function copyFromPreviousMonth(clientId) {
+      const fromMonth = shiftMonth(state.month, -1);
+      const target = clientId ? clientName(clientId) : 'ทุกลูกค้า';
+      if (!window.confirm(`คัดลอกรายการงานของ ${target} จาก ${monthLabel(fromMonth)} มาเป็นงานของ ${monthLabel(state.month)}?\n\nลูกค้าที่มีงานในเดือนนี้อยู่แล้วจะถูกข้าม (ไม่เพิ่มซ้ำ)`)) return;
+      const result = await callAppsScript('copyDeliverables', { from_month: fromMonth, to_month: state.month, client_id: clientId || '' });
+      if (!result) return;
+      state.deliverables.push(...(result.created || []));
+      saveState();
+      renderApp();
+      const skipped = (result.skipped_client_ids || []).length;
+      if (!result.created.length && !skipped) showToast(`ไม่มีงานใน ${monthLabel(fromMonth)} ให้คัดลอก`, 'error');
+      else showToast(`คัดลอกแล้ว ${result.created.length} ชิ้น` + (skipped ? ` (ข้าม ${skipped} ลูกค้าที่มีงานอยู่แล้ว)` : ''));
+    }
+
+    function openSubmitModal(deliverableId) {
+      const item = state.deliverables.find(d => d.deliverable_id === deliverableId);
+      if (!item) return;
+      document.getElementById('submit-form-id').value = deliverableId;
+      document.getElementById('submit-form-title').textContent = deliverableTitle(item);
+      document.getElementById('submit-form-client').textContent = clientName(item.client_id) + ' · ' + typeMeta(item.type).label + ' · ' + monthLabel(item.month);
+      const note = document.getElementById('submit-form-note');
+      note.textContent = item.review_note ? 'ความเห็นจากแอดมิน: ' + item.review_note : '';
+      note.classList.toggle('hidden', !(item.review_note && item.status === 'REVISE'));
+      document.getElementById('submit-form-url').value = item.result_url || '';
+      openModal('submit-modal');
+      document.getElementById('submit-form-url').focus();
+    }
+
+    document.getElementById('submit-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      const form = this;
+      withFormBusy(form, async () => {
+        const url = safeUrl(formatUrl(document.getElementById('submit-form-url').value));
+        if (!url) {
+          showToast('กรุณาวางลิงก์ที่ขึ้นต้นด้วย https://', 'error');
+          return;
+        }
+        const updated = await callAppsScript('submitDeliverable', {
+          deliverable_id: document.getElementById('submit-form-id').value,
+          result_url: url
+        });
+        if (!updated) return;
+        replaceDeliverable(updated);
+        saveState();
+        closeModal('submit-modal');
+        renderApp();
+        showToast('ส่งงานแล้ว รอแอดมินตรวจ');
+      });
+    });
+
+    function openReviewModal(deliverableId) {
+      const item = state.deliverables.find(d => d.deliverable_id === deliverableId);
+      if (!item) return;
+      document.getElementById('review-form-id').value = deliverableId;
+      document.getElementById('review-form-title').textContent = clientName(item.client_id) + ' · ' + deliverableTitle(item);
+      document.getElementById('review-form-meta').textContent =
+        'ผู้รับผิดชอบ: ' + (memberName(item.assignee_id) || 'ยังไม่ระบุ') + (item.submitted_at ? ' · ส่งเมื่อ ' + item.submitted_at : '');
+      document.getElementById('review-form-open').onclick = () => openExternalLink(item.result_url);
+      document.getElementById('review-form-note').value = item.status === 'REVISE' ? (item.review_note || '') : '';
+      openModal('review-modal');
+    }
+
+    function submitReview(decision) {
+      const box = document.querySelector('#review-modal > div');
+      withFormBusy(box, async () => {
+        const note = document.getElementById('review-form-note').value.trim();
+        if (decision === 'REVISE' && !note) {
+          showToast('ส่งกลับแก้ต้องใส่ความเห็นว่าให้แก้อะไร', 'error');
+          return;
+        }
+        const updated = await callAppsScript('reviewDeliverable', {
+          deliverable_id: document.getElementById('review-form-id').value,
+          decision,
+          note
+        });
+        if (!updated) return;
+        replaceDeliverable(updated);
+        saveState();
+        closeModal('review-modal');
+        renderApp();
+        showToast(decision === 'APPROVED' ? 'บันทึกว่าผ่านแล้ว' : 'ส่งกลับให้แก้แล้ว');
+      });
     }
 
     // ------------------------------------------------------------------------
@@ -829,7 +1541,7 @@
               const connected = clientWs.filter(w => safeUrl(w.external_url)).length;
 
               const logoHtml = safeUrl(client.logo_url)
-                ? `<img src="${escapeHtml(safeUrl(client.logo_url))}" alt="${escapeHtml(client.client_name)}" class="w-14 h-14 rounded-xl object-cover border border-slate-200 bg-slate-50 flex-shrink-0" />`
+                ? `<img src="${escapeHtml(safeUrl(client.logo_url))}" alt="${escapeHtml(client.client_name)}" referrerpolicy="no-referrer" class="w-14 h-14 rounded-xl object-cover border border-slate-200 bg-slate-50 flex-shrink-0" />`
                 : `<div class="w-14 h-14 rounded-xl bg-gradient-to-br from-[#061D42] to-[#0f3470] text-white font-bold text-lg flex items-center justify-center flex-shrink-0">${escapeHtml(getInitials(client.client_name))}</div>`;
 
               const adminActions = isAdmin ? `
@@ -911,7 +1623,7 @@
       const clientWorkspaces = state.workspaces.filter(w => w.client_id === client.client_id);
 
       const logoHtml = safeUrl(client.logo_url)
-        ? `<img src="${escapeHtml(safeUrl(client.logo_url))}" alt="${escapeHtml(client.client_name)}" class="w-20 h-20 rounded-2xl object-cover border border-slate-200 bg-slate-50 flex-shrink-0" />`
+        ? `<img src="${escapeHtml(safeUrl(client.logo_url))}" alt="${escapeHtml(client.client_name)}" referrerpolicy="no-referrer" class="w-20 h-20 rounded-2xl object-cover border border-slate-200 bg-slate-50 flex-shrink-0" />`
         : `<div class="w-20 h-20 rounded-2xl bg-[#061D42] text-white font-bold text-2xl flex items-center justify-center flex-shrink-0 shadow-inner">${escapeHtml(getInitials(client.client_name))}</div>`;
 
       const wsCardsHtml = clientWorkspaces.map(ws => {
@@ -1006,6 +1718,8 @@
               ${wsCardsHtml}
             </div>
           </div>
+
+          ${renderClientDeliverablesSection(client, isAdmin)}
         </div>`;
     }
 
@@ -1097,19 +1811,19 @@
           <div class="flex items-center gap-3 min-w-0">
             <div class="w-9 h-9 rounded-full bg-[#061D42] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">${escapeHtml(getInitials(u.name))}</div>
             <div class="min-w-0">
-              <p class="text-sm font-semibold text-[#061D42] truncate">${escapeHtml(u.name)}</p>
+              <p class="text-sm font-semibold text-[#061D42] truncate">${escapeHtml(u.name)}${u.active ? '' : ' <span class="text-xs font-normal text-red-500">(ปิดใช้งาน)</span>'}</p>
               <p class="text-xs text-slate-500 truncate">@${escapeHtml(u.username || String(u.email || '').split('@')[0])}</p>
             </div>
           </div>
           <div class="flex items-center gap-2.5">
-            <button onclick="toggleUserRole(${jsArg(u.user_id)})" title="Click to switch role"
+            <button onclick="toggleUserRole(${jsArg(u.user_id)})" title="กดเพื่อสลับ ADMIN / STAFF"
               class="px-2.5 py-1 rounded-lg text-xs font-bold tracking-wider cursor-pointer transition ${u.role === 'ADMIN' ? 'bg-[#50D6B0]/20 text-[#0F766E]' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">
               ${u.role}
             </button>
-            <button onclick="resetUserPassword(${jsArg(u.user_id)})" title="Generate a new temporary password" class="p-1.5 rounded-lg text-slate-400 hover:text-[#2585E8] hover:bg-blue-50 transition cursor-pointer">
+            <button onclick="openPasswordModal(${jsArg(u.user_id)})" title="ตั้งรหัสผ่านใหม่" class="p-1.5 rounded-lg text-slate-400 hover:text-[#2585E8] hover:bg-blue-50 transition cursor-pointer">
               <i data-lucide="key-round" class="w-4 h-4"></i>
             </button>
-            <button onclick="removeUser(${jsArg(u.user_id)})" title="Revoke Access" class="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition cursor-pointer">
+            <button onclick="removeUser(${jsArg(u.user_id)})" title="ลบบัญชีนี้" class="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition cursor-pointer">
               <i data-lucide="trash-2" class="w-4 h-4"></i>
             </button>
           </div>
@@ -1119,7 +1833,7 @@
         <div class="space-y-8 max-w-4xl">
           <div>
             <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-[#061D42]">Settings & Admin Controls</h1>
-            <p class="text-sm text-slate-500 mt-1">Manage internal team access roles and connect your Google Sheets & Apps Script database.</p>
+            <p class="text-sm text-slate-500 mt-1">จัดการบัญชีทีมงาน: ADMIN แก้ไขได้ทุกอย่าง / STAFF ดูข้อมูลและส่งงานของตัวเองได้เท่านั้น</p>
           </div>
 
           <!-- Team Access Section -->
@@ -1129,64 +1843,103 @@
                 <i data-lucide="shield" class="w-5 h-5"></i>
               </div>
               <div>
-                <h2 class="text-base font-bold text-[#061D42]">Internal Team Access</h2>
-                <p class="text-xs text-slate-500">Each team member signs in with a unique password. Admins manage clients, workspaces, and team access; Staff have view-only access.</p>
+                <h2 class="text-base font-bold text-[#061D42]">บัญชีทีมงาน</h2>
+                <p class="text-xs text-slate-500">ตั้ง Username และรหัสผ่าน (อย่างน้อย 6 ตัว) ให้แต่ละคน แล้วแจ้งให้เจ้าตัวทางช่องทางส่วนตัว</p>
               </div>
             </div>
 
-            <form onsubmit="handleAddTeamMember(event)" class="grid grid-cols-1 sm:grid-cols-12 gap-3 bg-[#F5F7FA] p-4 rounded-xl">
-              <input id="new-member-name" type="text" required placeholder="Full Name" class="sm:col-span-4 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#2585E8]" />
-              <input id="new-member-username" type="text" required minlength="3" maxlength="30" pattern="[A-Za-z0-9][A-Za-z0-9._-]{2,29}" autocomplete="off" placeholder="Username" class="sm:col-span-4 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#2585E8]" />
-              <select id="new-member-role" class="sm:col-span-2 px-3 py-2 rounded-xl bg-white border border-slate-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#2585E8]">
+            <form id="add-member-form" onsubmit="handleAddTeamMember(event)" class="grid grid-cols-1 sm:grid-cols-12 gap-3 bg-[#F5F7FA] p-4 rounded-xl">
+              <input id="new-member-name" type="text" required maxlength="100" placeholder="ชื่อ-นามสกุล" class="sm:col-span-3 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#2585E8]" />
+              <input id="new-member-username" type="text" required minlength="3" maxlength="30" pattern="[A-Za-z0-9][A-Za-z0-9._-]{2,29}" autocomplete="off" placeholder="Username" class="sm:col-span-3 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#2585E8]" />
+              <input id="new-member-password" type="text" required minlength="6" maxlength="100" autocomplete="new-password" placeholder="Password (6 ตัวขึ้นไป)" class="sm:col-span-3 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#2585E8]" />
+              <select id="new-member-role" class="sm:col-span-1 px-2 py-2 rounded-xl bg-white border border-slate-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#2585E8]">
                 <option value="STAFF">STAFF</option>
                 <option value="ADMIN">ADMIN</option>
               </select>
-              <button type="submit" class="sm:col-span-2 py-2 px-4 rounded-xl bg-[#061D42] hover:bg-[#0d2d63] text-white text-xs font-semibold transition cursor-pointer">+ Add User</button>
+              <button type="submit" class="sm:col-span-2 py-2 px-4 rounded-xl bg-[#061D42] hover:bg-[#0d2d63] text-white text-xs font-semibold transition cursor-pointer">+ เพิ่มคน</button>
             </form>
 
             <div class="divide-y divide-slate-100">${usersHtml}</div>
           </div>
-
-          <!-- Google Sheets Backend Section -->
-          <form onsubmit="handleSaveBackendConfig(event)" class="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs space-y-5">
-            <div class="flex items-center gap-3 border-b border-slate-100 pb-4">
-              <div class="p-2.5 rounded-xl bg-[#50D6B0]/20 text-[#0F766E]">
-                <i data-lucide="database" class="w-5 h-5"></i>
-              </div>
-              <div>
-                <h2 class="text-base font-bold text-[#061D42]">Google Sheets Backend Connection</h2>
-                <p class="text-xs text-slate-500">ระบบใช้ URL ที่กำหนดไว้ในตัวไฟล์ HTML โดยตรง เพื่อเชื่อม Google Sheets อัตโนมัติ</p>
-              </div>
-            </div>
-
-            <div>
-              <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Google Apps Script Web App URL (แก้ในไฟล์ index.html)</label>
-              <input id="cfg-api-url" type="url" readonly placeholder="Set GTT_APPS_SCRIPT_URL in index.html" value="${escapeHtml(state.apiEndpoint)}"
-                class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm text-[#061D42] focus:outline-none focus:ring-2 focus:ring-[#2585E8]" />
-            </div>
-
-            <p class="text-xs text-slate-400">ไม่ต้องกรอก API Token เพิ่มเติม เปลี่ยน URL ได้ที่ตัวแปร GTT_APPS_SCRIPT_URL ในไฟล์ index.html เท่านั้น</p>
-
-            <div class="pt-2 flex flex-wrap items-center justify-between gap-3">
-              <span class="text-xs text-slate-400">Changes save in this browser. Sign in again if you change the Web App URL.</span>
-              <button type="submit" class="px-5 py-2.5 rounded-xl bg-[#061D42] hover:bg-[#0d2d63] text-white text-sm font-semibold shadow-sm transition cursor-pointer">Save Configuration</button>
-            </div>
-          </form>
         </div>`;
     }
 
     // ------------------------------------------------------------------------
     // CRUD HANDLERS: CLIENTS
     // ------------------------------------------------------------------------
+    // A new logo picked in the form waits here (already shrunk) until the form is saved.
+    let pendingLogoDataUrl = '';
+
+    function setClientLogoPreview(url) {
+      const preview = document.getElementById('client-logo-preview');
+      const safe = safeUrl(url) || (String(url).startsWith('data:image/') ? url : '');
+      preview.innerHTML = safe
+        ? `<img src="${escapeHtml(safe)}" alt="" referrerpolicy="no-referrer" class="w-full h-full object-cover" />`
+        : `<i data-lucide="image" class="w-6 h-6"></i>`;
+      document.getElementById('client-logo-clear').classList.toggle('hidden', !safe);
+      lucide.createIcons();
+    }
+
+    function clearClientLogo() {
+      pendingLogoDataUrl = '';
+      document.getElementById('client-form-logo').value = '';
+      document.getElementById('client-form-logo-file').value = '';
+      setClientLogoPreview('');
+    }
+
+    // Shrinks the picked image to at most 400 px so the upload is small and fast.
+    // PNG keeps transparency (common for logos); everything else becomes JPEG.
+    function shrinkImage(file, maxSize) {
+      return new Promise((resolve, reject) => {
+        const objectUrl = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => {
+          const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.max(1, Math.round(img.width * scale));
+          canvas.height = Math.max(1, Math.round(img.height * scale));
+          canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+          URL.revokeObjectURL(objectUrl);
+          resolve(file.type === 'image/png' ? canvas.toDataURL('image/png') : canvas.toDataURL('image/jpeg', 0.9));
+        };
+        img.onerror = () => {
+          URL.revokeObjectURL(objectUrl);
+          reject(new Error('เปิดไฟล์รูปนี้ไม่ได้'));
+        };
+        img.src = objectUrl;
+      });
+    }
+
+    document.getElementById('client-form-logo-file').addEventListener('change', async function () {
+      const file = this.files && this.files[0];
+      if (!file) return;
+      if (!/^image\/(png|jpeg|webp)$/.test(file.type)) {
+        showToast('รองรับเฉพาะรูป PNG, JPG หรือ WebP', 'error');
+        this.value = '';
+        return;
+      }
+      if (file.size > 15 * 1024 * 1024) {
+        showToast('ไฟล์ใหญ่เกิน 15 MB', 'error');
+        this.value = '';
+        return;
+      }
+      try {
+        pendingLogoDataUrl = await shrinkImage(file, 400);
+        setClientLogoPreview(pendingLogoDataUrl);
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+
     function openCreateClientModal() {
       document.getElementById('client-modal-title').textContent = 'Add New Client';
       document.getElementById('client-form-submit').textContent = 'Create Client';
       document.getElementById('client-form-id').value = '';
       document.getElementById('client-form-name').value = '';
-      document.getElementById('client-form-logo').value = '';
       document.getElementById('client-form-desc').value = '';
+      clearClientLogo();
       document.getElementById('client-auto-setup-note').classList.remove('hidden');
-      document.getElementById('client-modal').classList.remove('hidden');
+      openModal('client-modal');
     }
 
     function openEditClientModal(clientId) {
@@ -1196,82 +1949,89 @@
       document.getElementById('client-form-submit').textContent = 'Save Changes';
       document.getElementById('client-form-id').value = client.client_id;
       document.getElementById('client-form-name').value = client.client_name;
-      document.getElementById('client-form-logo').value = client.logo_url || '';
       document.getElementById('client-form-desc').value = client.description || '';
+      clearClientLogo();
+      document.getElementById('client-form-logo').value = client.logo_url || '';
+      setClientLogoPreview(client.logo_url || '');
       document.getElementById('client-auto-setup-note').classList.add('hidden');
-      document.getElementById('client-modal').classList.remove('hidden');
+      openModal('client-modal');
     }
 
     function closeClientModal() {
       document.getElementById('client-modal').classList.add('hidden');
     }
 
-    document.getElementById('client-form').addEventListener('submit', async function (e) {
+    document.getElementById('client-form').addEventListener('submit', function (e) {
       e.preventDefault();
-      const id = document.getElementById('client-form-id').value;
-      const name = document.getElementById('client-form-name').value.trim();
-      const logo = document.getElementById('client-form-logo').value.trim();
-      const desc = document.getElementById('client-form-desc').value.trim();
-      const today = new Date().toISOString().split('T')[0];
+      const form = this;
+      withFormBusy(form, async () => {
+        const id = document.getElementById('client-form-id').value;
+        const name = document.getElementById('client-form-name').value.trim();
+        const desc = document.getElementById('client-form-desc').value.trim();
+        let logo = document.getElementById('client-form-logo').value.trim();
+        const today = new Date().toISOString().split('T')[0];
 
-      if (!id) {
-        const newClientId = 'cli_' + Date.now();
-        const newClient = {
-          client_id: newClientId,
-          client_name: name,
-          logo_url: logo,
-          description: desc,
-          archived: false,
-          created_at: today
-        };
-        const defaultWorkspaces = DEFAULT_WORKSPACE_TEMPLATES.map((tpl, idx) => ({
-          workspace_id: `ws_${Date.now()}_${idx}`,
-          client_id: newClientId,
-          workspace_name: tpl.workspace_name,
-          description: tpl.description,
-          icon: tpl.icon,
-          color: tpl.color,
-          external_url: '',
-          created_at: today,
-          updated_at: today
-        }));
+        // Upload the new logo to the company Drive first; save the client only if that worked.
+        if (pendingLogoDataUrl) {
+          const uploaded = await callAppsScript('uploadClientLogo', { data_url: pendingLogoDataUrl });
+          if (!uploaded || !uploaded.url) return;
+          logo = uploaded.url;
+          pendingLogoDataUrl = '';
+          document.getElementById('client-form-logo').value = logo;
+        }
 
-        if (state.apiEndpoint) {
+        if (!id) {
+          const newClientId = 'cli_' + Date.now();
+          const newClient = {
+            client_id: newClientId,
+            client_name: name,
+            logo_url: logo,
+            description: desc,
+            archived: false,
+            created_at: today
+          };
+          const defaultWorkspaces = DEFAULT_WORKSPACE_TEMPLATES.map((tpl, idx) => ({
+            workspace_id: `ws_${Date.now()}_${idx}`,
+            client_id: newClientId,
+            workspace_name: tpl.workspace_name,
+            description: tpl.description,
+            icon: tpl.icon,
+            color: tpl.color,
+            external_url: '',
+            created_at: today,
+            updated_at: today
+          }));
+
           const savedClient = await callAppsScript('createClient', { client: newClient, defaultWorkspaces });
           if (!savedClient) return;
-        }
-        state.clients.unshift(newClient);
-        state.workspaces.push(...defaultWorkspaces);
-        saveState();
-        closeClientModal();
-        state.selectedClientId = newClientId;
-        renderApp();
-        showToast(`Created "${name}" with 4 default workspaces`);
-      } else {
-        const idx = state.clients.findIndex(c => c.client_id === id);
-        if (idx !== -1) {
+          state.clients.unshift(savedClient);
+          state.workspaces.push(...defaultWorkspaces);
+          saveState();
+          closeClientModal();
+          state.selectedClientId = newClientId;
+          renderApp();
+          showToast(`Created "${name}" with 4 default workspaces`);
+        } else {
+          const idx = state.clients.findIndex(c => c.client_id === id);
+          if (idx === -1) return;
           const updatedClient = { ...state.clients[idx], client_name: name, logo_url: logo, description: desc };
-          if (state.apiEndpoint) {
-            const savedClient = await callAppsScript('updateClient', updatedClient);
-            if (!savedClient) return;
-          }
+          const savedClient = await callAppsScript('updateClient', updatedClient);
+          if (!savedClient) return;
           state.clients[idx] = updatedClient;
           saveState();
           closeClientModal();
           renderApp();
           showToast(`Updated "${name}"`);
         }
-      }
+      });
     });
 
     async function toggleArchiveClient(clientId) {
       const idx = state.clients.findIndex(c => c.client_id === clientId);
       if (idx === -1) return;
       const updatedClient = { ...state.clients[idx], archived: !state.clients[idx].archived };
-      if (state.apiEndpoint) {
-        const savedClient = await callAppsScript('updateClient', updatedClient);
-        if (!savedClient) return;
-      }
+      const savedClient = await callAppsScript('updateClient', updatedClient);
+      if (!savedClient) return;
       state.clients[idx] = updatedClient;
       saveState();
       renderApp();
@@ -1282,14 +2042,13 @@
       const client = state.clients.find(c => c.client_id === clientId);
       if (!client) return;
       document.getElementById('confirm-title').textContent = 'Delete Client Permanently';
-      document.getElementById('confirm-message').textContent = `Are you sure you want to delete "${client.client_name}" and all of its connected workspaces? This action cannot be undone.`;
+      document.getElementById('confirm-message').textContent = `ลบ "${client.client_name}" พร้อม Workspaces และงานทุกเดือนของลูกค้ารายนี้? ย้อนกลับไม่ได้ (ถ้าแค่หยุดทำงานกับลูกค้า แนะนำให้กด Archive แทน)`;
       document.getElementById('confirm-yes-btn').onclick = async function () {
-        if (state.apiEndpoint) {
-          const result = await callAppsScript('deleteClient', { client_id: clientId });
-          if (!result) return;
-        }
+        const result = await callAppsScript('deleteClient', { client_id: clientId });
+        if (!result) return;
         state.clients = state.clients.filter(c => c.client_id !== clientId);
         state.workspaces = state.workspaces.filter(w => w.client_id !== clientId);
+        state.deliverables = state.deliverables.filter(d => d.client_id !== clientId);
         if (state.selectedClientId === clientId) state.selectedClientId = null;
         saveState();
         closeConfirmModal();
@@ -1354,8 +2113,12 @@
       updateWsUrlHelper(this.value);
     });
 
-    document.getElementById('workspace-form').addEventListener('submit', async function (e) {
+    document.getElementById('workspace-form').addEventListener('submit', function (e) {
       e.preventDefault();
+      withFormBusy(this, () => saveWorkspaceForm());
+    });
+
+    async function saveWorkspaceForm() {
       const wsId = document.getElementById('ws-form-id').value;
       const clientId = document.getElementById('ws-form-client-id').value;
       const name = document.getElementById('ws-form-name').value.trim().toUpperCase();
@@ -1409,7 +2172,7 @@
           showToast(`Saved "${name}" settings`);
         }
       }
-    });
+    }
 
     function confirmDeleteWorkspace(wsId) {
       const ws = state.workspaces.find(w => w.workspace_id === wsId);
@@ -1437,138 +2200,101 @@
     // ------------------------------------------------------------------------
     // ADMIN SETTINGS HANDLERS
     // ------------------------------------------------------------------------
-    async function handleAddTeamMember(e) {
+    function handleAddTeamMember(e) {
       e.preventDefault();
-      const name = document.getElementById('new-member-name').value.trim();
-      const username = document.getElementById('new-member-username').value.trim().toLowerCase();
-      const role = document.getElementById('new-member-role').value;
+      const form = document.getElementById('add-member-form');
+      withFormBusy(form, async () => {
+        const name = document.getElementById('new-member-name').value.trim();
+        const username = document.getElementById('new-member-username').value.trim().toLowerCase();
+        const password = document.getElementById('new-member-password').value;
+        const role = document.getElementById('new-member-role').value;
 
-      if (!/^[a-z0-9][a-z0-9._-]{2,29}$/.test(username)) {
-        showToast('Username must be 3–30 characters using letters, numbers, dots, underscores or hyphens.', 'error');
-        return;
-      }
-      if (state.users.some(u => String(u.username || String(u.email || '').split('@')[0]).toLowerCase() === username)) {
-        showToast('This username is already registered.', 'error');
-        return;
-      }
+        if (!/^[a-z0-9][a-z0-9._-]{2,29}$/.test(username)) {
+          showToast('Username ต้องยาว 3–30 ตัว ใช้ได้เฉพาะ a-z 0-9 . _ -', 'error');
+          return;
+        }
+        if (password.length < 6) {
+          showToast('รหัสผ่านต้องมีอย่างน้อย 6 ตัว', 'error');
+          return;
+        }
+        if (state.users.some(u => String(u.username || '').toLowerCase() === username)) {
+          showToast('Username นี้มีคนใช้แล้ว', 'error');
+          return;
+        }
 
-      const newUser = {
-        user_id: 'usr_' + Date.now(),
-        name,
-        username,
-        role,
-        active: true
-      };
-
-      let temporaryPassword = '';
-      if (state.apiEndpoint) {
-        const created = await callAppsScript('createUser', newUser);
-        if (!created || !created.user) return;
-        state.users.push(created.user);
-        temporaryPassword = created.temporary_password || '';
-      } else {
-        state.users.push(newUser);
-      }
-      saveState();
-      renderApp();
-      showToast(`Added ${name} (${role})`);
-      if (temporaryPassword) {
-        window.alert(`New account created for ${name}.\n\nUsername: ${username}\nTemporary password: ${temporaryPassword}\n\nSend these credentials securely to the team member. The password will not be shown again.`);
-      }
+        const created = await callAppsScript('createUser', { name, username, password, role, active: true });
+        if (!created || !created.user_id) return;
+        state.users.push(created);
+        state.team.push({ user_id: created.user_id, name: created.name, role: created.role });
+        saveState();
+        renderApp();
+        showToast(`เพิ่ม ${name} (${role}) แล้ว — Username: ${username}`);
+      });
     }
 
     async function toggleUserRole(userId) {
       const idx = state.users.findIndex(u => u.user_id === userId);
       if (idx === -1) return;
       const newRole = state.users[idx].role === 'ADMIN' ? 'STAFF' : 'ADMIN';
-
-      if (state.apiEndpoint) {
-        const savedUser = await callAppsScript('updateUser', { user_id: userId, role: newRole });
-        if (!savedUser) return;
-        state.users[idx] = savedUser;
-      } else {
-        state.users[idx].role = newRole;
-      }
+      const savedUser = await callAppsScript('updateUser', { user_id: userId, role: newRole });
+      if (!savedUser) return;
+      state.users[idx] = savedUser;
+      const member = state.team.find(u => u.user_id === userId);
+      if (member) member.role = newRole;
       saveState();
       renderApp();
-      showToast('Updated member role');
+      showToast('เปลี่ยนสิทธิ์เป็น ' + newRole + ' แล้ว');
     }
 
-    async function resetUserPassword(userId) {
-      if (!state.apiEndpoint) {
-        showToast('Connect Google Sheets first to issue individual passwords.', 'error');
-        return;
-      }
+    function openPasswordModal(userId) {
       const target = state.users.find(u => u.user_id === userId);
       if (!target) return;
-      if (!window.confirm(`Generate a new password for ${target.name}? Their current password will stop working.`)) return;
-      const result = await callAppsScript('resetUserPassword', { user_id: userId });
-      if (!result || !result.temporary_password) return;
-      window.alert(`New temporary password for ${target.name} (@${target.username || String(target.email || '').split('@')[0]}):\n\n${result.temporary_password}\n\nSend it securely to the team member. It will not be shown again.`);
-      if (state.currentUser && state.currentUser.user_id === userId) {
-        logout();
-      }
+      document.getElementById('password-form-id').value = userId;
+      document.getElementById('password-form-user').textContent = `${target.name} (@${target.username})`;
+      document.getElementById('password-form-value').value = '';
+      openModal('password-modal');
+      document.getElementById('password-form-value').focus();
     }
+
+    document.getElementById('password-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      const form = this;
+      withFormBusy(form, async () => {
+        const userId = document.getElementById('password-form-id').value;
+        const password = document.getElementById('password-form-value').value;
+        if (password.length < 6) {
+          showToast('รหัสผ่านต้องมีอย่างน้อย 6 ตัว', 'error');
+          return;
+        }
+        const result = await callAppsScript('setUserPassword', { user_id: userId, password });
+        if (!result) return;
+        closeModal('password-modal');
+        // Changing your own password signs you out (all sessions of that user end).
+        if (state.currentUser && state.currentUser.user_id === userId) {
+          logout();
+          showToast('เปลี่ยนรหัสผ่านแล้ว กรุณาเข้าสู่ระบบด้วยรหัสใหม่');
+          return;
+        }
+        showToast(`ตั้งรหัสผ่านใหม่ให้ ${result.name} แล้ว`);
+      });
+    });
 
     async function removeUser(userId) {
       if (state.currentUser && state.currentUser.user_id === userId) {
-        showToast('You cannot remove your own account.', 'error');
+        showToast('ลบบัญชีของตัวเองไม่ได้', 'error');
         return;
       }
       const target = state.users.find(u => u.user_id === userId);
       if (!target) return;
+      if (!window.confirm(`ลบบัญชี ${target.name} (@${target.username})? คนนี้จะเข้าระบบไม่ได้อีก`)) return;
 
-      if (state.apiEndpoint) {
-        const result = await callAppsScript('deleteUser', { user_id: userId });
-        if (!result) return;
-      } else if (state.users.filter(u => u.active !== false && u.role === 'ADMIN').length <= 1 && target.role === 'ADMIN') {
-        showToast('At least one active administrator must remain.', 'error');
-        return;
-      }
-
+      const result = await callAppsScript('deleteUser', { user_id: userId });
+      if (!result) return;
       state.users = state.users.filter(u => u.user_id !== userId);
+      state.team = state.team.filter(u => u.user_id !== userId);
       saveState();
       renderApp();
-      showToast('Removed team member access');
-    }
-
-    async function handleSaveBackendConfig(e) {
-      e.preventDefault();
-      const previousEndpoint = state.apiEndpoint;
-      const nextEndpoint = document.getElementById('cfg-api-url').value.trim();
-      state.apiEndpoint = nextEndpoint;
-      state.apiSecret = '';
-      localStorage.setItem('gtt_gas_api_url', state.apiEndpoint);
-      localStorage.removeItem('gtt_gas_api_secret');
-
-      if (previousEndpoint !== nextEndpoint) {
-        sessionStorage.removeItem('gtt_session_token');
-        sessionStorage.removeItem('gtt_current_user');
-        state.currentUser = null;
-        state.activeNav = 'clients';
-        state.selectedClientId = null;
-        if (state.apiEndpoint) {
-          showToast('Connection URL saved. Sign in again using your individual password.');
-        } else {
-          showToast('ยังไม่ได้กำหนด Web App URL ใน GTT_APPS_SCRIPT_URL ของ index.html', 'error');
-        }
-        document.getElementById('app-shell').classList.add('hidden');
-        document.getElementById('login-view').classList.remove('hidden');
-        return;
-      }
-
-      if (!state.apiEndpoint) {
-        showToast('กรุณากำหนด Web App URL ใน GTT_APPS_SCRIPT_URL ของ index.html', 'error');
-        renderApp();
-        return;
-      }
-
-      if (!sessionStorage.getItem('gtt_session_token')) {
-        showToast('Settings saved. Sign in again to connect to Google Sheets.');
-        return;
-      }
-      showToast('Google Sheets connection settings saved.');
-      await syncFromGoogleSheets();
+      showToast('ลบบัญชีแล้ว');
     }
 
     // Boot Application
