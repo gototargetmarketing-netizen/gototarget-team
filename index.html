@@ -23,7 +23,9 @@
     @media (max-width: 767px) {
       input, select, textarea { font-size: 16px !important; }
     }
-    html, body { overflow-x: hidden; }
+    /* clip (not hidden) stops sideways scrolling without turning body into a scroll box,
+       which would break the sticky sidebar/header. */
+    html, body { overflow-x: clip; }
     @keyframes gttpop {
       0% { transform: scale(0.85); opacity: 0; }
       100% { transform: scale(1); opacity: 1; }
@@ -32,6 +34,21 @@
       0% { transform: translateX(-100%); }
       100% { transform: translateX(300%); }
     }
+    /* Brand look (Nov 2026 redesign): soft white cards, gradient icon tiles, wavy navy header. */
+    .gtt-card { background: #fff; border: 1px solid rgba(11,31,68,0.06); border-radius: 1.25rem; box-shadow: 0 6px 24px -12px rgba(11,31,68,0.18); }
+    .gtt-tile { color: #fff; box-shadow: 0 8px 18px -8px var(--tile-shadow, rgba(30,111,255,0.55)); }
+    .gtt-tile-blue   { background: linear-gradient(135deg, #4D9BFF, #1E6FFF); --tile-shadow: rgba(30,111,255,0.55); }
+    .gtt-tile-cyan   { background: linear-gradient(135deg, #3FD3E6, #10A5C9); --tile-shadow: rgba(16,165,201,0.5); }
+    .gtt-tile-mint   { background: linear-gradient(135deg, #34D9A8, #0FA37F); --tile-shadow: rgba(15,163,127,0.5); }
+    .gtt-tile-orange { background: linear-gradient(135deg, #FFD36E, #F5A524); --tile-shadow: rgba(245,165,36,0.5); }
+    .gtt-tile-navy   { background: linear-gradient(135deg, #24467F, #0B1F44); --tile-shadow: rgba(11,31,68,0.45); }
+    .gtt-tile-slate  { background: linear-gradient(135deg, #A3B1C6, #64748B); --tile-shadow: rgba(100,116,139,0.45); }
+    /* Big faint icon + soft colour wash in the bottom-right corner of a card. */
+    .gtt-deco { position: absolute; right: -6px; bottom: -6px; width: 150px; height: 110px; pointer-events: none; }
+    .gtt-deco::before { content: ''; position: absolute; inset: 0; border-top-left-radius: 120px; background: linear-gradient(135deg, transparent 10%, var(--deco, rgba(30,111,255,0.14))); }
+    .gtt-deco svg, .gtt-deco i { position: absolute; right: 18px; bottom: 16px; width: 64px; height: 64px; color: var(--deco-icon, #1E6FFF); opacity: 0.22; }
+    .gtt-btn-dark { background: linear-gradient(135deg, #16346B, #0B1F44); }
+    .gtt-btn-dark:hover { background: linear-gradient(135deg, #1E6FFF, #16346B); }
     .line-clamp-2 {
       display: -webkit-box;
       -webkit-line-clamp: 2;
@@ -40,66 +57,50 @@
     }
   </style>
 </head>
-<body class="bg-[#F5F7FA] text-[#061D42] antialiased selection:bg-[#2585E8]/20">
+<body class="bg-[#F3F6FA] text-[#0B1F44] antialiased selection:bg-[#1E6FFF]/20">
 
   <!-- Toast Notification -->
   <div id="toast-container" class="fixed bottom-5 right-5 z-50 hidden">
-    <div id="toast-box" class="flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg border text-sm font-medium bg-[#061D42] text-white border-[#2585E8]/40">
-      <i id="toast-icon" data-lucide="check-circle-2" class="w-4 h-4 text-[#50D6B0] flex-shrink-0"></i>
+    <div id="toast-box" class="flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg border text-sm font-medium bg-[#0B1F44] text-white border-[#1E6FFF]/40">
+      <i id="toast-icon" data-lucide="check-circle-2" class="w-4 h-4 text-[#00C7A7] flex-shrink-0"></i>
       <span id="toast-message"></span>
     </div>
   </div>
 
   <!-- Success popup: shown after every save / add / delete, closes by itself after 1.5 s -->
-  <div id="success-popup" class="hidden fixed inset-0 z-[70] flex items-center justify-center p-6 bg-[#061D42]/30" onclick="hideSuccessPopup()">
+  <div id="success-popup" class="hidden fixed inset-0 z-[70] flex items-center justify-center p-6 bg-[#0B1F44]/30" onclick="hideSuccessPopup()">
     <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 px-8 py-7 w-full max-w-xs text-center animate-[gttpop_0.18s_ease-out]">
       <div class="w-14 h-11 mx-auto">
-        <svg viewBox="0 0 120 90" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full">
-          <path d="M66 36C66 21.6406 54.3594 10 40 10C22.3269 10 8 24.3269 8 42C8 59.6731 22.3269 74 40 74C45.2 74 50.1 72.7 54.4 70.4L61 78L65 44H33L42 53C39.2 54.3 36.2 55 33 55C24.7157 55 18 48.2843 18 40C18 31.7157 24.7157 25 33 25C40.1 25 46 29.9 47.6 36.5H66V36Z" fill="#50D6B0" />
-          <path d="M84 14C69.6406 14 58 25.6406 58 40C58 54.3594 69.6406 66 84 66C98.3594 66 110 54.3594 110 40C110 25.6406 98.3594 14 84 14ZM84 52C77.3726 52 72 46.6274 72 40C72 33.3726 77.3726 28 84 28C90.6274 28 96 33.3726 96 40C96 46.6274 90.6274 52 84 52Z" fill="#2585E8" />
-        </svg>
+        <img src="assets/go-mark.png" alt="GO" class="w-full h-full object-contain" />
       </div>
-      <div class="mt-3 mx-auto w-10 h-10 rounded-full bg-[#50D6B0]/20 flex items-center justify-center">
+      <div class="mt-3 mx-auto w-10 h-10 rounded-full bg-[#00C7A7]/20 flex items-center justify-center">
         <i data-lucide="check" class="w-6 h-6 text-[#0F766E]"></i>
       </div>
-      <p id="success-popup-text" class="mt-3 text-base font-bold text-[#061D42]"></p>
+      <p id="success-popup-text" class="mt-3 text-base font-bold text-[#0B1F44]"></p>
     </div>
   </div>
 
   <!-- Thin loading bar shown while waiting for Apps Script (each call can take 1–3 seconds) -->
-  <div id="busy-bar" class="hidden fixed top-0 left-0 right-0 h-1 z-[60] overflow-hidden bg-[#2585E8]/15">
-    <div class="h-full w-1/3 bg-[#2585E8] animate-[gttbusy_1.1s_ease-in-out_infinite]"></div>
+  <div id="busy-bar" class="hidden fixed top-0 left-0 right-0 h-1 z-[60] overflow-hidden bg-[#1E6FFF]/15">
+    <div class="h-full w-1/3 bg-[#1E6FFF] animate-[gttbusy_1.1s_ease-in-out_infinite]"></div>
   </div>
 
   <!-- ========================================================================
        1. LOGIN VIEW (SECURE INTERNAL ACCESS)
   ======================================================================== -->
-  <div id="login-view" class="min-h-screen bg-[#F5F7FA] flex flex-col justify-center items-center p-4 sm:p-6">
-    <div class="w-full max-w-md bg-white rounded-2xl shadow-xl shadow-[#061D42]/5 border border-slate-200/80 overflow-hidden">
+  <div id="login-view" class="min-h-screen bg-[#F3F6FA] flex flex-col justify-center items-center p-4 sm:p-6">
+    <div class="w-full max-w-md bg-white rounded-2xl shadow-xl shadow-[#0B1F44]/5 border border-slate-200/80 overflow-hidden">
       <!-- Top Navy Brand Header -->
-      <div class="bg-[#061D42] px-8 py-8 text-center relative overflow-hidden">
-        <div class="absolute -right-10 -top-10 w-36 h-36 rounded-full bg-[#2585E8]/10 pointer-events-none"></div>
-        <div class="absolute -left-10 -bottom-10 w-32 h-32 rounded-full bg-[#50D6B0]/10 pointer-events-none"></div>
-        <div class="flex justify-center mb-4">
-          <div class="w-14 h-14">
-            <svg viewBox="0 0 120 90" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full drop-shadow-sm">
-              <defs>
-                <linearGradient id="gttMintCyanLg" x1="10" y1="75" x2="70" y2="15" gradientUnits="userSpaceOnUse">
-                  <stop offset="0%" stop-color="#50D6B0" />
-                  <stop offset="100%" stop-color="#45B8E8" />
-                </linearGradient>
-                <linearGradient id="gttCyanBlueLg" x1="65" y1="20" x2="112" y2="75" gradientUnits="userSpaceOnUse">
-                  <stop offset="0%" stop-color="#45B8E8" />
-                  <stop offset="100%" stop-color="#2585E8" />
-                </linearGradient>
-              </defs>
-              <path d="M66 36C66 21.6406 54.3594 10 40 10C22.3269 10 8 24.3269 8 42C8 59.6731 22.3269 74 40 74C45.2 74 50.1 72.7 54.4 70.4L61 78L65 44H33L42 53C39.2 54.3 36.2 55 33 55C24.7157 55 18 48.2843 18 40C18 31.7157 24.7157 25 33 25C40.1 25 46 29.9 47.6 36.5H66V36Z" fill="url(#gttMintCyanLg)" />
-              <path d="M84 14C69.6406 14 58 25.6406 58 40C58 54.3594 69.6406 66 84 66C98.3594 66 110 54.3594 110 40C110 25.6406 98.3594 14 84 14ZM84 52C77.3726 52 72 46.6274 72 40C72 33.3726 77.3726 28 84 28C90.6274 28 96 33.3726 96 40C96 46.6274 90.6274 52 84 52Z" fill="url(#gttCyanBlueLg)" />
-            </svg>
-          </div>
-        </div>
-        <h1 class="text-xl font-bold tracking-tight text-white">GO TO TARGET</h1>
-        <p class="text-xs uppercase tracking-[0.2em] text-[#50D6B0] mt-1 font-medium">Internal Client Workspace</p>
+      <div class="bg-[#0B1F44] pt-6 text-center relative overflow-hidden">
+        <div class="absolute -right-10 -top-10 w-36 h-36 rounded-full bg-[#1E6FFF]/15 pointer-events-none"></div>
+        <div class="absolute -left-10 top-16 w-32 h-32 rounded-full bg-[#00C7A7]/10 pointer-events-none"></div>
+        <img src="assets/go-logo-full.png" alt="Go To Target — Digital marketing that delivers results" class="relative w-56 h-auto mx-auto -my-6" />
+        <p class="relative text-[11px] uppercase tracking-[0.25em] text-[#9FF3D6] font-semibold pb-4">Internal Client Workspace</p>
+        <svg class="block w-full h-6" viewBox="0 0 400 24" preserveAspectRatio="none" aria-hidden="true">
+          <defs><linearGradient id="gttWaveLogin" x1="0" x2="1"><stop offset="0" stop-color="#1E6FFF"/><stop offset="1" stop-color="#00C7A7"/></linearGradient></defs>
+          <path d="M0 24V14C120 30 260 -4 400 10V24Z" fill="url(#gttWaveLogin)"/>
+          <path d="M0 24V18C130 32 270 2 400 16V24Z" fill="#fff"/>
+        </svg>
       </div>
 
       <!-- Login Form -->
@@ -107,13 +108,13 @@
         <div>
           <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Username</label>
           <input id="login-username" type="text" required autocomplete="username" minlength="3" maxlength="30" placeholder="Enter your username"
-            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-[#F5F7FA]/60 text-[#061D42] text-sm focus:outline-none focus:ring-2 focus:ring-[#2585E8] focus:bg-white transition" />
+            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-[#F3F6FA]/60 text-[#0B1F44] text-sm focus:outline-none focus:ring-2 focus:ring-[#1E6FFF] focus:bg-white transition" />
         </div>
 
         <div>
           <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1.5">Password</label>
           <input id="login-passcode" type="password" required autocomplete="current-password" placeholder="Enter your password"
-            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-[#F5F7FA]/60 text-[#061D42] text-sm focus:outline-none focus:ring-2 focus:ring-[#2585E8] focus:bg-white transition" />
+            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-[#F3F6FA]/60 text-[#0B1F44] text-sm focus:outline-none focus:ring-2 focus:ring-[#1E6FFF] focus:bg-white transition" />
         </div>
 
         <div id="login-error" class="hidden flex items-start gap-2.5 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs">
@@ -122,8 +123,8 @@
         </div>
 
         <button type="submit" id="login-submit-btn"
-          class="w-full py-3 px-4 rounded-xl bg-[#061D42] hover:bg-[#0c2c61] text-white font-semibold text-sm shadow-sm transition flex items-center justify-center gap-2 cursor-pointer">
-          <i data-lucide="shield" class="w-4 h-4 text-[#50D6B0]"></i>
+          class="w-full py-3 px-4 rounded-xl bg-[#0B1F44] hover:bg-[#16346B] text-white font-semibold text-sm shadow-sm transition flex items-center justify-center gap-2 cursor-pointer">
+          <i data-lucide="shield" class="w-4 h-4 text-[#00C7A7]"></i>
           <span>Sign In to Workspace</span>
         </button>
 
@@ -135,48 +136,42 @@
   <!-- ========================================================================
        2. MAIN APP SHELL (AUTHENTICATED WORKSPACE)
   ======================================================================== -->
-  <div id="app-shell" class="hidden min-h-screen bg-[#F5F7FA] text-[#061D42] flex flex-col md:flex-row">
+  <div id="app-shell" class="hidden min-h-screen bg-[#F3F6FA] text-[#0B1F44] flex flex-col md:flex-row">
 
     <!-- Mobile Top Header -->
-    <div class="md:hidden bg-[#061D42] text-white px-4 py-3 flex items-center justify-between sticky top-0 z-30 shadow-sm">
-      <div class="flex items-center gap-2.5 cursor-pointer" onclick="navigateTo('clients')">
-        <div class="w-8 h-8">
-          <svg viewBox="0 0 120 90" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full">
-            <path d="M66 36C66 21.6406 54.3594 10 40 10C22.3269 10 8 24.3269 8 42C8 59.6731 22.3269 74 40 74C45.2 74 50.1 72.7 54.4 70.4L61 78L65 44H33L42 53C39.2 54.3 36.2 55 33 55C24.7157 55 18 48.2843 18 40C18 31.7157 24.7157 25 33 25C40.1 25 46 29.9 47.6 36.5H66V36Z" fill="#50D6B0" />
-            <path d="M84 14C69.6406 14 58 25.6406 58 40C58 54.3594 69.6406 66 84 66C98.3594 66 110 54.3594 110 40C110 25.6406 98.3594 14 84 14ZM84 52C77.3726 52 72 46.6274 72 40C72 33.3726 77.3726 28 84 28C90.6274 28 96 33.3726 96 40C96 46.6274 90.6274 52 84 52Z" fill="#2585E8" />
-          </svg>
+    <div class="md:hidden sticky top-0 z-30 text-white">
+      <div class="bg-[#0B1F44] px-4 pt-3 pb-1.5 flex items-center justify-between">
+        <div class="flex items-center gap-2.5 cursor-pointer min-w-0" onclick="navigateTo(state.currentUser && state.currentUser.role === 'ADMIN' ? 'dashboard' : 'mywork')">
+          <div class="w-12 h-8 flex-shrink-0">
+            <img src="assets/go-mark.png" alt="GO" class="w-full h-full object-contain" />
+          </div>
+          <div class="leading-tight min-w-0">
+            <p class="font-bold text-[15px] tracking-tight">GO TO TARGET</p>
+            <p class="text-[8.5px] tracking-[0.12em] uppercase text-slate-300 truncate">Digital marketing that delivers results</p>
+          </div>
         </div>
-        <span class="font-bold text-sm tracking-tight">GO TO TARGET</span>
+        <button onclick="toggleMobileMenu()" aria-label="เมนู" class="p-2 rounded-lg text-slate-200 hover:text-white hover:bg-white/10">
+          <i data-lucide="menu" class="w-6 h-6"></i>
+        </button>
       </div>
-      <button onclick="toggleMobileMenu()" class="p-2 rounded-lg text-slate-300 hover:text-white hover:bg-white/10">
-        <i data-lucide="menu" class="w-6 h-6"></i>
-      </button>
+      <svg class="block w-full h-4 -mt-px" viewBox="0 0 400 16" preserveAspectRatio="none" aria-hidden="true">
+        <defs><linearGradient id="gttWaveTop" x1="0" x2="1"><stop offset="0" stop-color="#00C7A7"/><stop offset="0.6" stop-color="#1E6FFF"/><stop offset="1" stop-color="#9FF3D6"/></linearGradient></defs>
+        <path d="M0 0H400V6C290 18 130 -2 0 12Z" fill="url(#gttWaveTop)"/>
+        <path d="M0 0H400V3C290 14 130 -5 0 8Z" fill="#0B1F44"/>
+      </svg>
     </div>
 
     <!-- Sidebar Navigation -->
-    <aside id="sidebar" class="hidden md:flex flex-col bg-[#061D42] text-white transition-all duration-200 flex-shrink-0 md:w-64 md:sticky md:top-0 md:h-screen select-none z-40">
+    <aside id="sidebar" class="hidden md:flex flex-col bg-gradient-to-b from-[#0B1F44] to-[#0A1836] text-white transition-all duration-200 flex-shrink-0 md:w-64 md:sticky md:top-0 md:h-screen select-none z-40">
       <!-- Top Brand Logo -->
       <div class="h-16 px-4 flex items-center justify-between border-b border-white/10">
         <div onclick="navigateTo('clients')" class="flex items-center gap-3 cursor-pointer overflow-hidden">
-          <div class="w-9 h-9 flex-shrink-0">
-            <svg viewBox="0 0 120 90" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full">
-              <defs>
-                <linearGradient id="gttMintCyanSm" x1="10" y1="75" x2="70" y2="15" gradientUnits="userSpaceOnUse">
-                  <stop offset="0%" stop-color="#50D6B0" />
-                  <stop offset="100%" stop-color="#45B8E8" />
-                </linearGradient>
-                <linearGradient id="gttCyanBlueSm" x1="65" y1="20" x2="112" y2="75" gradientUnits="userSpaceOnUse">
-                  <stop offset="0%" stop-color="#45B8E8" />
-                  <stop offset="100%" stop-color="#2585E8" />
-                </linearGradient>
-              </defs>
-              <path d="M66 36C66 21.6406 54.3594 10 40 10C22.3269 10 8 24.3269 8 42C8 59.6731 22.3269 74 40 74C45.2 74 50.1 72.7 54.4 70.4L61 78L65 44H33L42 53C39.2 54.3 36.2 55 33 55C24.7157 55 18 48.2843 18 40C18 31.7157 24.7157 25 33 25C40.1 25 46 29.9 47.6 36.5H66V36Z" fill="url(#gttMintCyanSm)" />
-              <path d="M84 14C69.6406 14 58 25.6406 58 40C58 54.3594 69.6406 66 84 66C98.3594 66 110 54.3594 110 40C110 25.6406 98.3594 14 84 14ZM84 52C77.3726 52 72 46.6274 72 40C72 33.3726 77.3726 28 84 28C90.6274 28 96 33.3726 96 40C96 46.6274 90.6274 52 84 52Z" fill="url(#gttCyanBlueSm)" />
-            </svg>
+          <div class="w-12 h-8 flex-shrink-0">
+            <img src="assets/go-mark.png" alt="GO" class="w-full h-full object-contain" />
           </div>
           <div class="sidebar-label flex flex-col leading-tight overflow-hidden">
             <span class="font-bold tracking-tight text-white text-base whitespace-nowrap">GO TO TARGET</span>
-            <span class="text-[10px] tracking-widest uppercase text-[#50D6B0] font-medium whitespace-nowrap">Client Workspace</span>
+            <span class="text-[10px] tracking-widest uppercase text-[#00C7A7] font-medium whitespace-nowrap">Client Workspace</span>
           </div>
         </div>
 
@@ -226,12 +221,12 @@
       <div class="p-3 border-t border-white/10">
         <div id="user-profile-box" class="flex items-center justify-between p-2 rounded-xl bg-white/5">
           <div class="flex items-center gap-2.5 min-w-0">
-            <div id="user-avatar" class="w-9 h-9 rounded-full bg-gradient-to-br from-[#50D6B0] to-[#2585E8] text-[#061D42] font-bold text-xs flex items-center justify-center flex-shrink-0">
+            <div id="user-avatar" class="w-9 h-9 rounded-full bg-gradient-to-br from-[#00C7A7] to-[#1E6FFF] text-[#0B1F44] font-bold text-xs flex items-center justify-center flex-shrink-0">
               GT
             </div>
             <div class="sidebar-label min-w-0">
               <p id="user-name-display" class="text-sm font-semibold text-white truncate">User</p>
-              <span id="user-role-badge" class="inline-block text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#50D6B0]/20 text-[#50D6B0]">
+              <span id="user-role-badge" class="inline-block text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#00C7A7]/20 text-[#00C7A7]">
                 STAFF
               </span>
             </div>
@@ -249,7 +244,7 @@
       <!-- Top Breadcrumb & Sync Status Header -->
       <header class="bg-white border-b border-slate-200/80 px-6 py-3.5 flex items-center justify-between sticky top-0 z-20">
         <div class="flex items-center gap-2 text-xs text-slate-500">
-          <span class="font-semibold text-[#061D42]">GO TO TARGET</span>
+          <span class="font-semibold text-[#0B1F44]">GO TO TARGET</span>
           <span>/</span>
           <span id="breadcrumb-current" class="capitalize font-medium text-slate-700">Clients</span>
         </div>
@@ -260,7 +255,20 @@
       </header>
 
       <!-- Dynamic Page Container -->
-      <div id="main-container" class="max-w-7xl mx-auto p-6 sm:p-8"></div>
+      <div id="main-container" class="max-w-7xl mx-auto p-5 sm:p-8"></div>
+      <footer class="relative mt-6 overflow-hidden" aria-hidden="true">
+        <svg class="block w-full h-10" viewBox="0 0 400 40" preserveAspectRatio="none">
+          <defs><linearGradient id="gttWaveFoot" x1="0" x2="1"><stop offset="0" stop-color="#00C7A7"/><stop offset="0.5" stop-color="#1E6FFF"/><stop offset="1" stop-color="#00C7A7"/></linearGradient></defs>
+          <path d="M0 40V22C110 2 260 40 400 14V40Z" fill="url(#gttWaveFoot)" opacity="0.9"/>
+          <path d="M0 40V28C120 12 260 44 400 22V40Z" fill="#0B1F44"/>
+        </svg>
+        <div class="bg-[#0B1F44] pb-5 pt-1 text-center">
+          <div class="flex items-center justify-center gap-3 text-white">
+            <span class="h-px w-12 bg-white/30"></span><span class="text-xs font-bold tracking-[0.3em]">GO TO TARGET</span><span class="h-px w-12 bg-white/30"></span>
+          </div>
+          <p class="mt-1 text-[9px] tracking-[0.18em] uppercase text-slate-400">Digital marketing that delivers results</p>
+        </div>
+      </footer>
     </main>
   </div>
 
@@ -268,9 +276,9 @@
        3. MODALS (CLIENT, WORKSPACE, CONFIRMATION)
   ======================================================================== -->
   <!-- Client Modal -->
-  <div id="client-modal" class="hidden fixed inset-0 z-50 bg-[#061D42]/50 backdrop-blur-xs flex items-center justify-center p-4">
+  <div id="client-modal" class="hidden fixed inset-0 z-50 bg-[#0B1F44]/50 backdrop-blur-xs flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200">
-      <div class="px-6 py-4 bg-[#061D42] text-white flex items-center justify-between">
+      <div class="px-6 py-4 bg-[#0B1F44] text-white flex items-center justify-between">
         <h3 id="client-modal-title" class="font-bold text-base">Add New Client</h3>
         <button onclick="closeClientModal()" class="text-slate-300 hover:text-white p-1 rounded-lg cursor-pointer">
           <i data-lucide="x" class="w-5 h-5"></i>
@@ -281,7 +289,7 @@
         <div>
           <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Client Name *</label>
           <input id="client-form-name" type="text" required placeholder="e.g., ABC Company"
-            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm text-[#061D42] focus:outline-none focus:ring-2 focus:ring-[#2585E8]" />
+            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm text-[#0B1F44] focus:outline-none focus:ring-2 focus:ring-[#1E6FFF]" />
         </div>
         <div>
           <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Client Logo (Optional)</label>
@@ -291,7 +299,7 @@
             </div>
             <div class="min-w-0 space-y-1.5">
               <div class="flex flex-wrap items-center gap-2">
-                <label class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 hover:border-[#2585E8] text-xs font-semibold text-[#061D42] cursor-pointer transition">
+                <label class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 hover:border-[#1E6FFF] text-xs font-semibold text-[#0B1F44] cursor-pointer transition">
                   <i data-lucide="upload" class="w-3.5 h-3.5"></i>
                   <span>เลือกรูปโลโก้</span>
                   <input id="client-form-logo-file" type="file" accept="image/png,image/jpeg,image/webp" class="hidden" />
@@ -306,28 +314,28 @@
         <div>
           <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Description (Optional)</label>
           <textarea id="client-form-desc" rows="3" placeholder="Brief summary of client scope or brand..."
-            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm text-[#061D42] focus:outline-none focus:ring-2 focus:ring-[#2585E8]"></textarea>
+            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm text-[#0B1F44] focus:outline-none focus:ring-2 focus:ring-[#1E6FFF]"></textarea>
         </div>
         <div>
           <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">ทีมที่ดูแล (STAFF ที่เห็นลูกค้ารายนี้)</label>
           <div id="client-form-team" class="grid grid-cols-2 gap-2"></div>
           <p class="text-[11px] text-slate-400 mt-1">STAFF เห็นเฉพาะลูกค้าที่ติ๊กชื่อไว้ / มอบงานให้ใคร ระบบเพิ่มชื่อคนนั้นให้อัตโนมัติ / ADMIN เห็นทุกลูกค้าเสมอ</p>
         </div>
-        <div id="client-auto-setup-note" class="p-3.5 rounded-xl bg-[#50D6B0]/10 border border-[#50D6B0]/30 text-xs text-[#061D42]">
+        <div id="client-auto-setup-note" class="p-3.5 rounded-xl bg-[#00C7A7]/10 border border-[#00C7A7]/30 text-xs text-[#0B1F44]">
           <span class="font-semibold">Automatic Setup:</span> Creating this client will automatically generate 4 workspaces: <strong>VIDEO</strong>, <strong>GRAPHIC</strong>, <strong>CONTENT</strong>, and <strong>BRIEF</strong>.
         </div>
         <div class="pt-2 flex items-center justify-end gap-3">
           <button type="button" onclick="closeClientModal()" class="px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 cursor-pointer">Cancel</button>
-          <button type="submit" id="client-form-submit" class="px-5 py-2.5 rounded-xl bg-[#061D42] hover:bg-[#0d2d63] text-white text-sm font-semibold shadow-sm cursor-pointer">Create Client</button>
+          <button type="submit" id="client-form-submit" class="px-5 py-2.5 rounded-xl bg-[#0B1F44] hover:bg-[#16346B] text-white text-sm font-semibold shadow-sm cursor-pointer">Create Client</button>
         </div>
       </form>
     </div>
   </div>
 
   <!-- Workspace Modal -->
-  <div id="workspace-modal" class="hidden fixed inset-0 z-50 bg-[#061D42]/50 backdrop-blur-xs flex items-center justify-center p-4">
+  <div id="workspace-modal" class="hidden fixed inset-0 z-50 bg-[#0B1F44]/50 backdrop-blur-xs flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200">
-      <div class="px-6 py-4 bg-[#061D42] text-white flex items-center justify-between">
+      <div class="px-6 py-4 bg-[#0B1F44] text-white flex items-center justify-between">
         <h3 id="workspace-modal-title" class="font-bold text-base">Edit Workspace & Link</h3>
         <button onclick="closeWorkspaceModal()" class="text-slate-300 hover:text-white p-1 rounded-lg cursor-pointer">
           <i data-lucide="x" class="w-5 h-5"></i>
@@ -339,12 +347,12 @@
         <div>
           <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Workspace Name *</label>
           <input id="ws-form-name" type="text" required placeholder="e.g., VIDEO, GRAPHIC, CONTENT, BRIEF"
-            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-[#061D42] focus:outline-none focus:ring-2 focus:ring-[#2585E8]" />
+            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-[#0B1F44] focus:outline-none focus:ring-2 focus:ring-[#1E6FFF]" />
         </div>
         <div>
           <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Connected URL (Google Drive, Sheets, Docs, or External Link)</label>
           <input id="ws-form-url" type="text" placeholder="https://drive.google.com/drive/folders/..."
-            class="w-full px-4 py-2.5 rounded-xl border border-[#2585E8]/50 bg-[#2585E8]/5 text-sm text-[#061D42] focus:outline-none focus:ring-2 focus:ring-[#2585E8]" />
+            class="w-full px-4 py-2.5 rounded-xl border border-[#1E6FFF]/50 bg-[#1E6FFF]/5 text-sm text-[#0B1F44] focus:outline-none focus:ring-2 focus:ring-[#1E6FFF]" />
           <div id="ws-url-helper" class="hidden mt-1.5 flex items-center justify-between text-xs">
             <span id="ws-detected-service" class="text-[#0F766E] font-medium"></span>
             <button type="button" onclick="clearWsUrl()" class="text-red-500 hover:underline cursor-pointer">Clear Link</button>
@@ -353,12 +361,12 @@
         <div>
           <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Short Description</label>
           <input id="ws-form-desc" type="text" placeholder="e.g., Video production and video working files"
-            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm text-[#061D42] focus:outline-none focus:ring-2 focus:ring-[#2585E8]" />
+            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm text-[#0B1F44] focus:outline-none focus:ring-2 focus:ring-[#1E6FFF]" />
         </div>
         <div class="grid grid-cols-2 gap-4">
           <div>
             <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Category Icon</label>
-            <select id="ws-form-icon" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-[#061D42] bg-white focus:outline-none focus:ring-2 focus:ring-[#2585E8]">
+            <select id="ws-form-icon" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-[#0B1F44] bg-white focus:outline-none focus:ring-2 focus:ring-[#1E6FFF]">
               <option value="video">Video</option>
               <option value="image">Image</option>
               <option value="file-text">FileText</option>
@@ -370,7 +378,7 @@
           </div>
           <div>
             <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Accent Color</label>
-            <select id="ws-form-color" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-[#061D42] bg-white focus:outline-none focus:ring-2 focus:ring-[#2585E8]">
+            <select id="ws-form-color" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-[#0B1F44] bg-white focus:outline-none focus:ring-2 focus:ring-[#1E6FFF]">
               <option value="blue">Brand Blue</option>
               <option value="cyan">Brand Cyan</option>
               <option value="mint">Brand Mint</option>
@@ -381,16 +389,16 @@
         </div>
         <div class="pt-3 flex items-center justify-end gap-3">
           <button type="button" onclick="closeWorkspaceModal()" class="px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 cursor-pointer">Cancel</button>
-          <button type="submit" class="px-5 py-2.5 rounded-xl bg-[#061D42] hover:bg-[#0d2d63] text-white text-sm font-semibold shadow-sm cursor-pointer">Save Workspace</button>
+          <button type="submit" class="px-5 py-2.5 rounded-xl bg-[#0B1F44] hover:bg-[#16346B] text-white text-sm font-semibold shadow-sm cursor-pointer">Save Workspace</button>
         </div>
       </form>
     </div>
   </div>
 
   <!-- Confirmation Dialog Modal -->
-  <div id="confirm-modal" class="hidden fixed inset-0 z-50 bg-[#061D42]/50 backdrop-blur-xs flex items-center justify-center p-4">
+  <div id="confirm-modal" class="hidden fixed inset-0 z-50 bg-[#0B1F44]/50 backdrop-blur-xs flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200">
-      <h3 id="confirm-title" class="text-lg font-bold text-[#061D42]">Confirm Action</h3>
+      <h3 id="confirm-title" class="text-lg font-bold text-[#0B1F44]">Confirm Action</h3>
       <p id="confirm-message" class="text-sm text-slate-600 mt-2 leading-relaxed"></p>
       <div class="mt-6 flex items-center justify-end gap-3">
         <button id="confirm-no-btn" onclick="closeConfirmModal()" class="px-4 py-2 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 cursor-pointer">Cancel</button>
@@ -400,9 +408,9 @@
   </div>
 
   <!-- Add Deliverables Modal (Admin): e.g. "VDO x 4 for ABC, Nov 2026" -->
-  <div id="deliverable-modal" class="hidden fixed inset-0 z-50 bg-[#061D42]/50 backdrop-blur-xs flex items-center justify-center p-4">
+  <div id="deliverable-modal" class="hidden fixed inset-0 z-50 bg-[#0B1F44]/50 backdrop-blur-xs flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200">
-      <div class="px-6 py-4 bg-[#061D42] text-white flex items-center justify-between">
+      <div class="px-6 py-4 bg-[#0B1F44] text-white flex items-center justify-between">
         <h3 class="font-bold text-base">เพิ่มงานให้ลูกค้า</h3>
         <button onclick="closeModal('deliverable-modal')" class="text-slate-300 hover:text-white p-1 rounded-lg cursor-pointer">
           <i data-lucide="x" class="w-5 h-5"></i>
@@ -411,41 +419,41 @@
       <form id="deliverable-form" class="p-6 space-y-4">
         <div>
           <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">ลูกค้า *</label>
-          <select id="dlv-form-client" required class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-[#061D42] bg-white focus:outline-none focus:ring-2 focus:ring-[#2585E8]"></select>
+          <select id="dlv-form-client" required class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-[#0B1F44] bg-white focus:outline-none focus:ring-2 focus:ring-[#1E6FFF]"></select>
         </div>
         <div class="grid grid-cols-3 gap-4">
           <div class="col-span-2">
             <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">ประเภทงาน *</label>
-            <select id="dlv-form-type" required class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-[#061D42] bg-white focus:outline-none focus:ring-2 focus:ring-[#2585E8]"></select>
+            <select id="dlv-form-type" required class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-[#0B1F44] bg-white focus:outline-none focus:ring-2 focus:ring-[#1E6FFF]"></select>
           </div>
           <div>
             <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">จำนวนชิ้น *</label>
             <input id="dlv-form-count" type="number" min="1" max="30" value="1" required
-              class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-[#061D42] focus:outline-none focus:ring-2 focus:ring-[#2585E8]" />
+              class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-[#0B1F44] focus:outline-none focus:ring-2 focus:ring-[#1E6FFF]" />
           </div>
         </div>
         <div>
           <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">ผู้รับผิดชอบ</label>
-          <select id="dlv-form-assignee" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-[#061D42] bg-white focus:outline-none focus:ring-2 focus:ring-[#2585E8]"></select>
+          <select id="dlv-form-assignee" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 text-sm text-[#0B1F44] bg-white focus:outline-none focus:ring-2 focus:ring-[#1E6FFF]"></select>
         </div>
         <div>
           <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">ชื่องาน (ไม่บังคับ)</label>
           <input id="dlv-form-title" type="text" maxlength="120" placeholder="เช่น โปรวันแม่ — ถ้าไม่ใส่จะใช้ชื่อประเภทงาน"
-            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm text-[#061D42] focus:outline-none focus:ring-2 focus:ring-[#2585E8]" />
+            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm text-[#0B1F44] focus:outline-none focus:ring-2 focus:ring-[#1E6FFF]" />
         </div>
         <p id="dlv-form-month-note" class="text-xs text-slate-500"></p>
         <div class="pt-2 flex items-center justify-end gap-3">
           <button type="button" onclick="closeModal('deliverable-modal')" class="px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 cursor-pointer">ยกเลิก</button>
-          <button type="submit" class="px-5 py-2.5 rounded-xl bg-[#061D42] hover:bg-[#0d2d63] text-white text-sm font-semibold shadow-sm cursor-pointer">เพิ่มงาน</button>
+          <button type="submit" class="px-5 py-2.5 rounded-xl bg-[#0B1F44] hover:bg-[#16346B] text-white text-sm font-semibold shadow-sm cursor-pointer">เพิ่มงาน</button>
         </div>
       </form>
     </div>
   </div>
 
   <!-- Submit Work Modal (Staff + Admin): paste the finished link -->
-  <div id="submit-modal" class="hidden fixed inset-0 z-50 bg-[#061D42]/50 backdrop-blur-xs flex items-center justify-center p-4">
+  <div id="submit-modal" class="hidden fixed inset-0 z-50 bg-[#0B1F44]/50 backdrop-blur-xs flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200">
-      <div class="px-6 py-4 bg-[#061D42] text-white flex items-center justify-between">
+      <div class="px-6 py-4 bg-[#0B1F44] text-white flex items-center justify-between">
         <h3 class="font-bold text-base">ส่งงาน</h3>
         <button onclick="closeModal('submit-modal')" class="text-slate-300 hover:text-white p-1 rounded-lg cursor-pointer">
           <i data-lucide="x" class="w-5 h-5"></i>
@@ -454,27 +462,27 @@
       <form id="submit-form" class="p-6 space-y-4">
         <input type="hidden" id="submit-form-id" />
         <div>
-          <p id="submit-form-title" class="text-base font-bold text-[#061D42]"></p>
+          <p id="submit-form-title" class="text-base font-bold text-[#0B1F44]"></p>
           <p id="submit-form-client" class="text-xs text-slate-500 mt-0.5"></p>
         </div>
         <div>
           <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">ลิงก์ผลงาน *</label>
           <input id="submit-form-url" type="text" required placeholder="https://drive.google.com/..."
-            class="w-full px-4 py-2.5 rounded-xl border border-[#2585E8]/50 bg-[#2585E8]/5 text-sm text-[#061D42] focus:outline-none focus:ring-2 focus:ring-[#2585E8]" />
+            class="w-full px-4 py-2.5 rounded-xl border border-[#1E6FFF]/50 bg-[#1E6FFF]/5 text-sm text-[#0B1F44] focus:outline-none focus:ring-2 focus:ring-[#1E6FFF]" />
           <p class="text-[11px] text-slate-400 mt-1">ตรวจว่าตั้งค่าแชร์ลิงก์ให้แอดมินเปิดดูได้แล้ว</p>
         </div>
         <div class="pt-2 flex items-center justify-end gap-3">
           <button type="button" onclick="closeModal('submit-modal')" class="px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 cursor-pointer">ยกเลิก</button>
-          <button type="submit" class="px-5 py-2.5 rounded-xl bg-[#2585E8] hover:bg-[#1d6fc4] text-white text-sm font-semibold shadow-sm cursor-pointer">ส่งงาน</button>
+          <button type="submit" class="px-5 py-2.5 rounded-xl bg-[#1E6FFF] hover:bg-[#1557D6] text-white text-sm font-semibold shadow-sm cursor-pointer">ส่งงาน</button>
         </div>
       </form>
     </div>
   </div>
 
   <!-- Edit Deliverable Modal (Admin): name + number of pieces of one set -->
-  <div id="edit-dlv-modal" class="hidden fixed inset-0 z-50 bg-[#061D42]/50 backdrop-blur-xs flex items-center justify-center p-4">
+  <div id="edit-dlv-modal" class="hidden fixed inset-0 z-50 bg-[#0B1F44]/50 backdrop-blur-xs flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200">
-      <div class="px-6 py-4 bg-[#061D42] text-white flex items-center justify-between">
+      <div class="px-6 py-4 bg-[#0B1F44] text-white flex items-center justify-between">
         <h3 class="font-bold text-base">แก้ไขงาน</h3>
         <button onclick="closeModal('edit-dlv-modal')" class="text-slate-300 hover:text-white p-1 rounded-lg cursor-pointer">
           <i data-lucide="x" class="w-5 h-5"></i>
@@ -482,42 +490,42 @@
       </div>
       <form id="edit-dlv-form" class="p-6 space-y-5">
         <input type="hidden" id="edit-dlv-id" />
-        <div class="flex items-center gap-3 p-3 rounded-xl bg-[#F5F7FA] border border-slate-200/80">
-          <div class="w-10 h-10 rounded-xl bg-[#EAF3FD] text-[#2585E8] flex items-center justify-center shrink-0"><i id="edit-dlv-icon" data-lucide="image" class="w-5 h-5"></i></div>
+        <div class="flex items-center gap-3 p-3 rounded-xl bg-[#F3F6FA] border border-slate-200/80">
+          <div class="w-10 h-10 rounded-xl bg-[#EAF3FD] text-[#1E6FFF] flex items-center justify-center shrink-0"><i id="edit-dlv-icon" data-lucide="image" class="w-5 h-5"></i></div>
           <div class="min-w-0">
-            <p id="edit-dlv-type" class="text-sm font-bold text-[#061D42] truncate"></p>
+            <p id="edit-dlv-type" class="text-sm font-bold text-[#0B1F44] truncate"></p>
             <p id="edit-dlv-client" class="text-xs text-slate-500 truncate"></p>
           </div>
         </div>
         <div>
           <label for="edit-dlv-title" class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">ชื่องาน</label>
           <input id="edit-dlv-title" type="text" maxlength="120" placeholder=""
-            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm text-[#061D42] focus:outline-none focus:ring-2 focus:ring-[#2585E8]" />
+            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm text-[#0B1F44] focus:outline-none focus:ring-2 focus:ring-[#1E6FFF]" />
           <p class="text-[11px] text-slate-400 mt-1">เว้นว่างได้ ระบบจะใช้ชื่อประเภทงานแทน</p>
         </div>
         <div>
           <label for="edit-dlv-qty" class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">จำนวนชิ้นในชุดนี้</label>
           <div class="flex items-center gap-3">
-            <button type="button" onclick="stepEditQty(-1)" aria-label="ลดจำนวน" class="w-11 h-11 rounded-xl border border-slate-200 hover:border-[#2585E8] hover:text-[#2585E8] text-slate-600 flex items-center justify-center cursor-pointer"><i data-lucide="minus" class="w-4 h-4"></i></button>
+            <button type="button" onclick="stepEditQty(-1)" aria-label="ลดจำนวน" class="w-11 h-11 rounded-xl border border-slate-200 hover:border-[#1E6FFF] hover:text-[#1E6FFF] text-slate-600 flex items-center justify-center cursor-pointer"><i data-lucide="minus" class="w-4 h-4"></i></button>
             <input id="edit-dlv-qty" type="number" inputmode="numeric" min="1" max="30" required
-              class="w-20 h-11 text-center rounded-xl border border-slate-200 text-lg font-bold text-[#061D42] focus:outline-none focus:ring-2 focus:ring-[#2585E8]" />
-            <button type="button" onclick="stepEditQty(1)" aria-label="เพิ่มจำนวน" class="w-11 h-11 rounded-xl border border-slate-200 hover:border-[#2585E8] hover:text-[#2585E8] text-slate-600 flex items-center justify-center cursor-pointer"><i data-lucide="plus" class="w-4 h-4"></i></button>
+              class="w-20 h-11 text-center rounded-xl border border-slate-200 text-lg font-bold text-[#0B1F44] focus:outline-none focus:ring-2 focus:ring-[#1E6FFF]" />
+            <button type="button" onclick="stepEditQty(1)" aria-label="เพิ่มจำนวน" class="w-11 h-11 rounded-xl border border-slate-200 hover:border-[#1E6FFF] hover:text-[#1E6FFF] text-slate-600 flex items-center justify-center cursor-pointer"><i data-lucide="plus" class="w-4 h-4"></i></button>
             <span class="text-sm text-slate-500">ชิ้น</span>
           </div>
           <p class="text-[11px] text-slate-400 mt-1">ส่งงานด้วยลิงก์เดียวทั้งชุด · 1–30 ชิ้น</p>
         </div>
         <div class="pt-2 flex items-center justify-end gap-3">
           <button type="button" onclick="closeModal('edit-dlv-modal')" class="px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 cursor-pointer">ยกเลิก</button>
-          <button type="submit" class="px-5 py-2.5 rounded-xl bg-[#061D42] hover:bg-[#0d2d63] text-white text-sm font-semibold shadow-sm cursor-pointer">บันทึก</button>
+          <button type="submit" class="px-5 py-2.5 rounded-xl bg-[#0B1F44] hover:bg-[#16346B] text-white text-sm font-semibold shadow-sm cursor-pointer">บันทึก</button>
         </div>
       </form>
     </div>
   </div>
 
   <!-- Set Password Modal (Admin) -->
-  <div id="password-modal" class="hidden fixed inset-0 z-50 bg-[#061D42]/50 backdrop-blur-xs flex items-center justify-center p-4">
+  <div id="password-modal" class="hidden fixed inset-0 z-50 bg-[#0B1F44]/50 backdrop-blur-xs flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200">
-      <div class="px-6 py-4 bg-[#061D42] text-white flex items-center justify-between">
+      <div class="px-6 py-4 bg-[#0B1F44] text-white flex items-center justify-between">
         <h3 class="font-bold text-base">ตั้งรหัสผ่านใหม่</h3>
         <button onclick="closeModal('password-modal')" class="text-slate-300 hover:text-white p-1 rounded-lg cursor-pointer">
           <i data-lucide="x" class="w-5 h-5"></i>
@@ -529,12 +537,12 @@
         <div>
           <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">รหัสผ่านใหม่ (อย่างน้อย 6 ตัว) *</label>
           <input id="password-form-value" type="text" required minlength="6" maxlength="100" autocomplete="new-password"
-            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm text-[#061D42] focus:outline-none focus:ring-2 focus:ring-[#2585E8]" />
+            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm text-[#0B1F44] focus:outline-none focus:ring-2 focus:ring-[#1E6FFF]" />
           <p class="text-[11px] text-slate-400 mt-1">คนนี้จะถูกออกจากระบบทุกเครื่อง แล้วเข้าใหม่ด้วยรหัสนี้</p>
         </div>
         <div class="pt-2 flex items-center justify-end gap-3">
           <button type="button" onclick="closeModal('password-modal')" class="px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 cursor-pointer">ยกเลิก</button>
-          <button type="submit" class="px-5 py-2.5 rounded-xl bg-[#061D42] hover:bg-[#0d2d63] text-white text-sm font-semibold shadow-sm cursor-pointer">บันทึกรหัสผ่าน</button>
+          <button type="submit" class="px-5 py-2.5 rounded-xl bg-[#0B1F44] hover:bg-[#16346B] text-white text-sm font-semibold shadow-sm cursor-pointer">บันทึกรหัสผ่าน</button>
         </div>
       </form>
     </div>
@@ -573,26 +581,38 @@
 
     // Work types must match GTT_DELIVERABLE_TYPES in code.gs (the server rejects anything else).
     const DELIVERABLE_TYPES = [
-      { id: 'banner', label: 'Banner / กราฟิก', short: 'Banner', icon: 'image' },
-      { id: 'video', label: 'VDO', short: 'VDO', icon: 'video' },
-      { id: 'influencer', label: 'รีวิวอินฟลูเอนเซอร์', short: 'รีวิว', icon: 'star' },
-      { id: 'content', label: 'คอนเทนต์ / แคปชัน', short: 'Content', icon: 'file-text' },
-      { id: 'other', label: 'อื่นๆ', short: 'อื่นๆ', icon: 'package' }
+      { id: 'banner', label: 'Banner / กราฟิก', short: 'Banner', icon: 'image', tone: 'blue' },
+      { id: 'video', label: 'VDO', short: 'VDO', icon: 'video', tone: 'mint' },
+      { id: 'influencer', label: 'รีวิวอินฟลูเอนเซอร์', short: 'รีวิว', icon: 'star', tone: 'orange' },
+      { id: 'content', label: 'คอนเทนต์ / แคปชัน', short: 'Content', icon: 'file-text', tone: 'cyan' },
+      { id: 'other', label: 'อื่นๆ', short: 'อื่นๆ', icon: 'package', tone: 'slate' }
     ];
 
     // Sending the result link finishes a piece (no review step). Must match GTT_STATUS in code.gs.
     const STATUS_META = {
       TODO: { label: 'ยังไม่ส่ง', cls: 'bg-slate-100 text-slate-600' },
-      DONE: { label: 'ส่งแล้ว', cls: 'bg-[#50D6B0]/20 text-[#0F766E]' }
+      DONE: { label: 'ส่งแล้ว', cls: 'bg-[#00C7A7]/20 text-[#0F766E]' }
     };
 
     const COLOR_STYLES = {
-      blue: { bg: 'bg-[#2585E8]/10', text: 'text-[#2585E8]', border: 'border-[#2585E8]/20' },
+      blue: { bg: 'bg-[#1E6FFF]/10', text: 'text-[#1E6FFF]', border: 'border-[#1E6FFF]/20' },
       cyan: { bg: 'bg-[#45B8E8]/15', text: 'text-[#0E7490]', border: 'border-[#45B8E8]/30' },
-      mint: { bg: 'bg-[#50D6B0]/15', text: 'text-[#0F766E]', border: 'border-[#50D6B0]/30' },
+      mint: { bg: 'bg-[#00C7A7]/15', text: 'text-[#0F766E]', border: 'border-[#00C7A7]/30' },
       orange: { bg: 'bg-amber-500/10', text: 'text-amber-600', border: 'border-amber-500/20' },
-      navy: { bg: 'bg-[#061D42]/10', text: 'text-[#061D42]', border: 'border-[#061D42]/20' }
+      navy: { bg: 'bg-[#0B1F44]/10', text: 'text-[#0B1F44]', border: 'border-[#0B1F44]/20' }
     };
+
+    // Card decoration per workspace colour: gradient icon tile + faint corner wash/icon.
+    const CARD_TONES = {
+      blue:   { tile: 'gtt-tile-blue',   wash: 'rgba(30,111,255,0.16)', icon: '#1E6FFF' },
+      cyan:   { tile: 'gtt-tile-cyan',   wash: 'rgba(16,165,201,0.16)', icon: '#10A5C9' },
+      mint:   { tile: 'gtt-tile-mint',   wash: 'rgba(0,199,167,0.18)',  icon: '#0FA37F' },
+      orange: { tile: 'gtt-tile-orange', wash: 'rgba(255,200,87,0.30)', icon: '#F5A524' },
+      navy:   { tile: 'gtt-tile-navy',   wash: 'rgba(11,31,68,0.10)',   icon: '#0B1F44' },
+      slate:  { tile: 'gtt-tile-slate',  wash: 'rgba(100,116,139,0.12)', icon: '#64748B' }
+    };
+    // Left accent bar on client rows, cycling through the brand colours.
+    const ACCENT_BARS = ['#1E6FFF', '#00C7A7', '#FFC857', '#10A5C9'];
 
     function currentMonth() {
       const now = new Date();
@@ -756,9 +776,9 @@
         icon.setAttribute('data-lucide', 'alert-circle');
         icon.className = 'w-4 h-4 text-red-400 flex-shrink-0';
       } else {
-        box.className = 'flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg border text-sm font-medium bg-[#061D42] text-white border-[#2585E8]/40';
+        box.className = 'flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg border text-sm font-medium bg-[#0B1F44] text-white border-[#1E6FFF]/40';
         icon.setAttribute('data-lucide', 'check-circle-2');
-        icon.className = 'w-4 h-4 text-[#50D6B0] flex-shrink-0';
+        icon.className = 'w-4 h-4 text-[#00C7A7] flex-shrink-0';
       }
 
       container.classList.remove('hidden');
@@ -862,8 +882,8 @@
       const staff = state.team.filter(u => u.role !== 'ADMIN');
       document.getElementById('client-form-team').innerHTML = staff.length
         ? staff.map(u => `
-            <label class="flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 text-sm text-[#061D42] cursor-pointer hover:border-[#2585E8]">
-              <input type="checkbox" value="${escapeHtml(u.user_id)}" ${selectedIds.indexOf(u.user_id) >= 0 ? 'checked' : ''} class="w-4 h-4 accent-[#2585E8]" />
+            <label class="flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 text-sm text-[#0B1F44] cursor-pointer hover:border-[#1E6FFF]">
+              <input type="checkbox" value="${escapeHtml(u.user_id)}" ${selectedIds.indexOf(u.user_id) >= 0 ? 'checked' : ''} class="w-4 h-4 accent-[#1E6FFF]" />
               <span class="truncate">${escapeHtml(u.name)}</span>
             </label>`).join('')
         : `<p class="col-span-2 text-xs text-slate-400">ยังไม่มี STAFF — เพิ่มคนที่หน้า Settings ก่อน</p>`;
@@ -877,7 +897,7 @@
       const url = client ? safeUrl(client.logo_url) : '';
       return url
         ? `<img src="${escapeHtml(url)}" alt="" referrerpolicy="no-referrer" class="${sizeClass} rounded-lg object-cover border border-slate-200 bg-slate-50 flex-shrink-0" />`
-        : `<div class="${sizeClass} rounded-lg bg-[#061D42] text-white font-bold text-[11px] flex items-center justify-center flex-shrink-0">${escapeHtml(getInitials(client ? client.client_name : '?'))}</div>`;
+        : `<div class="${sizeClass} rounded-lg bg-[#0B1F44] text-white font-bold text-[11px] flex items-center justify-center flex-shrink-0">${escapeHtml(getInitials(client ? client.client_name : '?'))}</div>`;
     }
 
     // Untitled pieces are shown as "VDO #2": a running number among the same client, month and type,
@@ -901,7 +921,7 @@
     }
 
     function qtyBadge(d) {
-      return `<span class="shrink-0 px-2 py-0.5 rounded-md bg-[#EAF3FD] text-[#1d6fc4] text-xs font-bold">×${qty(d)}</span>`;
+      return `<span class="shrink-0 px-2 py-0.5 rounded-md bg-[#EAF3FD] text-[#1557D6] text-xs font-bold">×${qty(d)}</span>`;
     }
 
     function monthDeliverables(clientId) {
@@ -917,9 +937,9 @@
       return `
         <div class="inline-flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-1">
           <button onclick="changeMonth(-1)" title="เดือนก่อน" class="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 cursor-pointer"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
-          <span class="px-2 text-sm font-semibold text-[#061D42] min-w-[130px] text-center">${escapeHtml(monthLabel(state.month))}</span>
+          <span class="px-2 text-sm font-semibold text-[#0B1F44] min-w-[130px] text-center">${escapeHtml(monthLabel(state.month))}</span>
           <button onclick="changeMonth(1)" title="เดือนถัดไป" class="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 cursor-pointer"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
-          ${state.month !== currentMonth() ? `<button onclick="changeMonth(0)" class="px-2 py-1 rounded-lg text-xs font-semibold text-[#2585E8] hover:bg-blue-50 cursor-pointer">เดือนนี้</button>` : ''}
+          ${state.month !== currentMonth() ? `<button onclick="changeMonth(0)" class="px-2 py-1 rounded-lg text-xs font-semibold text-[#1E6FFF] hover:bg-blue-50 cursor-pointer">เดือนนี้</button>` : ''}
         </div>`;
     }
 
@@ -1073,8 +1093,8 @@
       const roleBadge = document.getElementById('user-role-badge');
       roleBadge.textContent = user.role;
       roleBadge.className = isAdmin
-        ? 'inline-block text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#50D6B0]/20 text-[#0F766E]'
-        : 'inline-block text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#45B8E8]/20 text-[#2585E8]';
+        ? 'inline-block text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#00C7A7]/20 text-[#0F766E]'
+        : 'inline-block text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#45B8E8]/20 text-[#1E6FFF]';
 
       document.getElementById('nav-settings').classList.toggle('hidden', !isAdmin);
       document.getElementById('nav-dashboard').classList.toggle('hidden', !isAdmin);
@@ -1157,16 +1177,16 @@
         const el = document.getElementById('nav-' + item);
         if (!el) return;
         if (state.activeNav === item && !state.selectedClientId) {
-          el.className = el.className.replace('text-slate-300 hover:text-white hover:bg-white/5', 'bg-[#2585E8] text-white shadow-sm');
+          el.className = el.className.replace('text-slate-300 hover:text-white hover:bg-white/5', 'bg-[#1E6FFF] text-white shadow-sm');
         } else {
-          el.className = el.className.replace('bg-[#2585E8] text-white shadow-sm', 'text-slate-300 hover:text-white hover:bg-white/5');
+          el.className = el.className.replace('bg-[#1E6FFF] text-white shadow-sm', 'text-slate-300 hover:text-white hover:bg-white/5');
         }
       });
 
       // Update Top Sync Status
       const syncArea = document.getElementById('sync-status-area');
       syncArea.innerHTML = `
-        <button onclick="refreshData(true)" class="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg bg-[#50D6B0]/15 text-[#0F766E] hover:bg-[#50D6B0]/25 transition cursor-pointer">
+        <button onclick="refreshData(true)" class="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg bg-[#00C7A7]/15 text-[#0F766E] hover:bg-[#00C7A7]/25 transition cursor-pointer">
           <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
           <span class="hidden sm:inline">โหลดข้อมูลล่าสุด</span>
         </button>`;
@@ -1208,19 +1228,31 @@
         .filter(row => row.count > 0);
     }
 
-    // Big number per work type. `size` 'lg' for the client page header, 'md' for dashboard cards.
+    // Big number per work type, as stat cards with a gradient icon tile ("5 Banner", "2 VDO").
     function renderTypeCounts(items, size) {
       const rows = typeCounts(items);
       if (!rows.length) return `<p class="text-sm text-slate-400">ยังไม่มีงานเดือนนี้</p>`;
-      const big = size === 'lg' ? 'text-3xl' : 'text-2xl';
+      const lg = size === 'lg';
       return `
-        <div class="flex flex-wrap gap-2.5">
-          ${rows.map(row => `
-            <div class="min-w-[84px] px-3.5 py-2.5 rounded-xl bg-[#F5F7FA] border border-slate-200/80">
-              <p class="${big} font-bold text-[#061D42] leading-none">${row.count}</p>
-              <p class="mt-1.5 text-xs font-semibold text-slate-500 inline-flex items-center gap-1"><i data-lucide="${row.type.icon}" class="w-3.5 h-3.5"></i>${escapeHtml(row.type.short)}</p>
-            </div>`).join('')}
+        <div class="grid grid-cols-2 ${lg ? 'sm:grid-cols-3 lg:grid-cols-5' : 'md:grid-cols-4'} gap-3">
+          ${rows.map(row => {
+            const tone = CARD_TONES[row.type.tone] || CARD_TONES.blue;
+            return `
+            <div class="relative overflow-hidden rounded-2xl border border-slate-200/70 bg-white px-3.5 py-3 flex items-center gap-3" style="--deco:${tone.wash}">
+              <span class="gtt-tile ${tone.tile} ${lg ? 'w-11 h-11' : 'w-9 h-9'} rounded-xl flex items-center justify-center shrink-0"><i data-lucide="${row.type.icon}" class="${lg ? 'w-5 h-5' : 'w-4 h-4'}"></i></span>
+              <div class="min-w-0">
+                <p class="${lg ? 'text-3xl' : 'text-2xl'} font-extrabold text-[#0B1F44] leading-none">${row.count}</p>
+                <p class="mt-1 text-xs font-semibold text-slate-500 truncate">${escapeHtml(row.type.short)}</p>
+              </div>
+              <span class="absolute right-0 bottom-0 w-16 h-10 rounded-tl-[40px]" style="background:linear-gradient(135deg,transparent 20%,${tone.wash})"></span>
+            </div>`;
+          }).join('')}
         </div>`;
+    }
+
+    // "1 Banner, 2 VDO" — the short breakdown line under each client.
+    function typeSummaryText(items) {
+      return typeCounts(items).map(row => row.count + ' ' + row.type.short).join(', ');
     }
 
     // ------------------------------------------------------------------------
@@ -1228,52 +1260,85 @@
     // ------------------------------------------------------------------------
     function renderDashboardView() {
       const items = monthDeliverables();
+      const total = sumQty(items);
       // Clients with work this month first, then the rest (so new clients are easy to find and fill in).
       const clients = state.clients.filter(c => !c.archived)
         .map(c => ({ client: c, items: items.filter(d => d.client_id === c.client_id) }))
         .sort((a, b) => (b.items.length > 0) - (a.items.length > 0) || a.client.client_name.localeCompare(b.client.client_name, 'th'));
 
-      const cards = clients.map(({ client, items: clientItems }) => `
-        <div onclick="openClientWorkspace(${jsArg(client.client_id)})" class="bg-white rounded-2xl border border-slate-200/80 hover:border-[#2585E8] p-5 shadow-xs cursor-pointer transition flex flex-col gap-4">
-          <div class="flex items-center justify-between gap-3">
-            <div class="flex items-center gap-3 min-w-0">
-              ${clientLogoHtml(client, 'w-10 h-10')}
-              <h3 class="text-base font-bold text-[#061D42] truncate">${escapeHtml(client.client_name)}</h3>
+      const rows = clients.map(({ client, items: clientItems }, index) => {
+        const count = sumQty(clientItems);
+        return `
+        <div onclick="openClientWorkspace(${jsArg(client.client_id)})" class="gtt-card relative overflow-hidden pl-5 pr-3 py-3.5 sm:py-4 flex items-center gap-3.5 cursor-pointer hover:-translate-y-0.5 hover:shadow-lg transition">
+          <span class="absolute left-0 top-3 bottom-3 w-1.5 rounded-r-full" style="background:${ACCENT_BARS[index % ACCENT_BARS.length]}"></span>
+          <div class="p-1 rounded-2xl bg-white border border-slate-200/80 shadow-xs shrink-0">${clientLogoHtml(client, 'w-12 h-12 sm:w-14 sm:h-14')}</div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-start justify-between gap-2">
+              <h3 class="text-[15px] sm:text-base font-bold text-[#0B1F44] leading-snug line-clamp-2">${escapeHtml(client.client_name)}</h3>
+              ${count ? `<span class="shrink-0 px-2.5 py-0.5 rounded-full bg-[#F3F6FA] border border-slate-200/80 text-[11px] font-semibold text-slate-600 whitespace-nowrap">รวม ${count} ชิ้น</span>` : ''}
             </div>
-            ${clientItems.length ? `<span class="text-xs font-semibold text-slate-500 whitespace-nowrap">รวม ${sumQty(clientItems)} ชิ้น</span>` : ''}
+            <p class="mt-0.5 text-xs text-slate-500 truncate">
+              ${count
+                ? `งานทั้งหมด <b class="text-[#0B1F44]">${count}</b> ชิ้น <span class="text-slate-300">•</span> ${escapeHtml(typeSummaryText(clientItems))}`
+                : `<span class="inline-flex items-center gap-1"><i data-lucide="calendar" class="w-3.5 h-3.5"></i>ยังไม่ได้งานเดือนนี้</span>`}
+            </p>
+            <button onclick="event.stopPropagation(); openAddDeliverableModal(${jsArg(client.client_id)})" class="mt-2 inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-[#1E6FFF]/10 hover:bg-[#1E6FFF]/20 text-xs font-semibold text-[#1E6FFF] cursor-pointer">
+              <i data-lucide="plus" class="w-3.5 h-3.5"></i><span>เพิ่มงาน</span>
+            </button>
           </div>
-          ${renderTypeCounts(clientItems, 'md')}
-          <button onclick="event.stopPropagation(); openAddDeliverableModal(${jsArg(client.client_id)})" class="self-start inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 hover:border-[#2585E8] text-xs font-semibold text-[#2585E8] transition cursor-pointer">
-            <i data-lucide="plus" class="w-3 h-3"></i><span>เพิ่มงาน</span>
-          </button>
-        </div>`).join('');
+          <span class="w-8 h-8 rounded-full bg-[#F3F6FA] text-[#1E6FFF] flex items-center justify-center shrink-0"><i data-lucide="chevron-right" class="w-4 h-4"></i></span>
+        </div>`;
+      }).join('');
 
       return `
         <div class="space-y-6">
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-[#061D42]">Dashboard งาน</h1>
-              <p class="text-sm text-slate-500 mt-1">จำนวนงานที่ต้องทำให้ลูกค้าแต่ละรายในเดือนที่เลือก</p>
+          <section class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-white via-[#EEF5FF] to-[#E3FBF4] border border-white px-5 sm:px-8 py-6 sm:py-8">
+            <div class="absolute -right-16 -top-16 w-64 h-64 rounded-full bg-[#1E6FFF]/5"></div>
+            <div class="relative flex items-center justify-between gap-4">
+              <div class="min-w-0">
+                <p class="text-lg sm:text-2xl font-bold text-[#0B1F44] leading-tight">Welcome to</p>
+                <h1 class="text-[26px] sm:text-4xl font-extrabold tracking-tight text-[#0B1F44] leading-tight whitespace-nowrap">Go To Target</h1>
+                <span class="block mt-2 h-1 w-12 rounded-full bg-gradient-to-r from-[#00C7A7] to-[#1E6FFF]"></span>
+                <p class="mt-2 text-[13px] sm:text-sm text-slate-600">จัดการงานของทีมได้อย่างมีประสิทธิภาพในที่เดียว</p>
+              </div>
+              <img src="assets/go-mark.png" alt="" class="w-24 sm:w-48 h-auto shrink-0 drop-shadow-xl" />
             </div>
-            <div class="flex flex-wrap items-center gap-2">
+          </section>
+
+          <section class="gtt-card p-4 sm:p-6 space-y-4">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div class="flex items-start gap-3">
+                <span class="gtt-tile gtt-tile-navy w-10 h-10 rounded-xl flex items-center justify-center shrink-0"><i data-lucide="layout-grid" class="w-5 h-5"></i></span>
+                <div>
+                  <h2 class="text-xl sm:text-2xl font-bold text-[#0B1F44] leading-tight">Dashboard</h2>
+                  <p class="text-xs sm:text-sm text-slate-500">จำนวนงานที่ต้องทำให้ลูกค้าแต่ละรายในเดือนที่เลือก</p>
+                </div>
+              </div>
               ${renderMonthPicker()}
+            </div>
+            <div class="flex flex-wrap gap-2">
               <button onclick="copyFromPreviousMonth('')" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 cursor-pointer" title="คัดลอกรายการงานของทุกลูกค้าจากเดือนก่อน">
                 <i data-lucide="copy" class="w-3.5 h-3.5"></i><span>คัดลอกจากเดือนก่อน</span>
               </button>
-              <button onclick="openAddDeliverableModal('')" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#061D42] hover:bg-[#0d2d63] text-white text-xs font-semibold cursor-pointer">
-                <i data-lucide="plus" class="w-4 h-4 text-[#50D6B0]"></i><span>เพิ่มงาน</span>
+              <button onclick="openAddDeliverableModal('')" class="gtt-btn-dark inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-white text-xs font-semibold cursor-pointer">
+                <i data-lucide="plus" class="w-4 h-4 text-[#9FF3D6]"></i><span>เพิ่มงาน</span>
               </button>
             </div>
-          </div>
+            <div class="pt-1">
+              <p class="mb-2.5 text-sm font-bold text-[#0B1F44] inline-flex items-center gap-2"><span class="w-1 h-4 rounded-full bg-[#1E6FFF]"></span>งานทั้งหมดเดือนนี้${total ? ` · ${total} ชิ้น` : ''}</p>
+              ${renderTypeCounts(items, 'md')}
+            </div>
+          </section>
 
-          <div class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs">
-            <p class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">งานทั้งหมดเดือนนี้${items.length ? ` · ${sumQty(items)} ชิ้น` : ''}</p>
-            ${renderTypeCounts(items, 'lg')}
-          </div>
-
-          ${clients.length
-            ? `<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">${cards}</div>`
-            : `<div class="bg-white rounded-2xl border border-slate-200/80 p-10 text-center text-sm text-slate-400">ยังไม่มีลูกค้า — เพิ่มลูกค้าที่หน้า Clients ก่อน</div>`}
+          <section>
+            <div class="flex items-center justify-between mb-3">
+              <h2 class="text-lg sm:text-xl font-bold text-[#0B1F44] inline-flex items-center gap-2"><i data-lucide="briefcase" class="w-5 h-5"></i>Team Workspace</h2>
+              <button onclick="navigateTo('clients')" class="inline-flex items-center gap-1 text-sm font-semibold text-[#1E6FFF] cursor-pointer">ดูทั้งหมด<i data-lucide="chevron-right" class="w-4 h-4"></i></button>
+            </div>
+            ${clients.length
+              ? `<div class="grid grid-cols-1 lg:grid-cols-2 gap-3">${rows}</div>`
+              : `<div class="gtt-card p-10 text-center text-sm text-slate-400">ยังไม่มีลูกค้า — เพิ่มลูกค้าที่หน้า Clients ก่อน</div>`}
+          </section>
         </div>`;
     }
 
@@ -1292,13 +1357,13 @@
         const client = state.clients.find(c => c.client_id === d.client_id);
         const resultUrl = safeUrl(d.result_url);
         return `
-          <div class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs flex flex-col gap-3">
+          <div class="gtt-card p-5 flex flex-col gap-3">
             <div class="flex items-start justify-between gap-3">
               <div class="flex items-center gap-3 min-w-0">
                 ${clientLogoHtml(client, 'w-10 h-10')}
                 <div class="min-w-0">
                   <p class="text-xs text-slate-500 truncate">${escapeHtml(clientName(d.client_id))}</p>
-                  <p class="text-base font-bold text-[#061D42] flex items-center gap-2 min-w-0">${qtyBadge(d)}<span class="truncate">${escapeHtml(deliverableTitle(d))}</span></p>
+                  <p class="text-base font-bold text-[#0B1F44] flex items-center gap-2 min-w-0">${qtyBadge(d)}<span class="truncate">${escapeHtml(deliverableTitle(d))}</span></p>
                 </div>
               </div>
               ${statusBadge(d.status)}
@@ -1308,11 +1373,11 @@
               ${d.month !== state.month ? `<span class="px-2 py-0.5 rounded-full bg-red-50 text-red-700 font-semibold">ค้างจาก ${escapeHtml(monthLabel(d.month))}</span>` : ''}
             </div>
             <div class="mt-auto pt-2 flex flex-wrap gap-2">
-              <button onclick="openClientWorkspace(${jsArg(d.client_id)})" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 hover:border-[#2585E8] text-xs font-semibold text-[#061D42] cursor-pointer">
+              <button onclick="openClientWorkspace(${jsArg(d.client_id)})" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 hover:border-[#1E6FFF] text-xs font-semibold text-[#0B1F44] cursor-pointer">
                 <i data-lucide="folder-open" class="w-3.5 h-3.5"></i><span>ไฟล์/บรีฟลูกค้า</span>
               </button>
-              ${resultUrl ? `<button onclick="openExternalLink(${jsArg(resultUrl)})" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 hover:border-[#2585E8] text-xs font-semibold text-slate-600 cursor-pointer"><i data-lucide="external-link" class="w-3.5 h-3.5"></i><span>ลิงก์ที่ส่ง</span></button>` : ''}
-              <button onclick="openSubmitModal(${jsArg(d.deliverable_id)})" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl ${resultUrl ? 'border border-slate-200 text-slate-600 hover:border-[#2585E8]' : 'bg-[#2585E8] hover:bg-[#1d6fc4] text-white'} text-xs font-semibold cursor-pointer"><i data-lucide="${resultUrl ? 'pencil' : 'send'}" class="w-3.5 h-3.5"></i><span>${resultUrl ? 'แก้ลิงก์' : 'ส่งงาน'}</span></button>
+              ${resultUrl ? `<button onclick="openExternalLink(${jsArg(resultUrl)})" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 hover:border-[#1E6FFF] text-xs font-semibold text-slate-600 cursor-pointer"><i data-lucide="external-link" class="w-3.5 h-3.5"></i><span>ลิงก์ที่ส่ง</span></button>` : ''}
+              <button onclick="openSubmitModal(${jsArg(d.deliverable_id)})" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl ${resultUrl ? 'border border-slate-200 text-slate-600 hover:border-[#1E6FFF]' : 'bg-[#1E6FFF] hover:bg-[#1557D6] text-white'} text-xs font-semibold cursor-pointer"><i data-lucide="${resultUrl ? 'pencil' : 'send'}" class="w-3.5 h-3.5"></i><span>${resultUrl ? 'แก้ลิงก์' : 'ส่งงาน'}</span></button>
             </div>
           </div>`;
       }).join('');
@@ -1321,16 +1386,16 @@
         <div class="space-y-6">
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-[#061D42]">งานของฉัน</h1>
+              <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-[#0B1F44]">งานของฉัน</h1>
               <p class="text-sm text-slate-500 mt-1">${mine.length ? `ยังไม่ส่ง ${todo} จาก ${sumQty(mine)} ชิ้น — ` : ''}ทำครบทั้งชุดแล้วกด "ส่งงาน" วางลิงก์เดียว (เช่น โฟลเดอร์ Drive)</p>
             </div>
             ${renderMonthPicker()}
           </div>
           ${mine.length
             ? `<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">${cards}</div>`
-            : `<div class="bg-white rounded-2xl border border-slate-200/80 p-14 text-center">
+            : `<div class="gtt-card p-14 text-center">
                 <i data-lucide="party-popper" class="w-10 h-10 text-slate-300 mx-auto mb-3"></i>
-                <h3 class="text-base font-semibold text-[#061D42]">ไม่มีงานที่มอบหมายให้คุณในเดือนนี้</h3>
+                <h3 class="text-base font-semibold text-[#0B1F44]">ไม่มีงานที่มอบหมายให้คุณในเดือนนี้</h3>
                 <p class="text-sm text-slate-500 mt-1">ถ้าคิดว่าควรมี ลองกด "โหลดข้อมูลล่าสุด" ด้านบน หรือแจ้งแอดมิน</p>
               </div>`}
         </div>`;
@@ -1363,24 +1428,24 @@
                 ${isAdmin
                   ? `<button onclick="openEditDeliverableModal(${jsArg(d.deliverable_id)}, 'qty')" title="แก้จำนวนชิ้น" class="cursor-pointer hover:opacity-75">${qtyBadge(d)}</button>`
                   : qtyBadge(d)}
-                <p class="text-sm font-semibold text-[#061D42] truncate">${escapeHtml(deliverableTitle(d))}</p>
-                ${isAdmin ? `<button onclick="openEditDeliverableModal(${jsArg(d.deliverable_id)}, 'title')" title="แก้ไขงาน" class="p-1 rounded text-slate-400 hover:text-[#2585E8] cursor-pointer"><i data-lucide="pencil" class="w-3 h-3"></i></button>` : ''}
+                <p class="text-sm font-semibold text-[#0B1F44] truncate">${escapeHtml(deliverableTitle(d))}</p>
+                ${isAdmin ? `<button onclick="openEditDeliverableModal(${jsArg(d.deliverable_id)}, 'title')" title="แก้ไขงาน" class="p-1 rounded text-slate-400 hover:text-[#1E6FFF] cursor-pointer"><i data-lucide="pencil" class="w-3 h-3"></i></button>` : ''}
               </div>
               <div class="flex flex-wrap items-center gap-2">
                 ${isAdmin
-                  ? `<select onchange="assignDeliverable(${jsArg(d.deliverable_id)}, this.value)" class="px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs bg-white text-[#061D42] max-w-[180px]">${assigneeOptions(d.assignee_id)}</select>`
+                  ? `<select onchange="assignDeliverable(${jsArg(d.deliverable_id)}, this.value)" class="px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs bg-white text-[#0B1F44] max-w-[180px]">${assigneeOptions(d.assignee_id)}</select>`
                   : `<span class="text-xs text-slate-500">${escapeHtml(memberName(d.assignee_id) || 'ยังไม่ระบุ')}</span>`}
                 ${statusBadge(d.status)}
-                ${resultUrl ? `<button onclick="openExternalLink(${jsArg(resultUrl)})" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 hover:border-[#2585E8] text-xs font-semibold text-slate-600 cursor-pointer"><i data-lucide="external-link" class="w-3 h-3"></i>ผลงาน</button>` : ''}
-                ${mine || isAdmin ? `<button onclick="openSubmitModal(${jsArg(d.deliverable_id)})" class="px-2.5 py-1.5 rounded-lg ${resultUrl ? 'border border-slate-200 text-slate-600 hover:border-[#2585E8]' : 'bg-[#2585E8] hover:bg-[#1d6fc4] text-white'} text-xs font-semibold cursor-pointer">${resultUrl ? 'แก้ลิงก์' : 'ส่งงาน'}</button>` : ''}
+                ${resultUrl ? `<button onclick="openExternalLink(${jsArg(resultUrl)})" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 hover:border-[#1E6FFF] text-xs font-semibold text-slate-600 cursor-pointer"><i data-lucide="external-link" class="w-3 h-3"></i>ผลงาน</button>` : ''}
+                ${mine || isAdmin ? `<button onclick="openSubmitModal(${jsArg(d.deliverable_id)})" class="px-2.5 py-1.5 rounded-lg ${resultUrl ? 'border border-slate-200 text-slate-600 hover:border-[#1E6FFF]' : 'bg-[#1E6FFF] hover:bg-[#1557D6] text-white'} text-xs font-semibold cursor-pointer">${resultUrl ? 'แก้ลิงก์' : 'ส่งงาน'}</button>` : ''}
                 ${isAdmin ? `<button onclick="confirmDeleteDeliverable(${jsArg(d.deliverable_id)})" title="ลบงานชุดนี้" class="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 cursor-pointer"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>` : ''}
               </div>
             </div>`;
         }).join('');
         return `
-          <div class="bg-white rounded-2xl border border-slate-200/80 px-5 py-2 shadow-xs">
+          <div class="gtt-card px-5 py-2">
             <div class="py-2 flex items-center justify-between border-b border-slate-100">
-              <h3 class="text-sm font-bold text-[#061D42] inline-flex items-center gap-2"><i data-lucide="${group.type.icon}" class="w-4 h-4 text-[#2585E8]"></i>${escapeHtml(group.type.label)} · ${sumQty(group.items)} ชิ้น</h3>
+              <h3 class="text-sm font-bold text-[#0B1F44] inline-flex items-center gap-2"><i data-lucide="${group.type.icon}" class="w-4 h-4 text-[#1E6FFF]"></i>${escapeHtml(group.type.label)} · ${sumQty(group.items)} ชิ้น</h3>
               <span class="text-xs font-semibold text-slate-500">ส่งแล้ว ${sent}/${sumQty(group.items)}</span>
             </div>
             <div class="divide-y divide-slate-100">${rows}</div>
@@ -1392,7 +1457,7 @@
           <p class="text-sm text-slate-500">${isAdmin ? 'ยังไม่มีงานของลูกค้ารายนี้ในเดือนนี้' : 'ไม่มีงานของคุณสำหรับลูกค้ารายนี้ในเดือนนี้'}</p>
           ${isAdmin ? `
             <div class="mt-3 flex flex-wrap justify-center gap-2">
-              <button onclick="openAddDeliverableModal(${jsArg(client.client_id)})" class="px-4 py-2 rounded-xl bg-[#061D42] hover:bg-[#0d2d63] text-white text-xs font-semibold cursor-pointer">+ เพิ่มงาน</button>
+              <button onclick="openAddDeliverableModal(${jsArg(client.client_id)})" class="px-4 py-2 rounded-xl bg-[#0B1F44] hover:bg-[#16346B] text-white text-xs font-semibold cursor-pointer">+ เพิ่มงาน</button>
               <button onclick="copyFromPreviousMonth(${jsArg(client.client_id)})" class="px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-xs font-semibold text-slate-700 cursor-pointer">คัดลอกจากเดือนก่อน</button>
             </div>` : ''}
         </div>`;
@@ -1403,7 +1468,7 @@
             <h2 class="text-sm font-bold uppercase tracking-wider text-slate-500">รายการงาน (${sumQty(items)} ชิ้น)</h2>
             <div class="flex flex-wrap items-center gap-2">
               ${renderMonthPicker()}
-              ${isAdmin && items.length ? `<button onclick="openAddDeliverableModal(${jsArg(client.client_id)})" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#061D42] hover:bg-[#0d2d63] text-white text-xs font-semibold cursor-pointer"><i data-lucide="plus" class="w-4 h-4 text-[#50D6B0]"></i>เพิ่มงาน</button>` : ''}
+              ${isAdmin && items.length ? `<button onclick="openAddDeliverableModal(${jsArg(client.client_id)})" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#0B1F44] hover:bg-[#16346B] text-white text-xs font-semibold cursor-pointer"><i data-lucide="plus" class="w-4 h-4 text-[#00C7A7]"></i>เพิ่มงาน</button>` : ''}
             </div>
           </div>
           ${groups.length ? `<div class="space-y-4">${groupsHtml}</div>` : emptyHtml}
@@ -1610,9 +1675,9 @@
       });
 
       const cardsHtml = filtered.length === 0
-        ? `<div class="bg-white rounded-2xl border border-slate-200/80 p-14 text-center">
+        ? `<div class="gtt-card p-14 text-center">
             <i data-lucide="users" class="w-10 h-10 text-slate-300 mx-auto mb-3"></i>
-            <h3 class="text-base font-semibold text-[#061D42]">${state.clientSearch ? 'No matching clients found' : state.showArchived ? 'No archived clients' : 'No active clients yet'}</h3>
+            <h3 class="text-base font-semibold text-[#0B1F44]">${state.clientSearch ? 'No matching clients found' : state.showArchived ? 'No archived clients' : 'No active clients yet'}</h3>
             <p class="text-sm text-slate-500 mt-1">${state.clientSearch ? 'Try adjusting your search query.' : isAdmin ? 'Click "Add Client" to create your first client workspace.' : 'ยังไม่มีลูกค้าที่คุณดูแล — ให้แอดมินเพิ่มชื่อคุณในทีมของลูกค้า'}</p>
           </div>`
         : `<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -1622,11 +1687,11 @@
 
               const logoHtml = safeUrl(client.logo_url)
                 ? `<img src="${escapeHtml(safeUrl(client.logo_url))}" alt="${escapeHtml(client.client_name)}" referrerpolicy="no-referrer" class="w-14 h-14 rounded-xl object-cover border border-slate-200 bg-slate-50 flex-shrink-0" />`
-                : `<div class="w-14 h-14 rounded-xl bg-gradient-to-br from-[#061D42] to-[#0f3470] text-white font-bold text-lg flex items-center justify-center flex-shrink-0">${escapeHtml(getInitials(client.client_name))}</div>`;
+                : `<div class="w-14 h-14 rounded-xl bg-gradient-to-br from-[#0B1F44] to-[#0f3470] text-white font-bold text-lg flex items-center justify-center flex-shrink-0">${escapeHtml(getInitials(client.client_name))}</div>`;
 
               const adminActions = isAdmin ? `
                 <div onclick="event.stopPropagation()" class="absolute top-4 right-4 flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                  <button onclick="openEditClientModal(${jsArg(client.client_id)})" title="Edit Client" class="p-1.5 rounded-lg bg-slate-100 hover:bg-[#2585E8] text-slate-600 hover:text-white transition cursor-pointer">
+                  <button onclick="openEditClientModal(${jsArg(client.client_id)})" title="Edit Client" class="p-1.5 rounded-lg bg-slate-100 hover:bg-[#1E6FFF] text-slate-600 hover:text-white transition cursor-pointer">
                     <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
                   </button>
                   <button onclick="toggleArchiveClient(${jsArg(client.client_id)})" title="${client.archived ? 'Restore' : 'Archive'}" class="p-1.5 rounded-lg bg-slate-100 hover:bg-amber-500 text-slate-600 hover:text-white transition cursor-pointer">
@@ -1638,13 +1703,13 @@
                 </div>` : '';
 
               return `
-                <div onclick="openClientWorkspace(${jsArg(client.client_id)})" class="group relative bg-white rounded-2xl border border-slate-200/90 hover:border-[#2585E8] p-6 shadow-xs hover:shadow-lg hover:shadow-[#061D42]/5 transition-all duration-200 cursor-pointer flex flex-col justify-between">
+                <div onclick="openClientWorkspace(${jsArg(client.client_id)})" class="group relative bg-white rounded-2xl border border-slate-200/90 hover:border-[#1E6FFF] p-6 shadow-xs hover:shadow-lg hover:shadow-[#0B1F44]/5 transition-all duration-200 cursor-pointer flex flex-col justify-between">
                   ${adminActions}
                   <div>
                     <div class="flex items-center gap-4 mb-4">
                       ${logoHtml}
                       <div class="min-w-0 pr-12">
-                        <h3 class="text-lg font-bold text-[#061D42] group-hover:text-[#2585E8] transition-colors truncate">${escapeHtml(client.client_name)}</h3>
+                        <h3 class="text-lg font-bold text-[#0B1F44] group-hover:text-[#1E6FFF] transition-colors truncate">${escapeHtml(client.client_name)}</h3>
                         <p class="text-xs text-slate-400 mt-0.5">Added ${escapeHtml(client.created_at)}</p>
                         ${isAdmin ? `<p class="text-xs mt-0.5 truncate ${clientTeamNames(client).length ? 'text-slate-500' : 'text-amber-600'}">ทีม: ${clientTeamNames(client).length ? escapeHtml(clientTeamNames(client).join(', ')) : 'ยังไม่มี'}</p>` : ''}
                       </div>
@@ -1652,11 +1717,11 @@
                     <p class="text-sm text-slate-600 line-clamp-2 min-h-[40px] leading-relaxed">${escapeHtml(client.description) || 'No description provided.'}</p>
                   </div>
                   <div class="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between">
-                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#F5F7FA] text-xs font-semibold text-[#061D42]">
-                      <i data-lucide="link-2" class="w-3.5 h-3.5 text-[#2585E8]"></i>
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#F3F6FA] text-xs font-semibold text-[#0B1F44]">
+                      <i data-lucide="link-2" class="w-3.5 h-3.5 text-[#1E6FFF]"></i>
                       <span>${connected} / ${clientWs.length} Links Connected</span>
                     </span>
-                    <span class="text-xs font-semibold text-[#2585E8] group-hover:translate-x-0.5 transition-transform">Open →</span>
+                    <span class="text-xs font-semibold text-[#1E6FFF] group-hover:translate-x-0.5 transition-transform">Open →</span>
                   </div>
                 </div>`;
             }).join('')}
@@ -1666,12 +1731,12 @@
         <div class="space-y-6">
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-[#061D42]">Clients</h1>
+              <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-[#0B1F44]">Clients</h1>
               <p class="text-sm text-slate-500 mt-1">Select a client to access their working folders, sheets, and creative briefs.</p>
             </div>
             ${isAdmin ? `
-              <button onclick="openCreateClientModal()" class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#061D42] hover:bg-[#0d2d63] text-white text-sm font-semibold shadow-sm transition cursor-pointer self-start sm:self-auto">
-                <i data-lucide="plus" class="w-4 h-4 text-[#50D6B0]"></i>
+              <button onclick="openCreateClientModal()" class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#0B1F44] hover:bg-[#16346B] text-white text-sm font-semibold shadow-sm transition cursor-pointer self-start sm:self-auto">
+                <i data-lucide="plus" class="w-4 h-4 text-[#00C7A7]"></i>
                 <span>Add Client</span>
               </button>` : ''}
           </div>
@@ -1681,7 +1746,7 @@
               <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
               <input type="text" placeholder="Search clients by name or description..." value="${escapeHtml(state.clientSearch)}"
                 oninput="state.clientSearch = this.value; renderApp();"
-                class="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white border border-slate-200/90 text-sm text-[#061D42] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#2585E8] transition" />
+                class="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white border border-slate-200/90 text-sm text-[#0B1F44] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1E6FFF] transition" />
             </div>
 
             ${isAdmin ? `
@@ -1705,7 +1770,7 @@
 
       const logoHtml = safeUrl(client.logo_url)
         ? `<img src="${escapeHtml(safeUrl(client.logo_url))}" alt="${escapeHtml(client.client_name)}" referrerpolicy="no-referrer" class="w-20 h-20 rounded-2xl object-cover border border-slate-200 bg-slate-50 flex-shrink-0" />`
-        : `<div class="w-20 h-20 rounded-2xl bg-[#061D42] text-white font-bold text-2xl flex items-center justify-center flex-shrink-0 shadow-inner">${escapeHtml(getInitials(client.client_name))}</div>`;
+        : `<div class="w-20 h-20 rounded-2xl bg-[#0B1F44] text-white font-bold text-2xl flex items-center justify-center flex-shrink-0 shadow-inner">${escapeHtml(getInitials(client.client_name))}</div>`;
 
       const wsCardsHtml = clientWorkspaces.map(ws => {
         const theme = COLOR_STYLES[ws.color] || COLOR_STYLES.blue;
@@ -1713,11 +1778,11 @@
         const serviceName = detectLinkService(ws.external_url);
 
         const adminWsControls = isAdmin ? `
-          <div onclick="event.stopPropagation()" class="absolute top-4 right-4 flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-            <button onclick="openEditWorkspaceModal(${jsArg(ws.workspace_id)})" title="Edit Workspace & Link" class="p-1.5 rounded-lg bg-slate-100 hover:bg-[#2585E8] text-slate-600 hover:text-white transition cursor-pointer">
+          <div onclick="event.stopPropagation()" class="absolute top-3 right-3 z-10 flex items-center gap-1.5">
+            <button onclick="openEditWorkspaceModal(${jsArg(ws.workspace_id)})" title="Edit Workspace & Link" class="p-2 rounded-xl bg-white border border-slate-200/80 shadow-xs hover:bg-[#1E6FFF] text-slate-600 hover:text-white transition cursor-pointer">
               <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
             </button>
-            <button onclick="confirmDeleteWorkspace(${jsArg(ws.workspace_id)})" title="Delete Workspace" class="p-1.5 rounded-lg bg-slate-100 hover:bg-red-600 text-slate-600 hover:text-white transition cursor-pointer">
+            <button onclick="confirmDeleteWorkspace(${jsArg(ws.workspace_id)})" title="Delete Workspace" class="p-2 rounded-xl bg-white border border-slate-200/80 shadow-xs hover:bg-red-600 text-slate-600 hover:text-white transition cursor-pointer">
               <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
             </button>
           </div>` : '';
@@ -1726,37 +1791,35 @@
           ? `openExternalLink(${jsArg(ws.external_url)})`
           : (isAdmin ? `openEditWorkspaceModal(${jsArg(ws.workspace_id)})` : '');
 
+        const tone = CARD_TONES[ws.color] || CARD_TONES.blue;
         return `
-          <div onclick="${clickHandler}"
-            class="group relative bg-white rounded-2xl border transition-all duration-200 p-6 flex flex-col justify-between ${hasLink ? 'border-slate-200/90 hover:border-[#2585E8] hover:shadow-lg hover:shadow-[#061D42]/5 cursor-pointer' : 'border-slate-200/80 bg-slate-50/40'} ${!hasLink && isAdmin ? 'cursor-pointer hover:border-slate-300' : ''}">
+          <div onclick="${clickHandler}" style="--deco:${tone.wash};--deco-icon:${tone.icon}"
+            class="gtt-card group relative overflow-hidden p-5 sm:p-6 flex flex-col justify-between min-h-[190px] transition-all duration-200 ${hasLink || isAdmin ? 'cursor-pointer hover:-translate-y-0.5 hover:shadow-xl' : ''}">
+            <div class="gtt-deco"><i data-lucide="${escapeHtml(ws.icon || 'folder-open')}"></i></div>
             ${adminWsControls}
-            <div>
-              <div class="flex items-center justify-between mb-5 ${isAdmin ? 'pt-8 sm:pt-0' : ''}">
-                <div class="w-12 h-12 rounded-xl ${theme.bg} ${theme.text} border ${theme.border} flex items-center justify-center">
-                  <i data-lucide="${escapeHtml(ws.icon || 'folder-open')}" class="w-6 h-6"></i>
+            <div class="relative">
+              <div class="flex items-start gap-4 ${isAdmin ? 'pt-7' : ''}">
+                <span class="gtt-tile ${tone.tile} w-14 h-14 rounded-2xl flex items-center justify-center shrink-0">
+                  <i data-lucide="${escapeHtml(ws.icon || 'folder-open')}" class="w-7 h-7"></i>
+                </span>
+                <div class="min-w-0 flex-1">
+                  <div class="flex flex-wrap items-center justify-between gap-2">
+                    <h3 class="text-xl font-extrabold tracking-tight text-[#0B1F44]">${escapeHtml(ws.workspace_name)}</h3>
+                    ${hasLink
+                      ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[#00C7A7]/15 text-[#0B8F74]"><span class="w-1.5 h-1.5 rounded-full bg-[#00C7A7]"></span>${serviceName}</span>`
+                      : `<span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-medium bg-slate-100 text-slate-500">Not Linked</span>`}
+                  </div>
+                  <p class="mt-1 text-sm text-slate-500 leading-relaxed">${escapeHtml(ws.description)}</p>
                 </div>
-                ${hasLink
-                  ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[#50D6B0]/15 text-[#0F766E]">
-                      <span class="w-1.5 h-1.5 rounded-full bg-[#50D6B0]"></span>
-                      ${serviceName}
-                    </span>`
-                  : `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium bg-slate-100 text-slate-500">Not Linked</span>`
-                }
               </div>
-              <h3 class="text-lg font-bold tracking-tight text-[#061D42] group-hover:text-[#2585E8] transition-colors">${escapeHtml(ws.workspace_name)}</h3>
-              <p class="mt-1.5 text-sm text-slate-500 leading-relaxed">${escapeHtml(ws.description)}</p>
             </div>
-            <div class="mt-6 pt-4 border-t border-slate-100">
+            <div class="relative mt-5">
               ${hasLink
-                ? `<div class="w-full py-2.5 px-4 rounded-xl bg-[#061D42] group-hover:bg-[#2585E8] text-white text-xs font-semibold flex items-center justify-center gap-2 transition-colors">
+                ? `<div class="gtt-btn-dark w-[80%] sm:max-w-[260px] py-3 px-5 rounded-full text-white text-sm font-semibold flex items-center justify-center gap-2 transition-colors">
                     <span>Open Workspace</span>
-                    <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+                    <i data-lucide="external-link" class="w-4 h-4"></i>
                   </div>`
-                : `<div class="text-center py-2 px-3 rounded-xl bg-slate-100/80 text-slate-500 text-xs font-medium">
-                    ยังไม่ได้เพิ่มลิงก์สำหรับพื้นที่ทำงานนี้
-                    ${isAdmin ? `<span class="block text-[11px] text-[#2585E8] font-semibold mt-0.5">+ Click to connect link</span>` : ''}
-                  </div>`
-              }
+                : `<p class="text-xs text-slate-400">ยังไม่ได้เพิ่มลิงก์สำหรับพื้นที่ทำงานนี้${isAdmin ? ' · <span class="text-[#1E6FFF] font-semibold">+ กดเพื่อเพิ่มลิงก์</span>' : ''}</p>`}
             </div>
           </div>`;
       }).join('');
@@ -1764,7 +1827,7 @@
       return `
         <div class="space-y-8">
           <div class="flex flex-wrap items-center justify-between gap-4">
-            <button onclick="navigateTo('clients')" class="inline-flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-[#061D42] bg-white px-4 py-2 rounded-xl border border-slate-200/90 shadow-xs hover:border-slate-300 transition cursor-pointer">
+            <button onclick="navigateTo('clients')" class="inline-flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-[#0B1F44] bg-white px-4 py-2 rounded-xl border border-slate-200/90 shadow-xs hover:border-slate-300 transition cursor-pointer">
               <i data-lucide="arrow-left" class="w-4 h-4"></i>
               <span>Back to Clients</span>
             </button>
@@ -1775,18 +1838,18 @@
                   <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
                   <span>Edit Client</span>
                 </button>
-                <button onclick="openCreateWorkspaceModal(${jsArg(client.client_id)})" class="inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-[#061D42] hover:bg-[#0d2d63] px-4 py-2 rounded-xl shadow-xs transition cursor-pointer">
-                  <i data-lucide="plus" class="w-4 h-4 text-[#50D6B0]"></i>
+                <button onclick="openCreateWorkspaceModal(${jsArg(client.client_id)})" class="inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-[#0B1F44] hover:bg-[#16346B] px-4 py-2 rounded-xl shadow-xs transition cursor-pointer">
+                  <i data-lucide="plus" class="w-4 h-4 text-[#00C7A7]"></i>
                   <span>Add Workspace</span>
                 </button>
               </div>` : ''}
           </div>
 
-          <div class="bg-white rounded-2xl border border-slate-200/80 p-6 sm:p-8 shadow-xs flex flex-col sm:flex-row items-start sm:items-center gap-6">
+          <div class="gtt-card p-5 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center gap-6">
             ${logoHtml}
             <div class="flex-1 min-w-0">
               <div class="flex flex-wrap items-center gap-3">
-                <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-[#061D42]">${escapeHtml(client.client_name)}</h1>
+                <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-[#0B1F44]">${escapeHtml(client.client_name)}</h1>
                 ${client.archived ? `<span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">Archived</span>` : ''}
               </div>
               <p class="mt-2 text-slate-600 text-sm sm:text-base max-w-3xl leading-relaxed">${escapeHtml(client.description) || 'No client description provided.'}</p>
@@ -1800,7 +1863,7 @@
 
           <div>
             <h2 class="text-sm font-bold uppercase tracking-wider text-slate-500 mb-4">Client Workspaces (${clientWorkspaces.length})</h2>
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
               ${wsCardsHtml}
             </div>
           </div>
@@ -1824,29 +1887,29 @@
         const hasLink = Boolean(safeUrl(ws.external_url));
 
         return `
-          <tr class="hover:bg-[#F5F7FA]/60 transition-colors">
-            <td class="py-3.5 px-5 font-semibold text-[#061D42]">
-              <button onclick="openClientWorkspace(${jsArg(client.client_id)})" class="hover:text-[#2585E8] text-left cursor-pointer">${escapeHtml(client.client_name)}</button>
+          <tr class="hover:bg-[#F3F6FA]/60 transition-colors">
+            <td class="py-3.5 px-5 font-semibold text-[#0B1F44]">
+              <button onclick="openClientWorkspace(${jsArg(client.client_id)})" class="hover:text-[#1E6FFF] text-left cursor-pointer">${escapeHtml(client.client_name)}</button>
             </td>
             <td class="py-3.5 px-5">
               <div class="inline-flex items-center gap-2">
                 <span class="p-1.5 rounded-lg ${theme.bg} ${theme.text}">
                   <i data-lucide="${escapeHtml(ws.icon || 'folder-open')}" class="w-4 h-4"></i>
                 </span>
-                <span class="font-bold text-xs tracking-wide text-[#061D42]">${escapeHtml(ws.workspace_name)}</span>
+                <span class="font-bold text-xs tracking-wide text-[#0B1F44]">${escapeHtml(ws.workspace_name)}</span>
               </div>
             </td>
             <td class="py-3.5 px-5 text-slate-500 hidden md:table-cell">${escapeHtml(ws.description)}</td>
             <td class="py-3.5 px-5">
               ${hasLink
-                ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#50D6B0]/15 text-[#0F766E]"><span class="w-1.5 h-1.5 rounded-full bg-[#50D6B0]"></span>${detectLinkService(ws.external_url)}</span>`
+                ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#00C7A7]/15 text-[#0F766E]"><span class="w-1.5 h-1.5 rounded-full bg-[#00C7A7]"></span>${detectLinkService(ws.external_url)}</span>`
                 : `<span class="text-xs text-slate-400">ยังไม่ได้เพิ่มลิงก์</span>`}
             </td>
             <td class="py-3.5 px-5 text-right">
               ${hasLink
-                ? `<a href="${escapeHtml(safeUrl(ws.external_url))}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#061D42] hover:bg-[#2585E8] text-white text-xs font-semibold transition"><span>Open</span><i data-lucide="external-link" class="w-3 h-3"></i></a>`
+                ? `<a href="${escapeHtml(safeUrl(ws.external_url))}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0B1F44] hover:bg-[#1E6FFF] text-white text-xs font-semibold transition"><span>Open</span><i data-lucide="external-link" class="w-3 h-3"></i></a>`
                 : isAdmin
-                  ? `<button onclick="openEditWorkspaceModal(${jsArg(ws.workspace_id)})" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 hover:border-[#2585E8] text-xs font-semibold text-[#2585E8] transition cursor-pointer"><i data-lucide="plus" class="w-3 h-3"></i><span>Add Link</span></button>`
+                  ? `<button onclick="openEditWorkspaceModal(${jsArg(ws.workspace_id)})" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 hover:border-[#1E6FFF] text-xs font-semibold text-[#1E6FFF] transition cursor-pointer"><i data-lucide="plus" class="w-3 h-3"></i><span>Add Link</span></button>`
                   : `<span class="text-xs text-slate-300">—</span>`}
             </td>
           </tr>`;
@@ -1856,22 +1919,22 @@
         <div class="space-y-6">
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-[#061D42]">All Workspaces</h1>
+              <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-[#0B1F44]">All Workspaces</h1>
               <p class="text-sm text-slate-500 mt-1">Direct one-click access to all connected folders across active clients.</p>
             </div>
             <div class="relative w-full sm:w-80">
               <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
               <input type="text" placeholder="Filter by client or category..." value="${escapeHtml(state.workspaceSearch)}"
                 oninput="state.workspaceSearch = this.value; renderApp();"
-                class="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white border border-slate-200/90 text-sm text-[#061D42] focus:outline-none focus:ring-2 focus:ring-[#2585E8]" />
+                class="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white border border-slate-200/90 text-sm text-[#0B1F44] focus:outline-none focus:ring-2 focus:ring-[#1E6FFF]" />
             </div>
           </div>
 
-          <div class="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-xs">
+          <div class="gtt-card overflow-hidden">
             <div class="overflow-x-auto">
               <table class="w-full text-left border-collapse">
                 <thead>
-                  <tr class="border-b border-slate-200/80 bg-[#F5F7FA]/70 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                  <tr class="border-b border-slate-200/80 bg-[#F3F6FA]/70 text-[11px] font-bold uppercase tracking-wider text-slate-500">
                     <th class="py-3.5 px-5">Client</th>
                     <th class="py-3.5 px-5">Workspace</th>
                     <th class="py-3.5 px-5 hidden md:table-cell">Description</th>
@@ -1895,18 +1958,18 @@
       const usersHtml = state.users.map(u => `
         <div class="py-3.5 flex items-center justify-between gap-4">
           <div class="flex items-center gap-3 min-w-0">
-            <div class="w-9 h-9 rounded-full bg-[#061D42] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">${escapeHtml(getInitials(u.name))}</div>
+            <div class="w-9 h-9 rounded-full bg-[#0B1F44] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">${escapeHtml(getInitials(u.name))}</div>
             <div class="min-w-0">
-              <p class="text-sm font-semibold text-[#061D42] truncate">${escapeHtml(u.name)}${u.active ? '' : ' <span class="text-xs font-normal text-red-500">(ปิดใช้งาน)</span>'}</p>
+              <p class="text-sm font-semibold text-[#0B1F44] truncate">${escapeHtml(u.name)}${u.active ? '' : ' <span class="text-xs font-normal text-red-500">(ปิดใช้งาน)</span>'}</p>
               <p class="text-xs text-slate-500 truncate">@${escapeHtml(u.username || String(u.email || '').split('@')[0])}</p>
             </div>
           </div>
           <div class="flex items-center gap-2.5">
             <button onclick="toggleUserRole(${jsArg(u.user_id)})" title="กดเพื่อสลับ ADMIN / STAFF"
-              class="px-2.5 py-1 rounded-lg text-xs font-bold tracking-wider cursor-pointer transition ${u.role === 'ADMIN' ? 'bg-[#50D6B0]/20 text-[#0F766E]' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">
+              class="px-2.5 py-1 rounded-lg text-xs font-bold tracking-wider cursor-pointer transition ${u.role === 'ADMIN' ? 'bg-[#00C7A7]/20 text-[#0F766E]' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">
               ${u.role}
             </button>
-            <button onclick="openPasswordModal(${jsArg(u.user_id)})" title="ตั้งรหัสผ่านใหม่" class="p-1.5 rounded-lg text-slate-400 hover:text-[#2585E8] hover:bg-blue-50 transition cursor-pointer">
+            <button onclick="openPasswordModal(${jsArg(u.user_id)})" title="ตั้งรหัสผ่านใหม่" class="p-1.5 rounded-lg text-slate-400 hover:text-[#1E6FFF] hover:bg-blue-50 transition cursor-pointer">
               <i data-lucide="key-round" class="w-4 h-4"></i>
             </button>
             <button onclick="removeUser(${jsArg(u.user_id)})" title="ลบบัญชีนี้" class="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition cursor-pointer">
@@ -1918,31 +1981,31 @@
       return `
         <div class="space-y-8 max-w-4xl">
           <div>
-            <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-[#061D42]">Settings & Admin Controls</h1>
+            <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-[#0B1F44]">Settings & Admin Controls</h1>
             <p class="text-sm text-slate-500 mt-1">จัดการบัญชีทีมงาน: ADMIN แก้ไขได้ทุกอย่าง / STAFF ดูข้อมูลและส่งงานของตัวเองได้เท่านั้น</p>
           </div>
 
           <!-- Team Access Section -->
-          <div class="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-xs space-y-6">
+          <div class="gtt-card p-6 space-y-6">
             <div class="flex items-center gap-3 border-b border-slate-100 pb-4">
-              <div class="p-2.5 rounded-xl bg-[#2585E8]/10 text-[#2585E8]">
+              <div class="p-2.5 rounded-xl bg-[#1E6FFF]/10 text-[#1E6FFF]">
                 <i data-lucide="shield" class="w-5 h-5"></i>
               </div>
               <div>
-                <h2 class="text-base font-bold text-[#061D42]">บัญชีทีมงาน</h2>
+                <h2 class="text-base font-bold text-[#0B1F44]">บัญชีทีมงาน</h2>
                 <p class="text-xs text-slate-500">ตั้ง Username และรหัสผ่าน (อย่างน้อย 6 ตัว) ให้แต่ละคน แล้วแจ้งให้เจ้าตัวทางช่องทางส่วนตัว</p>
               </div>
             </div>
 
-            <form id="add-member-form" onsubmit="handleAddTeamMember(event)" class="grid grid-cols-1 sm:grid-cols-12 gap-3 bg-[#F5F7FA] p-4 rounded-xl">
-              <input id="new-member-name" type="text" required maxlength="100" placeholder="ชื่อ-นามสกุล" class="sm:col-span-3 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#2585E8]" />
-              <input id="new-member-username" type="text" required minlength="3" maxlength="30" pattern="[A-Za-z0-9][A-Za-z0-9._-]{2,29}" autocomplete="off" placeholder="Username" class="sm:col-span-3 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#2585E8]" />
-              <input id="new-member-password" type="text" required minlength="6" maxlength="100" autocomplete="new-password" placeholder="Password (6 ตัวขึ้นไป)" class="sm:col-span-3 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#2585E8]" />
-              <select id="new-member-role" class="sm:col-span-1 px-2 py-2 rounded-xl bg-white border border-slate-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#2585E8]">
+            <form id="add-member-form" onsubmit="handleAddTeamMember(event)" class="grid grid-cols-1 sm:grid-cols-12 gap-3 bg-[#F3F6FA] p-4 rounded-xl">
+              <input id="new-member-name" type="text" required maxlength="100" placeholder="ชื่อ-นามสกุล" class="sm:col-span-3 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E6FFF]" />
+              <input id="new-member-username" type="text" required minlength="3" maxlength="30" pattern="[A-Za-z0-9][A-Za-z0-9._-]{2,29}" autocomplete="off" placeholder="Username" class="sm:col-span-3 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E6FFF]" />
+              <input id="new-member-password" type="text" required minlength="6" maxlength="100" autocomplete="new-password" placeholder="Password (6 ตัวขึ้นไป)" class="sm:col-span-3 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#1E6FFF]" />
+              <select id="new-member-role" class="sm:col-span-1 px-2 py-2 rounded-xl bg-white border border-slate-200 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-[#1E6FFF]">
                 <option value="STAFF">STAFF</option>
                 <option value="ADMIN">ADMIN</option>
               </select>
-              <button type="submit" class="sm:col-span-2 py-2 px-4 rounded-xl bg-[#061D42] hover:bg-[#0d2d63] text-white text-xs font-semibold transition cursor-pointer">+ เพิ่มคน</button>
+              <button type="submit" class="sm:col-span-2 py-2 px-4 rounded-xl bg-[#0B1F44] hover:bg-[#16346B] text-white text-xs font-semibold transition cursor-pointer">+ เพิ่มคน</button>
             </form>
 
             <div class="divide-y divide-slate-100">${usersHtml}</div>
@@ -2293,7 +2356,7 @@
     }
 
     const CONFIRM_YES_DANGER = 'px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-sm font-semibold cursor-pointer disabled:opacity-60';
-    const CONFIRM_YES_NORMAL = 'px-4 py-2 rounded-xl bg-[#061D42] hover:bg-[#0d2d63] text-white text-sm font-semibold cursor-pointer disabled:opacity-60';
+    const CONFIRM_YES_NORMAL = 'px-4 py-2 rounded-xl bg-[#0B1F44] hover:bg-[#16346B] text-white text-sm font-semibold cursor-pointer disabled:opacity-60';
 
     function closeConfirmModal() {
       document.getElementById('confirm-modal').classList.add('hidden');

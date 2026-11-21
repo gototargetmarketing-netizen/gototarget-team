@@ -29,6 +29,8 @@
   • ทดสอบกับ Apps Script ตัวอื่นได้โดยไม่แก้ไฟล์: ตั้ง `localStorage.setItem('gtt_web_app_url', '...exec')` ใน Console
 
 ## ไฟล์
+- `assets/go-mark.png` (โลโก้ GO ตัดจากไฟล์บริษัท พื้นใส) / `assets/go-logo-full.png` (โลโก้เต็ม ตัวหนังสือขาว — ใช้บนพื้นน้ำเงินเข้มเท่านั้น)
+- หน้าตา (21 พ.ย. 2569 ตามภาพตัวอย่างของน้อง): สี `#0B1F44` / `#1E6FFF` / `#00C7A7` / `#9FF3D6` / `#F3F6FA` / `#FFC857`, คลาส CSS `gtt-card` / `gtt-tile-*` / `gtt-deco` / `gtt-btn-dark`, สีประเภทงานอยู่ที่ `tone` ใน `DELIVERABLE_TYPES` และ `CARD_TONES`
 - `index.html` — หน้าเว็บทั้งหมด (Tailwind CDN + Lucide) หน้า: Clients / หน้าลูกค้า / Workspaces / Settings (แอดมิน)
 - `index.html` หน้า: Dashboard (แอดมิน) / งานของฉัน / Clients / หน้าลูกค้า (+ งานประจำเดือน) / Workspaces / Settings (แอดมิน)
   • ข้อมูลเก็บใน `sessionStorage` ของแท็บเท่านั้น (ลบตอนออกจากระบบ) — ไม่มีข้อมูลตัวอย่าง SEED แล้ว และลบ localStorage เก่าของรุ่นแรกทิ้งตอนเปิดหน้า
