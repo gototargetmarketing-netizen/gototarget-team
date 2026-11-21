@@ -29,6 +29,11 @@
   • ทดสอบกับ Apps Script ตัวอื่นได้โดยไม่แก้ไฟล์: ตั้ง `localStorage.setItem('gtt_web_app_url', '...exec')` ใน Console
 
 ## ไฟล์
+- `assets/app.css` — Tailwind 3.4.17 สร้างจากคลาสใน `index.html` (`tailwind.config.js` + `tailwind.input.css`) แทนสคริปต์ CDN 400 KB ที่คอมไพล์ในเครื่องผู้ใช้ทุกครั้ง
+  • **Vercel สร้างไฟล์นี้ใหม่ทุกครั้งที่ deploy** (`vercel.json` → `buildCommand`) น้องแก้ `index.html` ผ่านหน้าเว็บแล้วใช้คลาสใหม่ก็ยังขึ้น / ถ้าสร้างไม่ผ่าน Vercel จะไม่เปลี่ยนเว็บ (เว็บเดิมยังใช้ได้)
+  • แก้ `index.html` แล้วทดสอบในเครื่อง (`.command`) ต้องสร้างใหม่เอง: `npx --yes tailwindcss@3.4.17 -c tailwind.config.js -i tailwind.input.css -o assets/app.css --minify` แล้ว commit ไฟล์นี้ด้วย
+  • ห้ามประกอบชื่อคลาสจากตัวแปร (เช่น `'bg-' + color`) เพราะเครื่องมือหาไม่เจอ → เขียนชื่อเต็มเสมอ (เช่น `CARD_TONES`)
+- โลโก้มีทั้ง `.webp` (~17 KB ใช้จริง) และ `.png` (สำรองให้เครื่องเก่า) ผ่าน `<picture>`
 - `assets/go-mark.png` (โลโก้ GO ตัดจากไฟล์บริษัท พื้นใส) / `assets/go-logo-full.png` (โลโก้เต็ม ตัวหนังสือขาว — ใช้บนพื้นน้ำเงินเข้มเท่านั้น)
 - หน้าตา (21 พ.ย. 2569 ตามภาพตัวอย่างของน้อง): สี `#0B1F44` / `#1E6FFF` / `#00C7A7` / `#9FF3D6` / `#F3F6FA` / `#FFC857`, คลาส CSS `gtt-card` / `gtt-tile-*` / `gtt-deco` / `gtt-btn-dark`, สีประเภทงานอยู่ที่ `tone` ใน `DELIVERABLE_TYPES` และ `CARD_TONES`
 - `index.html` — หน้าเว็บทั้งหมด (Tailwind CDN + Lucide) หน้า: Clients / หน้าลูกค้า / Workspaces / Settings (แอดมิน)
@@ -57,7 +62,7 @@
 ## งานที่ยังค้าง
 - [x] แฮชหลายรอบ / ข้อความเข้าระบบไม่บอก username / เอา `importLocalDataIfEmpty` + SEED ออก / `ensureReady_` ไม่อ่านชีตทุกคำสั่ง / เอาปุ่ม Save Configuration + `apiSecret` + `workspaceKey` ออก — ทำแล้ว 21 พ.ย. 2569
 - [x] สลับ Apps Script ทดสอบผ่าน localStorage (`gtt_web_app_url`), ไฟล์ `.command` (พอร์ต 8003), `testSetup()`, `noindex` — ทำแล้ว 21 พ.ย. 2569
-- [ ] ล็อกเวอร์ชัน `lucide@latest` และเลิกใช้ `cdn.tailwindcss.com` บนเว็บจริง
+- [x] เลิกใช้ `cdn.tailwindcss.com` (สร้าง `assets/app.css` ไว้ล่วงหน้า) + ล็อก Lucide `1.77.0` + โลโก้ WebP — ทำแล้ว 21 พ.ย. 2569 (เทียบภาพทุกหน้า/ทุกหน้าต่าง มือถือ+คอม ก่อน-หลังแล้วตรงกัน)
 - [ ] โลโก้เก่าที่ถูกเปลี่ยนยังค้างใน Drive (ไม่ได้ลบอัตโนมัติ)
 - ทดสอบ: ชุดทดสอบจำลอง Apps Script + Chrome ไม่มีหน้าจอ (ยังอยู่ใน scratchpad ของเซสชัน 21 พ.ย. — ถ้าจะเก็บถาวรให้ย้ายเข้า `tools/test/`)
 
