@@ -471,6 +471,49 @@
     </div>
   </div>
 
+  <!-- Edit Deliverable Modal (Admin): name + number of pieces of one set -->
+  <div id="edit-dlv-modal" class="hidden fixed inset-0 z-50 bg-[#061D42]/50 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200">
+      <div class="px-6 py-4 bg-[#061D42] text-white flex items-center justify-between">
+        <h3 class="font-bold text-base">แก้ไขงาน</h3>
+        <button onclick="closeModal('edit-dlv-modal')" class="text-slate-300 hover:text-white p-1 rounded-lg cursor-pointer">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <form id="edit-dlv-form" class="p-6 space-y-5">
+        <input type="hidden" id="edit-dlv-id" />
+        <div class="flex items-center gap-3 p-3 rounded-xl bg-[#F5F7FA] border border-slate-200/80">
+          <div class="w-10 h-10 rounded-xl bg-[#EAF3FD] text-[#2585E8] flex items-center justify-center shrink-0"><i id="edit-dlv-icon" data-lucide="image" class="w-5 h-5"></i></div>
+          <div class="min-w-0">
+            <p id="edit-dlv-type" class="text-sm font-bold text-[#061D42] truncate"></p>
+            <p id="edit-dlv-client" class="text-xs text-slate-500 truncate"></p>
+          </div>
+        </div>
+        <div>
+          <label for="edit-dlv-title" class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">ชื่องาน</label>
+          <input id="edit-dlv-title" type="text" maxlength="120" placeholder=""
+            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm text-[#061D42] focus:outline-none focus:ring-2 focus:ring-[#2585E8]" />
+          <p class="text-[11px] text-slate-400 mt-1">เว้นว่างได้ ระบบจะใช้ชื่อประเภทงานแทน</p>
+        </div>
+        <div>
+          <label for="edit-dlv-qty" class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">จำนวนชิ้นในชุดนี้</label>
+          <div class="flex items-center gap-3">
+            <button type="button" onclick="stepEditQty(-1)" aria-label="ลดจำนวน" class="w-11 h-11 rounded-xl border border-slate-200 hover:border-[#2585E8] hover:text-[#2585E8] text-slate-600 flex items-center justify-center cursor-pointer"><i data-lucide="minus" class="w-4 h-4"></i></button>
+            <input id="edit-dlv-qty" type="number" inputmode="numeric" min="1" max="30" required
+              class="w-20 h-11 text-center rounded-xl border border-slate-200 text-lg font-bold text-[#061D42] focus:outline-none focus:ring-2 focus:ring-[#2585E8]" />
+            <button type="button" onclick="stepEditQty(1)" aria-label="เพิ่มจำนวน" class="w-11 h-11 rounded-xl border border-slate-200 hover:border-[#2585E8] hover:text-[#2585E8] text-slate-600 flex items-center justify-center cursor-pointer"><i data-lucide="plus" class="w-4 h-4"></i></button>
+            <span class="text-sm text-slate-500">ชิ้น</span>
+          </div>
+          <p class="text-[11px] text-slate-400 mt-1">ส่งงานด้วยลิงก์เดียวทั้งชุด · 1–30 ชิ้น</p>
+        </div>
+        <div class="pt-2 flex items-center justify-end gap-3">
+          <button type="button" onclick="closeModal('edit-dlv-modal')" class="px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 cursor-pointer">ยกเลิก</button>
+          <button type="submit" class="px-5 py-2.5 rounded-xl bg-[#061D42] hover:bg-[#0d2d63] text-white text-sm font-semibold shadow-sm cursor-pointer">บันทึก</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Set Password Modal (Admin) -->
   <div id="password-modal" class="hidden fixed inset-0 z-50 bg-[#061D42]/50 backdrop-blur-xs flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200">
@@ -1318,10 +1361,10 @@
             <div class="py-3 flex flex-col lg:flex-row lg:items-center gap-3">
               <div class="flex-1 min-w-0 flex items-center gap-2">
                 ${isAdmin
-                  ? `<button onclick="changeDeliverableQty(${jsArg(d.deliverable_id)})" title="แก้จำนวนชิ้น" class="cursor-pointer hover:opacity-75">${qtyBadge(d)}</button>`
+                  ? `<button onclick="openEditDeliverableModal(${jsArg(d.deliverable_id)}, 'qty')" title="แก้จำนวนชิ้น" class="cursor-pointer hover:opacity-75">${qtyBadge(d)}</button>`
                   : qtyBadge(d)}
                 <p class="text-sm font-semibold text-[#061D42] truncate">${escapeHtml(deliverableTitle(d))}</p>
-                ${isAdmin ? `<button onclick="renameDeliverable(${jsArg(d.deliverable_id)})" title="แก้ชื่องาน" class="p-1 rounded text-slate-400 hover:text-[#2585E8] cursor-pointer"><i data-lucide="pencil" class="w-3 h-3"></i></button>` : ''}
+                ${isAdmin ? `<button onclick="openEditDeliverableModal(${jsArg(d.deliverable_id)}, 'title')" title="แก้ไขงาน" class="p-1 rounded text-slate-400 hover:text-[#2585E8] cursor-pointer"><i data-lucide="pencil" class="w-3 h-3"></i></button>` : ''}
               </div>
               <div class="flex flex-wrap items-center gap-2">
                 ${isAdmin
@@ -1427,37 +1470,59 @@
       renderApp(); // also resets the dropdown if saving failed
     }
 
-    // Client asked for more (or fewer) pieces in this set before it was sent.
-    async function changeDeliverableQty(deliverableId) {
+    // One small form for the name and the number of pieces (the browser's own prompt box looked
+    // out of place, especially on phones). `focus` picks which field gets the cursor.
+    function openEditDeliverableModal(deliverableId, focus) {
       const item = state.deliverables.find(d => d.deliverable_id === deliverableId);
       if (!item) return;
-      const answer = window.prompt(`จำนวนชิ้นของ "${deliverableTitle(item)}" (1–30)`, String(qty(item)));
-      if (answer === null) return;
-      const n = Number(answer.trim());
-      if (!(Number.isInteger(n) && n >= 1 && n <= 30)) {
-        showToast('จำนวนชิ้นต้องเป็นตัวเลข 1–30', 'error');
-        return;
-      }
-      if (n === qty(item)) return;
-      const updated = await callAppsScript('updateDeliverable', { deliverable_id: deliverableId, quantity: n });
-      if (!updated) return;
-      replaceDeliverable(updated);
-      saveState();
-      renderApp();
-      showToast(`แก้จำนวนเป็น ×${n} แล้ว`);
+      const type = typeMeta(item.type);
+      document.getElementById('edit-dlv-id').value = deliverableId;
+      document.getElementById('edit-dlv-type').textContent = type.label;
+      document.getElementById('edit-dlv-client').textContent = clientName(item.client_id) + ' · ' + monthLabel(item.month);
+      document.getElementById('edit-dlv-icon').setAttribute('data-lucide', type.icon);
+      document.getElementById('edit-dlv-title').value = item.title || '';
+      document.getElementById('edit-dlv-title').placeholder = type.short;
+      document.getElementById('edit-dlv-qty').value = String(qty(item));
+      openModal('edit-dlv-modal');
+      // Focusing opens the keyboard on phones, so only the title field (typing) gets it.
+      if (focus === 'title') document.getElementById('edit-dlv-title').focus();
     }
 
-    async function renameDeliverable(deliverableId) {
-      const item = state.deliverables.find(d => d.deliverable_id === deliverableId);
-      if (!item) return;
-      const title = window.prompt('ชื่องาน (เว้นว่างเพื่อใช้ชื่อประเภทงาน)', item.title || '');
-      if (title === null) return;
-      const updated = await callAppsScript('updateDeliverable', { deliverable_id: deliverableId, title: title.trim() });
-      if (!updated) return;
-      replaceDeliverable(updated);
-      saveState();
-      renderApp();
+    function stepEditQty(delta) {
+      const input = document.getElementById('edit-dlv-qty');
+      const n = Math.min(30, Math.max(1, (parseInt(input.value, 10) || 1) + delta));
+      input.value = String(n);
     }
+
+    document.getElementById('edit-dlv-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      const form = this;
+      withFormBusy(form, async () => {
+        const id = document.getElementById('edit-dlv-id').value;
+        const item = state.deliverables.find(d => d.deliverable_id === id);
+        if (!item) return;
+        const title = document.getElementById('edit-dlv-title').value.trim();
+        const n = Number(document.getElementById('edit-dlv-qty').value);
+        if (!(Number.isInteger(n) && n >= 1 && n <= 30)) {
+          showToast('จำนวนชิ้นต้องเป็นตัวเลข 1–30', 'error');
+          return;
+        }
+        const patch = { deliverable_id: id };
+        if (title !== (item.title || '')) patch.title = title;
+        if (n !== qty(item)) patch.quantity = n;
+        if (Object.keys(patch).length === 1) {
+          closeModal('edit-dlv-modal');
+          return;
+        }
+        const updated = await callAppsScript('updateDeliverable', patch);
+        if (!updated) return;
+        replaceDeliverable(updated);
+        saveState();
+        closeModal('edit-dlv-modal');
+        renderApp();
+        showToast('บันทึกงานแล้ว');
+      });
+    });
 
     function confirmDeleteDeliverable(deliverableId) {
       const item = state.deliverables.find(d => d.deliverable_id === deliverableId);
