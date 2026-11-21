@@ -308,6 +308,11 @@
           <textarea id="client-form-desc" rows="3" placeholder="Brief summary of client scope or brand..."
             class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm text-[#061D42] focus:outline-none focus:ring-2 focus:ring-[#2585E8]"></textarea>
         </div>
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">ทีมที่ดูแล (STAFF ที่เห็นลูกค้ารายนี้)</label>
+          <div id="client-form-team" class="grid grid-cols-2 gap-2"></div>
+          <p class="text-[11px] text-slate-400 mt-1">STAFF เห็นเฉพาะลูกค้าที่ติ๊กชื่อไว้ / มอบงานให้ใคร ระบบเพิ่มชื่อคนนั้นให้อัตโนมัติ / ADMIN เห็นทุกลูกค้าเสมอ</p>
+        </div>
         <div id="client-auto-setup-note" class="p-3.5 rounded-xl bg-[#50D6B0]/10 border border-[#50D6B0]/30 text-xs text-[#061D42]">
           <span class="font-semibold">Automatic Setup:</span> Creating this client will automatically generate 4 workspaces: <strong>VIDEO</strong>, <strong>GRAPHIC</strong>, <strong>CONTENT</strong>, and <strong>BRIEF</strong>.
         </div>
@@ -790,6 +795,39 @@
     function clientName(clientId) {
       const client = state.clients.find(c => c.client_id === clientId);
       return client ? client.client_name : 'ลูกค้าที่ถูกลบ';
+    }
+
+    // team_ids is stored as "usr_a,usr_b" in the sheet (Clients.team_ids).
+    function clientTeam(client) {
+      return String((client && client.team_ids) || '').split(',').map(id => id.trim()).filter(Boolean);
+    }
+
+    function clientTeamNames(client) {
+      return clientTeam(client).map(id => (state.team.find(u => u.user_id === id) || {}).name).filter(Boolean);
+    }
+
+    // Mirrors what code.gs does when work is handed out (addToClientTeams_), so the page
+    // shows the new team member without reloading.
+    function addToTeamLocal(clientId, userId) {
+      const client = state.clients.find(c => c.client_id === clientId);
+      if (!client || !userId) return;
+      const team = clientTeam(client);
+      if (team.indexOf(userId) === -1) client.team_ids = team.concat(userId).join(',');
+    }
+
+    function renderTeamCheckboxes(selectedIds) {
+      const staff = state.team.filter(u => u.role !== 'ADMIN');
+      document.getElementById('client-form-team').innerHTML = staff.length
+        ? staff.map(u => `
+            <label class="flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 text-sm text-[#061D42] cursor-pointer hover:border-[#2585E8]">
+              <input type="checkbox" value="${escapeHtml(u.user_id)}" ${selectedIds.indexOf(u.user_id) >= 0 ? 'checked' : ''} class="w-4 h-4 accent-[#2585E8]" />
+              <span class="truncate">${escapeHtml(u.name)}</span>
+            </label>`).join('')
+        : `<p class="col-span-2 text-xs text-slate-400">ยังไม่มี STAFF — เพิ่มคนที่หน้า Settings ก่อน</p>`;
+    }
+
+    function selectedTeamIds() {
+      return [...document.querySelectorAll('#client-form-team input:checked')].map(el => el.value).join(',');
     }
 
     function clientLogoHtml(client, sizeClass) {
@@ -1352,6 +1390,7 @@
         });
         if (!Array.isArray(created)) return;
         state.deliverables.push(...created);
+        created.forEach(d => addToTeamLocal(d.client_id, d.assignee_id));
         saveState();
         closeModal('deliverable-modal');
         renderApp();
@@ -1363,6 +1402,7 @@
       const updated = await callAppsScript('updateDeliverable', { deliverable_id: deliverableId, assignee_id: userId });
       if (updated) {
         replaceDeliverable(updated);
+        addToTeamLocal(updated.client_id, updated.assignee_id);
         saveState();
         showToast(userId ? 'ระบุผู้รับผิดชอบแล้ว: ' + memberName(userId) : 'ล้างผู้รับผิดชอบแล้ว');
       }
@@ -1405,6 +1445,7 @@
       const result = await callAppsScript('copyDeliverables', { from_month: fromMonth, to_month: state.month, client_id: clientId || '' });
       if (!result) return;
       state.deliverables.push(...(result.created || []));
+      (result.created || []).forEach(d => addToTeamLocal(d.client_id, d.assignee_id));
       saveState();
       renderApp();
       const skipped = (result.skipped_client_ids || []).length;
@@ -1461,7 +1502,7 @@
         ? `<div class="bg-white rounded-2xl border border-slate-200/80 p-14 text-center">
             <i data-lucide="users" class="w-10 h-10 text-slate-300 mx-auto mb-3"></i>
             <h3 class="text-base font-semibold text-[#061D42]">${state.clientSearch ? 'No matching clients found' : state.showArchived ? 'No archived clients' : 'No active clients yet'}</h3>
-            <p class="text-sm text-slate-500 mt-1">${state.clientSearch ? 'Try adjusting your search query.' : isAdmin ? 'Click "Add Client" to create your first client workspace.' : 'Ask an administrator to add company clients.'}</p>
+            <p class="text-sm text-slate-500 mt-1">${state.clientSearch ? 'Try adjusting your search query.' : isAdmin ? 'Click "Add Client" to create your first client workspace.' : 'ยังไม่มีลูกค้าที่คุณดูแล — ให้แอดมินเพิ่มชื่อคุณในทีมของลูกค้า'}</p>
           </div>`
         : `<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             ${filtered.map(client => {
@@ -1494,6 +1535,7 @@
                       <div class="min-w-0 pr-12">
                         <h3 class="text-lg font-bold text-[#061D42] group-hover:text-[#2585E8] transition-colors truncate">${escapeHtml(client.client_name)}</h3>
                         <p class="text-xs text-slate-400 mt-0.5">Added ${escapeHtml(client.created_at)}</p>
+                        ${isAdmin ? `<p class="text-xs mt-0.5 truncate ${clientTeamNames(client).length ? 'text-slate-500' : 'text-amber-600'}">ทีม: ${clientTeamNames(client).length ? escapeHtml(clientTeamNames(client).join(', ')) : 'ยังไม่มี'}</p>` : ''}
                       </div>
                     </div>
                     <p class="text-sm text-slate-600 line-clamp-2 min-h-[40px] leading-relaxed">${escapeHtml(client.description) || 'No description provided.'}</p>
@@ -1637,6 +1679,7 @@
                 ${client.archived ? `<span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">Archived</span>` : ''}
               </div>
               <p class="mt-2 text-slate-600 text-sm sm:text-base max-w-3xl leading-relaxed">${escapeHtml(client.description) || 'No client description provided.'}</p>
+              ${isAdmin ? `<p class="mt-2 text-xs text-slate-500 inline-flex items-center gap-1.5"><i data-lucide="users" class="w-3.5 h-3.5"></i>ทีมที่ดูแล: ${clientTeamNames(client).length ? escapeHtml(clientTeamNames(client).join(', ')) : '<span class="text-amber-600 font-semibold">ยังไม่มี — STAFF ยังมองไม่เห็นลูกค้ารายนี้</span>'}</p>` : ''}
               <div class="mt-4">
                 <p class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">${isAdmin ? 'งานที่ต้องทำ' : 'งานของคุณ'} · ${escapeHtml(monthLabel(state.month))}</p>
                 ${renderTypeCounts(clientPageItems(client, isAdmin), 'lg')}
@@ -1874,6 +1917,7 @@
       document.getElementById('client-form-name').value = '';
       document.getElementById('client-form-desc').value = '';
       clearClientLogo();
+      renderTeamCheckboxes([]);
       document.getElementById('client-auto-setup-note').classList.remove('hidden');
       openModal('client-modal');
     }
@@ -1889,6 +1933,7 @@
       clearClientLogo();
       document.getElementById('client-form-logo').value = client.logo_url || '';
       setClientLogoPreview(client.logo_url || '');
+      renderTeamCheckboxes(clientTeam(client));
       document.getElementById('client-auto-setup-note').classList.add('hidden');
       openModal('client-modal');
     }
@@ -1904,6 +1949,7 @@
         const id = document.getElementById('client-form-id').value;
         const name = document.getElementById('client-form-name').value.trim();
         const desc = document.getElementById('client-form-desc').value.trim();
+        const teamIds = selectedTeamIds();
         let logo = document.getElementById('client-form-logo').value.trim();
         const today = new Date().toISOString().split('T')[0];
 
@@ -1929,7 +1975,8 @@
             logo_url: logo,
             description: desc,
             archived: false,
-            created_at: today
+            created_at: today,
+            team_ids: teamIds
           };
           const defaultWorkspaces = DEFAULT_WORKSPACE_TEMPLATES.map((tpl, idx) => ({
             workspace_id: `ws_${Date.now()}_${idx}`,
@@ -1955,7 +2002,7 @@
         } else {
           const idx = state.clients.findIndex(c => c.client_id === id);
           if (idx === -1) return;
-          const updatedClient = { ...state.clients[idx], client_name: name, logo_url: logo, description: desc };
+          const updatedClient = { ...state.clients[idx], client_name: name, logo_url: logo, description: desc, team_ids: teamIds };
           const savedClient = await callAppsScript('updateClient', updatedClient);
           if (!savedClient) return;
           state.clients[idx] = updatedClient;

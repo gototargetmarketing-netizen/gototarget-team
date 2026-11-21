@@ -18,6 +18,8 @@
  * Security notes:
  * - All data operations except login/health checks require a short-lived session.
  * - Client/workspace/deliverable management and user administration require an ADMIN session.
+ * - STAFF only see the clients whose team they are in (Clients.team_ids), with those clients'
+ *   workspaces and their own pieces of work. The filter runs here, not only in the page.
  * - STAFF can only read, and submit a result link for deliverables assigned to them.
  *   Sending the link finishes the piece (no separate review step — decided 21 Nov 2026).
  * - Each user has an individual salted, iterated password hash; plaintext passwords are never stored.
@@ -45,7 +47,7 @@ const GTT_CONFIG = Object.freeze({
   // or after this many seconds at most.
   CACHE_SECONDS: 300,
   // Bump this when GTT_SCHEMAS changes so every deployment re-checks the sheet columns once.
-  SCHEMA_VERSION: '2026-11-21b',
+  SCHEMA_VERSION: '2026-11-21c',
   DEFAULT_ADMIN: {
     user_id: 'usr_admin_01',
     name: 'GO TO TARGET Admin',
@@ -63,8 +65,9 @@ const GTT_CONFIG = Object.freeze({
 const GTT_SCHEMAS = [
   {
     name: GTT_CONFIG.SHEETS.CLIENTS,
-    headers: ['client_id', 'client_name', 'logo_url', 'description', 'archived', 'created_at'],
-    widths: [140, 220, 260, 340, 100, 130]
+    // team_ids = user_ids of the STAFF who look after this client, comma-separated.
+    headers: ['client_id', 'client_name', 'logo_url', 'description', 'archived', 'created_at', 'team_ids'],
+    widths: [140, 220, 260, 340, 100, 130, 220]
   },
   {
     name: GTT_CONFIG.SHEETS.WORKSPACES,
@@ -286,6 +289,12 @@ function ensureDatabaseSheets_(ss) {
       if (missing.length) {
         sheet.getRange(1, existingLastColumn + 1, 1, missing.length).setValues([missing]);
       }
+      // First time the team column appears: fill it from the work already handed out,
+      // so nobody loses sight of a client they already have work for.
+      if (schema.name === GTT_CONFIG.SHEETS.CLIENTS && missing.indexOf('team_ids') >= 0) {
+        invalidateRows_(schema.name);
+        backfillClientTeams_();
+      }
     }
 
     const headerWidth = Math.max(sheet.getLastColumn(), schema.headers.length);
@@ -451,10 +460,10 @@ function doPost(e) {
         data = publicUser_(actor);
         break;
       case 'getClients':
-        data = getClients_();
+        data = visibleClients_(actor);
         break;
       case 'getAllWorkspaces':
-        data = getAllWorkspaces_();
+        data = visibleWorkspaces_(actor);
         break;
       case 'getDeliverables':
         data = deliverablesForUser_(actor, cleanMonth_(payload.month));
@@ -558,8 +567,8 @@ function buildBootstrap_(actor, requestedMonth) {
   return {
     user: publicUser_(actor),
     month: month,
-    clients: getClients_(),
-    workspaces: getAllWorkspaces_(),
+    clients: visibleClients_(actor),
+    workspaces: visibleWorkspaces_(actor),
     // Names only, so pages can show who is responsible for each piece of work.
     team: users.filter(user => user.active).map(user => ({ user_id: user.user_id, name: user.name, role: user.role })),
     users: isAdmin ? users.map(publicUser_) : [],
@@ -997,12 +1006,86 @@ function getClients_() {
 }
 
 function cleanClientFields_(client) {
-  return {
+  const fields = {
     client_name: cleanText_(client.client_name, 'Client name', 120, true),
     logo_url: cleanUrl_(client.logo_url, 'Client logo URL'),
     description: cleanText_(client.description, 'Description', 1000, false),
     archived: bool_(client.archived)
   };
+  // Only touch the team when the page sends it, so other saves never wipe it by accident.
+  if (client.team_ids !== undefined) fields.team_ids = cleanTeamIds_(client.team_ids);
+  return fields;
+}
+
+// -----------------------------------------------------------------------------
+// CLIENT TEAMS — which STAFF may see which client
+// -----------------------------------------------------------------------------
+function parseTeamIds_(value) {
+  return String(value || '').split(',').map(id => id.trim()).filter(Boolean);
+}
+
+// Accepts an array or a comma-separated string; keeps only IDs of users that exist.
+function cleanTeamIds_(value) {
+  const wanted = Array.isArray(value) ? value.map(String) : parseTeamIds_(value);
+  const known = new Set(getUsers_().map(user => String(user.user_id)));
+  const ids = [];
+  wanted.forEach(id => {
+    const clean = String(id).trim();
+    if (/^[A-Za-z0-9_-]{1,64}$/.test(clean) && known.has(clean) && ids.indexOf(clean) === -1) ids.push(clean);
+  });
+  return ids.join(',');
+}
+
+function isClientVisible_(actor, client) {
+  return actor.role === 'ADMIN' || parseTeamIds_(client.team_ids).indexOf(String(actor.user_id)) >= 0;
+}
+
+function visibleClients_(actor) {
+  return getClients_().filter(client => isClientVisible_(actor, client));
+}
+
+function visibleClientIdSet_(actor) {
+  return new Set(visibleClients_(actor).map(client => String(client.client_id)));
+}
+
+function visibleWorkspaces_(actor) {
+  if (actor.role === 'ADMIN') return getAllWorkspaces_();
+  const ids = visibleClientIdSet_(actor);
+  return getAllWorkspaces_().filter(ws => ids.has(String(ws.client_id)));
+}
+
+// Handing a piece of work to someone puts them on that client's team, so they can always
+// open the client's brief and links. Takes a map { client_id: [user_id, ...] } to write each
+// client at most once.
+function addToClientTeams_(byClient) {
+  const clients = getClients_();
+  Object.keys(byClient).forEach(clientId => {
+    const client = clients.find(item => String(item.client_id) === String(clientId));
+    if (!client) return;
+    const team = parseTeamIds_(client.team_ids);
+    const before = team.length;
+    byClient[clientId].forEach(userId => {
+      if (userId && team.indexOf(String(userId)) === -1) team.push(String(userId));
+    });
+    if (team.length !== before) {
+      updateObject_(GTT_CONFIG.SHEETS.CLIENTS, 'client_id', client.client_id, { team_ids: team.join(',') });
+    }
+  });
+}
+
+function teamAdditionsFrom_(rows) {
+  const byClient = {};
+  rows.forEach(row => {
+    if (!row.assignee_id) return;
+    (byClient[row.client_id] = byClient[row.client_id] || []).push(row.assignee_id);
+  });
+  return byClient;
+}
+
+function backfillClientTeams_() {
+  // On a brand-new sheet the Deliverables sheet does not exist yet, so there is nothing to copy.
+  if (!getDatabaseSpreadsheet_().getSheetByName(GTT_CONFIG.SHEETS.DELIVERABLES)) return;
+  addToClientTeams_(teamAdditionsFrom_(getDeliverables_()));
 }
 
 function createClient_(payload) {
@@ -1138,12 +1221,14 @@ function findDeliverable_(deliverableId) {
   return item;
 }
 
-// ADMIN sees every piece in the month. STAFF sees only their own pieces: the chosen month,
-// plus anything older that is not sent yet, so unfinished work is never hidden.
+// ADMIN sees every piece in the month. STAFF sees only their own pieces of clients they are on
+// the team of: the chosen month, plus anything older that is not sent yet, so unfinished work
+// is never hidden. Taking someone off a client's team hides that client's work from them too.
 function deliverablesForUser_(actor, month) {
   const all = getDeliverables_();
   if (actor.role === 'ADMIN') return all.filter(item => item.month === month);
-  return all.filter(item => String(item.assignee_id) === String(actor.user_id) &&
+  const visible = visibleClientIdSet_(actor);
+  return all.filter(item => String(item.assignee_id) === String(actor.user_id) && visible.has(String(item.client_id)) &&
     (item.month === month || (item.month < month && item.status !== GTT_STATUS.DONE)));
 }
 
@@ -1205,6 +1290,7 @@ function createDeliverables_(payload) {
     }));
   }
   appendObjects_(GTT_CONFIG.SHEETS.DELIVERABLES, rows);
+  addToClientTeams_(teamAdditionsFrom_(rows));
   return rows;
 }
 
@@ -1215,6 +1301,7 @@ function updateDeliverable_(payload) {
   if (payload.type !== undefined) patch.type = cleanDeliverableType_(payload.type);
   if (payload.assignee_id !== undefined) patch.assignee_id = cleanAssignee_(payload.assignee_id);
   updateObject_(GTT_CONFIG.SHEETS.DELIVERABLES, 'deliverable_id', existing.deliverable_id, patch);
+  if (patch.assignee_id) addToClientTeams_({ [existing.client_id]: [patch.assignee_id] });
   return Object.assign({}, existing, patch);
 }
 
@@ -1257,6 +1344,7 @@ function copyDeliverables_(payload) {
     }));
   });
   appendObjects_(GTT_CONFIG.SHEETS.DELIVERABLES, rows);
+  addToClientTeams_(teamAdditionsFrom_(rows));
   return { created: rows, skipped_client_ids: skipped };
 }
 
@@ -1265,7 +1353,7 @@ function copyDeliverables_(payload) {
 function submitDeliverable_(payload, actor) {
   const item = findDeliverable_(payload.deliverable_id);
   const isAdmin = actor.role === 'ADMIN';
-  if (!isAdmin && String(item.assignee_id) !== String(actor.user_id)) {
+  if (!isAdmin && (String(item.assignee_id) !== String(actor.user_id) || !visibleClientIdSet_(actor).has(String(item.client_id)))) {
     throw new Error('งานชิ้นนี้ไม่ได้มอบหมายให้คุณ');
   }
   const url = cleanUrl_(payload.result_url, 'ลิงก์ผลงาน');
