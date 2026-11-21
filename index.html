@@ -430,7 +430,7 @@
         </div>
         <div>
           <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">ชื่องาน (ไม่บังคับ)</label>
-          <input id="dlv-form-title" type="text" maxlength="120" placeholder="เช่น โปรวันแม่ — ถ้าไม่ใส่จะตั้งชื่อเป็น VDO #1, #2 ..."
+          <input id="dlv-form-title" type="text" maxlength="120" placeholder="เช่น โปรวันแม่ — ถ้าไม่ใส่จะใช้ชื่อประเภทงาน"
             class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm text-[#061D42] focus:outline-none focus:ring-2 focus:ring-[#2585E8]" />
         </div>
         <p id="dlv-form-month-note" class="text-xs text-slate-500"></p>
@@ -843,7 +843,22 @@
       if (d.title) return d.title;
       const same = state.deliverables.filter(x => x.client_id === d.client_id && x.month === d.month && x.type === d.type);
       const n = same.findIndex(x => x.deliverable_id === d.deliverable_id) + 1;
-      return typeMeta(d.type).short + ' #' + (n || 1);
+      // A single set just shows the type ("Banner"); extra sets added later are numbered ("Banner #2").
+      return same.length > 1 ? typeMeta(d.type).short + ' #' + (n || 1) : typeMeta(d.type).short;
+    }
+
+    // One row is a set of pieces (e.g. Banner x5) sent with one link. Older rows without a number count as 1.
+    function qty(d) {
+      const n = Math.floor(Number(d && d.quantity));
+      return n >= 1 ? n : 1;
+    }
+
+    function sumQty(items) {
+      return items.reduce((total, d) => total + qty(d), 0);
+    }
+
+    function qtyBadge(d) {
+      return `<span class="shrink-0 px-2 py-0.5 rounded-md bg-[#EAF3FD] text-[#1d6fc4] text-xs font-bold">×${qty(d)}</span>`;
     }
 
     function monthDeliverables(clientId) {
@@ -1146,7 +1161,7 @@
     // ------------------------------------------------------------------------
     function typeCounts(items) {
       return DELIVERABLE_TYPES
-        .map(type => ({ type, count: items.filter(d => d.type === type.id).length }))
+        .map(type => ({ type, count: sumQty(items.filter(d => d.type === type.id)) }))
         .filter(row => row.count > 0);
     }
 
@@ -1182,7 +1197,7 @@
               ${clientLogoHtml(client, 'w-10 h-10')}
               <h3 class="text-base font-bold text-[#061D42] truncate">${escapeHtml(client.client_name)}</h3>
             </div>
-            ${clientItems.length ? `<span class="text-xs font-semibold text-slate-500 whitespace-nowrap">รวม ${clientItems.length} ชิ้น</span>` : ''}
+            ${clientItems.length ? `<span class="text-xs font-semibold text-slate-500 whitespace-nowrap">รวม ${sumQty(clientItems)} ชิ้น</span>` : ''}
           </div>
           ${renderTypeCounts(clientItems, 'md')}
           <button onclick="event.stopPropagation(); openAddDeliverableModal(${jsArg(client.client_id)})" class="self-start inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 hover:border-[#2585E8] text-xs font-semibold text-[#2585E8] transition cursor-pointer">
@@ -1209,7 +1224,7 @@
           </div>
 
           <div class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs">
-            <p class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">งานทั้งหมดเดือนนี้${items.length ? ` · ${items.length} ชิ้น` : ''}</p>
+            <p class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">งานทั้งหมดเดือนนี้${items.length ? ` · ${sumQty(items)} ชิ้น` : ''}</p>
             ${renderTypeCounts(items, 'lg')}
           </div>
 
@@ -1228,7 +1243,7 @@
       const mine = state.deliverables
         .filter(d => d.assignee_id === me && (d.month === state.month || (d.month < state.month && d.status !== 'DONE')))
         .sort((a, b) => ((order[a.status] || 0) - (order[b.status] || 0)) || a.month.localeCompare(b.month) || clientName(a.client_id).localeCompare(clientName(b.client_id), 'th'));
-      const todo = mine.filter(d => d.status !== 'DONE').length;
+      const todo = sumQty(mine.filter(d => d.status !== 'DONE'));
 
       const cards = mine.map(d => {
         const client = state.clients.find(c => c.client_id === d.client_id);
@@ -1240,7 +1255,7 @@
                 ${clientLogoHtml(client, 'w-10 h-10')}
                 <div class="min-w-0">
                   <p class="text-xs text-slate-500 truncate">${escapeHtml(clientName(d.client_id))}</p>
-                  <p class="text-base font-bold text-[#061D42] truncate">${escapeHtml(deliverableTitle(d))}</p>
+                  <p class="text-base font-bold text-[#061D42] flex items-center gap-2 min-w-0">${qtyBadge(d)}<span class="truncate">${escapeHtml(deliverableTitle(d))}</span></p>
                 </div>
               </div>
               ${statusBadge(d.status)}
@@ -1264,7 +1279,7 @@
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-[#061D42]">งานของฉัน</h1>
-              <p class="text-sm text-slate-500 mt-1">${mine.length ? `ยังไม่ส่ง ${todo} จาก ${mine.length} ชิ้น — ` : ''}ทำเสร็จแล้วกด "ส่งงาน" แล้ววางลิงก์ผลงาน</p>
+              <p class="text-sm text-slate-500 mt-1">${mine.length ? `ยังไม่ส่ง ${todo} จาก ${sumQty(mine)} ชิ้น — ` : ''}ทำครบทั้งชุดแล้วกด "ส่งงาน" วางลิงก์เดียว (เช่น โฟลเดอร์ Drive)</p>
             </div>
             ${renderMonthPicker()}
           </div>
@@ -1295,13 +1310,16 @@
         `<option value="${escapeHtml(u.user_id)}" ${u.user_id === selected ? 'selected' : ''}>${escapeHtml(u.name)}</option>`).join('');
 
       const groupsHtml = groups.map(group => {
-        const sent = group.items.filter(d => d.status === 'DONE').length;
+        const sent = sumQty(group.items.filter(d => d.status === 'DONE'));
         const rows = group.items.map(d => {
           const resultUrl = safeUrl(d.result_url);
           const mine = d.assignee_id === me;
           return `
             <div class="py-3 flex flex-col lg:flex-row lg:items-center gap-3">
               <div class="flex-1 min-w-0 flex items-center gap-2">
+                ${isAdmin
+                  ? `<button onclick="changeDeliverableQty(${jsArg(d.deliverable_id)})" title="แก้จำนวนชิ้น" class="cursor-pointer hover:opacity-75">${qtyBadge(d)}</button>`
+                  : qtyBadge(d)}
                 <p class="text-sm font-semibold text-[#061D42] truncate">${escapeHtml(deliverableTitle(d))}</p>
                 ${isAdmin ? `<button onclick="renameDeliverable(${jsArg(d.deliverable_id)})" title="แก้ชื่องาน" class="p-1 rounded text-slate-400 hover:text-[#2585E8] cursor-pointer"><i data-lucide="pencil" class="w-3 h-3"></i></button>` : ''}
               </div>
@@ -1312,15 +1330,15 @@
                 ${statusBadge(d.status)}
                 ${resultUrl ? `<button onclick="openExternalLink(${jsArg(resultUrl)})" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 hover:border-[#2585E8] text-xs font-semibold text-slate-600 cursor-pointer"><i data-lucide="external-link" class="w-3 h-3"></i>ผลงาน</button>` : ''}
                 ${mine || isAdmin ? `<button onclick="openSubmitModal(${jsArg(d.deliverable_id)})" class="px-2.5 py-1.5 rounded-lg ${resultUrl ? 'border border-slate-200 text-slate-600 hover:border-[#2585E8]' : 'bg-[#2585E8] hover:bg-[#1d6fc4] text-white'} text-xs font-semibold cursor-pointer">${resultUrl ? 'แก้ลิงก์' : 'ส่งงาน'}</button>` : ''}
-                ${isAdmin ? `<button onclick="confirmDeleteDeliverable(${jsArg(d.deliverable_id)})" title="ลบงานชิ้นนี้" class="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 cursor-pointer"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>` : ''}
+                ${isAdmin ? `<button onclick="confirmDeleteDeliverable(${jsArg(d.deliverable_id)})" title="ลบงานชุดนี้" class="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 cursor-pointer"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>` : ''}
               </div>
             </div>`;
         }).join('');
         return `
           <div class="bg-white rounded-2xl border border-slate-200/80 px-5 py-2 shadow-xs">
             <div class="py-2 flex items-center justify-between border-b border-slate-100">
-              <h3 class="text-sm font-bold text-[#061D42] inline-flex items-center gap-2"><i data-lucide="${group.type.icon}" class="w-4 h-4 text-[#2585E8]"></i>${escapeHtml(group.type.label)} · ${group.items.length} ชิ้น</h3>
-              <span class="text-xs font-semibold text-slate-500">ส่งแล้ว ${sent}</span>
+              <h3 class="text-sm font-bold text-[#061D42] inline-flex items-center gap-2"><i data-lucide="${group.type.icon}" class="w-4 h-4 text-[#2585E8]"></i>${escapeHtml(group.type.label)} · ${sumQty(group.items)} ชิ้น</h3>
+              <span class="text-xs font-semibold text-slate-500">ส่งแล้ว ${sent}/${sumQty(group.items)}</span>
             </div>
             <div class="divide-y divide-slate-100">${rows}</div>
           </div>`;
@@ -1339,7 +1357,7 @@
       return `
         <div>
           <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
-            <h2 class="text-sm font-bold uppercase tracking-wider text-slate-500">รายการงาน (${items.length})</h2>
+            <h2 class="text-sm font-bold uppercase tracking-wider text-slate-500">รายการงาน (${sumQty(items)} ชิ้น)</h2>
             <div class="flex flex-wrap items-center gap-2">
               ${renderMonthPicker()}
               ${isAdmin && items.length ? `<button onclick="openAddDeliverableModal(${jsArg(client.client_id)})" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#061D42] hover:bg-[#0d2d63] text-white text-xs font-semibold cursor-pointer"><i data-lucide="plus" class="w-4 h-4 text-[#50D6B0]"></i>เพิ่มงาน</button>` : ''}
@@ -1367,7 +1385,7 @@
         `<option value="${escapeHtml(u.user_id)}">${escapeHtml(u.name)} (${escapeHtml(u.role)})</option>`).join('');
       document.getElementById('dlv-form-count').value = '1';
       document.getElementById('dlv-form-title').value = '';
-      document.getElementById('dlv-form-month-note').textContent = 'งานจะถูกเพิ่มในเดือน ' + monthLabel(state.month) + ' (เปลี่ยนเดือนได้ที่ปุ่มเลือกเดือนก่อนกดเพิ่มงาน)';
+      document.getElementById('dlv-form-month-note').textContent = 'เพิ่มเป็น 1 ชุด ส่งงานด้วยลิงก์เดียว และนับตามจำนวนชิ้น — เดือน ' + monthLabel(state.month) + ' (เปลี่ยนเดือนได้ที่ปุ่มเลือกเดือนก่อนกดเพิ่มงาน)';
       openModal('deliverable-modal');
     }
 
@@ -1394,7 +1412,7 @@
         saveState();
         closeModal('deliverable-modal');
         renderApp();
-        showToast(`เพิ่มงาน ${created.length} ชิ้นแล้ว`);
+        showToast(`เพิ่มงาน ${typeMeta(created[0] && created[0].type).short} ×${sumQty(created)} แล้ว`);
       });
     });
 
@@ -1409,10 +1427,30 @@
       renderApp(); // also resets the dropdown if saving failed
     }
 
+    // Client asked for more (or fewer) pieces in this set before it was sent.
+    async function changeDeliverableQty(deliverableId) {
+      const item = state.deliverables.find(d => d.deliverable_id === deliverableId);
+      if (!item) return;
+      const answer = window.prompt(`จำนวนชิ้นของ "${deliverableTitle(item)}" (1–30)`, String(qty(item)));
+      if (answer === null) return;
+      const n = Number(answer.trim());
+      if (!(Number.isInteger(n) && n >= 1 && n <= 30)) {
+        showToast('จำนวนชิ้นต้องเป็นตัวเลข 1–30', 'error');
+        return;
+      }
+      if (n === qty(item)) return;
+      const updated = await callAppsScript('updateDeliverable', { deliverable_id: deliverableId, quantity: n });
+      if (!updated) return;
+      replaceDeliverable(updated);
+      saveState();
+      renderApp();
+      showToast(`แก้จำนวนเป็น ×${n} แล้ว`);
+    }
+
     async function renameDeliverable(deliverableId) {
       const item = state.deliverables.find(d => d.deliverable_id === deliverableId);
       if (!item) return;
-      const title = window.prompt('ชื่องาน (เว้นว่างเพื่อใช้ชื่ออัตโนมัติ เช่น VDO #1)', item.title || '');
+      const title = window.prompt('ชื่องาน (เว้นว่างเพื่อใช้ชื่อประเภทงาน)', item.title || '');
       if (title === null) return;
       const updated = await callAppsScript('updateDeliverable', { deliverable_id: deliverableId, title: title.trim() });
       if (!updated) return;
@@ -1424,8 +1462,8 @@
     function confirmDeleteDeliverable(deliverableId) {
       const item = state.deliverables.find(d => d.deliverable_id === deliverableId);
       if (!item) return;
-      document.getElementById('confirm-title').textContent = 'ลบงานชิ้นนี้';
-      document.getElementById('confirm-message').textContent = `ลบ "${deliverableTitle(item)}" ของ ${clientName(item.client_id)}? ลิงก์ผลงานที่ส่งมาจะหายจากระบบ (ไฟล์ใน Drive ไม่ถูกลบ)`;
+      document.getElementById('confirm-title').textContent = 'ลบงานชุดนี้';
+      document.getElementById('confirm-message').textContent = `ลบ "${deliverableTitle(item)}" (×${qty(item)} ชิ้น) ของ ${clientName(item.client_id)}? ลิงก์ผลงานที่ส่งมาจะหายจากระบบ (ไฟล์ใน Drive ไม่ถูกลบ)`;
       document.getElementById('confirm-yes-btn').onclick = async function () {
         const result = await callAppsScript('deleteDeliverable', { deliverable_id: deliverableId });
         if (!result) return;
@@ -1450,7 +1488,7 @@
       renderApp();
       const skipped = (result.skipped_client_ids || []).length;
       if (!result.created.length && !skipped) showToast(`ไม่มีงานใน ${monthLabel(fromMonth)} ให้คัดลอก`, 'error');
-      else showToast(`คัดลอกแล้ว ${result.created.length} ชิ้น` + (skipped ? ` (ข้าม ${skipped} ลูกค้าที่มีงานอยู่แล้ว)` : ''));
+      else showToast(`คัดลอกแล้ว ${sumQty(result.created)} ชิ้น` + (skipped ? ` (ข้าม ${skipped} ลูกค้าที่มีงานอยู่แล้ว)` : ''));
     }
 
     function openSubmitModal(deliverableId) {
@@ -1458,7 +1496,7 @@
       if (!item) return;
       document.getElementById('submit-form-id').value = deliverableId;
       document.getElementById('submit-form-title').textContent = deliverableTitle(item);
-      document.getElementById('submit-form-client').textContent = clientName(item.client_id) + ' · ' + typeMeta(item.type).label + ' · ' + monthLabel(item.month);
+      document.getElementById('submit-form-client').textContent = clientName(item.client_id) + ' · ' + typeMeta(item.type).label + ' ×' + qty(item) + ' ชิ้น · ' + monthLabel(item.month);
       document.getElementById('submit-form-url').value = item.result_url || '';
       openModal('submit-modal');
       document.getElementById('submit-form-url').focus();

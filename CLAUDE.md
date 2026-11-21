@@ -32,7 +32,8 @@
 - `index.html` — หน้าเว็บทั้งหมด (Tailwind CDN + Lucide) หน้า: Clients / หน้าลูกค้า / Workspaces / Settings (แอดมิน)
 - `index.html` หน้า: Dashboard (แอดมิน) / งานของฉัน / Clients / หน้าลูกค้า (+ งานประจำเดือน) / Workspaces / Settings (แอดมิน)
   • ข้อมูลเก็บใน `sessionStorage` ของแท็บเท่านั้น (ลบตอนออกจากระบบ) — ไม่มีข้อมูลตัวอย่าง SEED แล้ว และลบ localStorage เก่าของรุ่นแรกทิ้งตอนเปิดหน้า
-- `code.gs` — Apps Script หลังบ้าน ชีต `Clients`, `Workspaces`, `Users`, `Deliverables` (1 แถว = งาน 1 ชิ้น ของลูกค้า 1 ราย ใน 1 เดือน)
+- `code.gs` — Apps Script หลังบ้าน ชีต `Clients`, `Workspaces`, `Users`, `Deliverables` (1 แถว = **งาน 1 ชุด** เช่น Banner ×5 ของลูกค้า 1 ราย ใน 1 เดือน — ตัดสินใจ 21 พ.ย. 2569)
+  • ชุดงานมีผู้รับผิดชอบ 1 คน ส่งลิงก์เดียว (มักเป็นโฟลเดอร์ Drive) ต้องทำครบชุดก่อนส่ง / ตัวเลขทุกที่รวมจากคอลัมน์ `quantity` (แถวเก่าที่ว่าง = 1) / งานเพิ่มทีหลัง = เพิ่มแถวใหม่ / แอดมินกดป้าย ×N เพื่อแก้จำนวนได้ / ถ้าต้องทยอยส่งหรือหลายคนทำ ให้แยกเป็นหลายแถวตั้งแต่ตอนเพิ่มงาน
   • คำสั่งทางเดียวผ่าน `doPost` รูปแบบ `{ action, session_token, payload }` ส่งแบบ `text/plain`
   • เข้าระบบด้วย username + รหัสผ่าน → ได้ session token (CacheService, 6 ชม.) + ข้อมูลหน้าแรกในคำตอบเดียว / ผิด 8 ครั้งล็อก 15 นาที
   • บทบาท ADMIN (แก้ได้ทุกอย่าง) / STAFF (ดู + `submitDeliverable` เฉพาะงานของตัวเอง)

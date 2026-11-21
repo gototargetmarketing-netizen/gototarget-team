@@ -47,7 +47,7 @@ const GTT_CONFIG = Object.freeze({
   // or after this many seconds at most.
   CACHE_SECONDS: 300,
   // Bump this when GTT_SCHEMAS changes so every deployment re-checks the sheet columns once.
-  SCHEMA_VERSION: '2026-11-21c',
+  SCHEMA_VERSION: '2026-11-21d',
   DEFAULT_ADMIN: {
     user_id: 'usr_admin_01',
     name: 'GO TO TARGET Admin',
@@ -80,11 +80,13 @@ const GTT_SCHEMAS = [
     widths: [140, 200, 150, 240, 110, 240, 100, 160, 300, 120]
   },
   {
-    // One row = one piece of work for one client in one month (e.g. "VDO #2, Nov 2026").
+    // One row = one set of work for one client in one month, e.g. "Banner x5, Nov 2026".
+    // The team finishes the whole set and sends ONE link (usually a Drive folder); counts add up
+    // `quantity`. Extra work later is added as a new row. Older rows without quantity count as 1.
     name: GTT_CONFIG.SHEETS.DELIVERABLES,
     headers: ['deliverable_id', 'client_id', 'month', 'type', 'title', 'assignee_id', 'status', 'result_url',
-      'review_note', 'submitted_by', 'submitted_at', 'reviewed_at', 'created_at', 'updated_at'],
-    widths: [150, 140, 90, 110, 220, 140, 100, 320, 280, 140, 140, 140, 140, 140]
+      'review_note', 'submitted_by', 'submitted_at', 'reviewed_at', 'created_at', 'updated_at', 'quantity'],
+    widths: [150, 140, 90, 110, 220, 140, 100, 320, 280, 140, 140, 140, 140, 140, 90]
   }
 ];
 
@@ -1210,6 +1212,7 @@ function getDeliverables_() {
     // If someone typed a month by hand, Sheets may have turned it into a date ('2026-11-01').
     item.month = String(item.month || '').slice(0, 7);
     item.status = String(item.result_url || '').trim() ? GTT_STATUS.DONE : GTT_STATUS.TODO;
+    item.quantity = quantityOf_(item.quantity);
     return item;
   });
 }
@@ -1230,6 +1233,20 @@ function deliverablesForUser_(actor, month) {
   const visible = visibleClientIdSet_(actor);
   return all.filter(item => String(item.assignee_id) === String(actor.user_id) && visible.has(String(item.client_id)) &&
     (item.month === month || (item.month < month && item.status !== GTT_STATUS.DONE)));
+}
+
+// Blank or broken cells (older one-piece-per-row data) count as 1 piece.
+function quantityOf_(value) {
+  const n = Math.floor(Number(value));
+  return n >= 1 && n <= 999 ? n : 1;
+}
+
+function cleanQuantity_(value) {
+  const n = Number(value);
+  if (!(Math.floor(n) === n && n >= 1 && n <= GTT_MAX_PIECES_PER_ADD)) {
+    throw new Error('จำนวนชิ้นต้องอยู่ระหว่าง 1–' + GTT_MAX_PIECES_PER_ADD);
+  }
+  return n;
 }
 
 function cleanDeliverableType_(value) {
@@ -1268,27 +1285,24 @@ function newDeliverable_(fields) {
   }, fields);
 }
 
-// Adds <count> pieces of one type at once, e.g. "VDO x 4".
+// Adds one set of <count> pieces of one type, e.g. "VDO x 4", as a single row with one result link.
+// Returns an array (one row) so the page handles it the same way as copied rows.
 function createDeliverables_(payload) {
   const clientId = requireClientExists_(payload.client_id);
   const month = cleanMonth_(payload.month);
   const type = cleanDeliverableType_(payload.type);
-  const count = Math.floor(Number(payload.count));
-  if (!(count >= 1 && count <= GTT_MAX_PIECES_PER_ADD)) throw new Error('จำนวนชิ้นต้องอยู่ระหว่าง 1–' + GTT_MAX_PIECES_PER_ADD);
+  const quantity = cleanQuantity_(payload.count);
   const assigneeId = cleanAssignee_(payload.assignee_id);
   const title = cleanText_(payload.title, 'ชื่องาน', 120, false);
 
-  const rows = [];
-  for (let i = 0; i < count; i++) {
-    rows.push(newDeliverable_({
-      client_id: clientId,
-      month: month,
-      type: type,
-      // With several pieces, a shared title gets a running number: "Promo 1", "Promo 2", ...
-      title: title && count > 1 ? title + ' ' + (i + 1) : title,
-      assignee_id: assigneeId
-    }));
-  }
+  const rows = [newDeliverable_({
+    client_id: clientId,
+    month: month,
+    type: type,
+    title: title,
+    assignee_id: assigneeId,
+    quantity: quantity
+  })];
   appendObjects_(GTT_CONFIG.SHEETS.DELIVERABLES, rows);
   addToClientTeams_(teamAdditionsFrom_(rows));
   return rows;
@@ -1299,6 +1313,7 @@ function updateDeliverable_(payload) {
   const patch = { updated_at: nowText_() };
   if (payload.title !== undefined) patch.title = cleanText_(payload.title, 'ชื่องาน', 120, false);
   if (payload.type !== undefined) patch.type = cleanDeliverableType_(payload.type);
+  if (payload.quantity !== undefined) patch.quantity = cleanQuantity_(payload.quantity);
   if (payload.assignee_id !== undefined) patch.assignee_id = cleanAssignee_(payload.assignee_id);
   updateObject_(GTT_CONFIG.SHEETS.DELIVERABLES, 'deliverable_id', existing.deliverable_id, patch);
   if (patch.assignee_id) addToClientTeams_({ [existing.client_id]: [patch.assignee_id] });
@@ -1311,8 +1326,8 @@ function deleteDeliverable_(deliverableId) {
   return { deleted: id };
 }
 
-// Monthly clients usually get the same set of work every month. Copies the pieces (type, title,
-// person responsible) from one month to another, for one client or for every active client.
+// Monthly clients usually get the same set of work every month. Copies the sets (type, title,
+// number of pieces, person responsible) from one month to another, for one client or for every active client.
 // A client that already has work in the target month is skipped, so pressing twice never doubles it.
 function copyDeliverables_(payload) {
   const fromMonth = cleanMonth_(payload.from_month);
@@ -1340,7 +1355,8 @@ function copyDeliverables_(payload) {
       month: toMonth,
       type: cleanChoice_(item.type, GTT_DELIVERABLE_TYPES, 'other'),
       title: isFormulaLike_(String(item.title || '')) ? '' : String(item.title || ''),
-      assignee_id: activeUserIds.has(String(item.assignee_id)) ? String(item.assignee_id) : ''
+      assignee_id: activeUserIds.has(String(item.assignee_id)) ? String(item.assignee_id) : '',
+      quantity: quantityOf_(item.quantity)
     }));
   });
   appendObjects_(GTT_CONFIG.SHEETS.DELIVERABLES, rows);
@@ -1349,7 +1365,7 @@ function copyDeliverables_(payload) {
 }
 
 // The only write STAFF can do: attach the finished link to a piece assigned to them.
-// Sending the link marks the piece done. Sending again replaces the link (e.g. a wrong link was pasted).
+// Sending the link marks the whole set done. Sending again replaces the link (e.g. a wrong link was pasted).
 function submitDeliverable_(payload, actor) {
   const item = findDeliverable_(payload.deliverable_id);
   const isAdmin = actor.role === 'ADMIN';
