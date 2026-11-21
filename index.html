@@ -88,16 +88,16 @@
   <!-- ========================================================================
        1. LOGIN VIEW (SECURE INTERNAL ACCESS)
   ======================================================================== -->
-  <!-- 100svh = the height you can actually see on a phone. min-h-screen (100vh) also counts the space
-       behind Safari's address/tool bars, so the card looked pushed down on iPhone. -->
-  <div id="login-view" class="min-h-screen min-h-[100svh] bg-[#F3F6FA] flex flex-col justify-center items-center px-4 py-6 sm:p-6">
+  <!-- Phones: card starts near the top (just below Safari's floating address bar) instead of being
+       centred — centring left a big empty gap above it on iPhone. Larger screens stay centred. -->
+  <div id="login-view" class="min-h-screen min-h-[100svh] bg-[#F3F6FA] flex flex-col justify-start sm:justify-center items-center px-4 pb-6 pt-[calc(env(safe-area-inset-top)+4rem)] sm:p-6">
     <div class="w-full max-w-md bg-white rounded-2xl shadow-xl shadow-[#0B1F44]/5 border border-slate-200/80 overflow-hidden">
       <!-- Top Navy Brand Header -->
-      <div class="bg-[#0B1F44] pt-6 text-center relative overflow-hidden">
+      <div class="bg-[#0B1F44] pt-4 sm:pt-6 text-center relative overflow-hidden">
         <div class="absolute -right-10 -top-10 w-36 h-36 rounded-full bg-[#1E6FFF]/15 pointer-events-none"></div>
-        <div class="absolute -left-10 top-16 w-32 h-32 rounded-full bg-[#00C7A7]/10 pointer-events-none"></div>
-        <img src="assets/go-logo-full.png" alt="Go To Target — Digital marketing that delivers results" class="relative w-44 sm:w-56 h-auto mx-auto -my-5 sm:-my-6" />
-        <p class="relative text-[11px] uppercase tracking-[0.25em] text-[#9FF3D6] font-semibold pb-4">Internal Client Workspace</p>
+        <div class="absolute -left-10 top-4 w-28 h-28 rounded-full bg-[#00C7A7]/10 pointer-events-none"></div>
+        <img src="assets/go-logo-full.png" alt="Go To Target — Digital marketing that delivers results" class="relative w-32 sm:w-56 h-auto mx-auto -my-3 sm:-my-6" />
+        <p class="relative text-[10px] sm:text-[11px] uppercase tracking-[0.25em] text-[#9FF3D6] font-semibold pb-2 sm:pb-4">Internal Client Workspace</p>
         <svg class="block w-full h-6" viewBox="0 0 400 24" preserveAspectRatio="none" aria-hidden="true">
           <defs><linearGradient id="gttWaveLogin" x1="0" x2="1"><stop offset="0" stop-color="#1E6FFF"/><stop offset="1" stop-color="#00C7A7"/></linearGradient></defs>
           <path d="M0 24V14C120 30 260 -4 400 10V24Z" fill="url(#gttWaveLogin)"/>
