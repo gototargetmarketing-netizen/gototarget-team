@@ -2,7 +2,8 @@
 <html lang="th"> 
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <!-- maximum-scale=1 stops iPhone from zooming in when a field is tapped (pinch-zoom still works on iOS) -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
   <!-- Internal team tool: keep it out of search results -->
   <meta name="robots" content="noindex, nofollow" />
   <title>GO TO TARGET — Internal Client Workspace</title>
@@ -17,6 +18,15 @@
   <style>
     body {
       font-family: 'Inter', 'Noto Sans Thai', sans-serif;
+    }
+    /* iPhone zooms into any field whose text is smaller than 16px — keep fields at 16px on phones. */
+    @media (max-width: 767px) {
+      input, select, textarea { font-size: 16px !important; }
+    }
+    html, body { overflow-x: hidden; }
+    @keyframes gttpop {
+      0% { transform: scale(0.85); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
     }
     @keyframes gttbusy {
       0% { transform: translateX(-100%); }
@@ -37,6 +47,22 @@
     <div id="toast-box" class="flex items-center gap-2.5 px-4 py-3 rounded-xl shadow-lg border text-sm font-medium bg-[#061D42] text-white border-[#2585E8]/40">
       <i id="toast-icon" data-lucide="check-circle-2" class="w-4 h-4 text-[#50D6B0] flex-shrink-0"></i>
       <span id="toast-message"></span>
+    </div>
+  </div>
+
+  <!-- Success popup: shown after every save / add / delete, closes by itself after 1.5 s -->
+  <div id="success-popup" class="hidden fixed inset-0 z-[70] flex items-center justify-center p-6 bg-[#061D42]/30" onclick="hideSuccessPopup()">
+    <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 px-8 py-7 w-full max-w-xs text-center animate-[gttpop_0.18s_ease-out]">
+      <div class="w-14 h-11 mx-auto">
+        <svg viewBox="0 0 120 90" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-full h-full">
+          <path d="M66 36C66 21.6406 54.3594 10 40 10C22.3269 10 8 24.3269 8 42C8 59.6731 22.3269 74 40 74C45.2 74 50.1 72.7 54.4 70.4L61 78L65 44H33L42 53C39.2 54.3 36.2 55 33 55C24.7157 55 18 48.2843 18 40C18 31.7157 24.7157 25 33 25C40.1 25 46 29.9 47.6 36.5H66V36Z" fill="#50D6B0" />
+          <path d="M84 14C69.6406 14 58 25.6406 58 40C58 54.3594 69.6406 66 84 66C98.3594 66 110 54.3594 110 40C110 25.6406 98.3594 14 84 14ZM84 52C77.3726 52 72 46.6274 72 40C72 33.3726 77.3726 28 84 28C90.6274 28 96 33.3726 96 40C96 46.6274 90.6274 52 84 52Z" fill="#2585E8" />
+        </svg>
+      </div>
+      <div class="mt-3 mx-auto w-10 h-10 rounded-full bg-[#50D6B0]/20 flex items-center justify-center">
+        <i data-lucide="check" class="w-6 h-6 text-[#0F766E]"></i>
+      </div>
+      <p id="success-popup-text" class="mt-3 text-base font-bold text-[#061D42]"></p>
     </div>
   </div>
 
@@ -243,7 +269,7 @@
   ======================================================================== -->
   <!-- Client Modal -->
   <div id="client-modal" class="hidden fixed inset-0 z-50 bg-[#061D42]/50 backdrop-blur-xs flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl border border-slate-200">
+    <div class="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200">
       <div class="px-6 py-4 bg-[#061D42] text-white flex items-center justify-between">
         <h3 id="client-modal-title" class="font-bold text-base">Add New Client</h3>
         <button onclick="closeClientModal()" class="text-slate-300 hover:text-white p-1 rounded-lg cursor-pointer">
@@ -295,7 +321,7 @@
 
   <!-- Workspace Modal -->
   <div id="workspace-modal" class="hidden fixed inset-0 z-50 bg-[#061D42]/50 backdrop-blur-xs flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl border border-slate-200">
+    <div class="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200">
       <div class="px-6 py-4 bg-[#061D42] text-white flex items-center justify-between">
         <h3 id="workspace-modal-title" class="font-bold text-base">Edit Workspace & Link</h3>
         <button onclick="closeWorkspaceModal()" class="text-slate-300 hover:text-white p-1 rounded-lg cursor-pointer">
@@ -370,7 +396,7 @@
 
   <!-- Add Deliverables Modal (Admin): e.g. "VDO x 4 for ABC, Nov 2026" -->
   <div id="deliverable-modal" class="hidden fixed inset-0 z-50 bg-[#061D42]/50 backdrop-blur-xs flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl border border-slate-200">
+    <div class="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200">
       <div class="px-6 py-4 bg-[#061D42] text-white flex items-center justify-between">
         <h3 class="font-bold text-base">เพิ่มงานให้ลูกค้า</h3>
         <button onclick="closeModal('deliverable-modal')" class="text-slate-300 hover:text-white p-1 rounded-lg cursor-pointer">
@@ -413,7 +439,7 @@
 
   <!-- Submit Work Modal (Staff + Admin): paste the finished link -->
   <div id="submit-modal" class="hidden fixed inset-0 z-50 bg-[#061D42]/50 backdrop-blur-xs flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl border border-slate-200">
+    <div class="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200">
       <div class="px-6 py-4 bg-[#061D42] text-white flex items-center justify-between">
         <h3 class="font-bold text-base">ส่งงาน</h3>
         <button onclick="closeModal('submit-modal')" class="text-slate-300 hover:text-white p-1 rounded-lg cursor-pointer">
@@ -426,7 +452,6 @@
           <p id="submit-form-title" class="text-base font-bold text-[#061D42]"></p>
           <p id="submit-form-client" class="text-xs text-slate-500 mt-0.5"></p>
         </div>
-        <div id="submit-form-note" class="hidden p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-800 whitespace-pre-line"></div>
         <div>
           <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">ลิงก์ผลงาน *</label>
           <input id="submit-form-url" type="text" required placeholder="https://drive.google.com/..."
@@ -441,41 +466,9 @@
     </div>
   </div>
 
-  <!-- Review Modal (Admin): approve or send back with a note -->
-  <div id="review-modal" class="hidden fixed inset-0 z-50 bg-[#061D42]/50 backdrop-blur-xs flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl border border-slate-200">
-      <div class="px-6 py-4 bg-[#061D42] text-white flex items-center justify-between">
-        <h3 class="font-bold text-base">ตรวจงาน</h3>
-        <button onclick="closeModal('review-modal')" class="text-slate-300 hover:text-white p-1 rounded-lg cursor-pointer">
-          <i data-lucide="x" class="w-5 h-5"></i>
-        </button>
-      </div>
-      <div class="p-6 space-y-4">
-        <input type="hidden" id="review-form-id" />
-        <div>
-          <p id="review-form-title" class="text-base font-bold text-[#061D42]"></p>
-          <p id="review-form-meta" class="text-xs text-slate-500 mt-0.5"></p>
-        </div>
-        <button type="button" id="review-form-open" class="w-full py-2.5 px-4 rounded-xl bg-[#061D42] hover:bg-[#2585E8] text-white text-sm font-semibold flex items-center justify-center gap-2 transition cursor-pointer">
-          <span>เปิดดูผลงาน</span>
-          <i data-lucide="external-link" class="w-4 h-4"></i>
-        </button>
-        <div>
-          <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">ความเห็น (ต้องใส่ถ้าส่งกลับแก้)</label>
-          <textarea id="review-form-note" rows="3" maxlength="1000" placeholder="เช่น ขอปรับสีโลโก้ให้เข้มขึ้น และเปลี่ยนเพลงประกอบ"
-            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm text-[#061D42] focus:outline-none focus:ring-2 focus:ring-[#2585E8]"></textarea>
-        </div>
-        <div class="pt-1 grid grid-cols-2 gap-3">
-          <button type="button" onclick="submitReview('REVISE')" class="py-2.5 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 text-sm font-semibold cursor-pointer">ส่งกลับแก้</button>
-          <button type="button" onclick="submitReview('APPROVED')" class="py-2.5 rounded-xl bg-[#0F766E] hover:bg-[#0b5c56] text-white text-sm font-semibold cursor-pointer">ผ่าน</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- Set Password Modal (Admin) -->
   <div id="password-modal" class="hidden fixed inset-0 z-50 bg-[#061D42]/50 backdrop-blur-xs flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl max-w-md w-full overflow-hidden shadow-2xl border border-slate-200">
+    <div class="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-200">
       <div class="px-6 py-4 bg-[#061D42] text-white flex items-center justify-between">
         <h3 class="font-bold text-base">ตั้งรหัสผ่านใหม่</h3>
         <button onclick="closeModal('password-modal')" class="text-slate-300 hover:text-white p-1 rounded-lg cursor-pointer">
@@ -539,11 +532,10 @@
       { id: 'other', label: 'อื่นๆ', short: 'อื่นๆ', icon: 'package' }
     ];
 
+    // Sending the result link finishes a piece (no review step). Must match GTT_STATUS in code.gs.
     const STATUS_META = {
       TODO: { label: 'ยังไม่ส่ง', cls: 'bg-slate-100 text-slate-600' },
-      REVIEW: { label: 'รอตรวจ', cls: 'bg-amber-100 text-amber-800' },
-      REVISE: { label: 'ต้องแก้', cls: 'bg-red-100 text-red-700' },
-      APPROVED: { label: 'ผ่านแล้ว', cls: 'bg-[#50D6B0]/20 text-[#0F766E]' }
+      DONE: { label: 'ส่งแล้ว', cls: 'bg-[#50D6B0]/20 text-[#0F766E]' }
     };
 
     const COLOR_STYLES = {
@@ -683,8 +675,28 @@
       return /^https?:\/\//i.test(trimmed) ? trimmed : 'https://' + trimmed;
     }
 
+    // Every save / add / delete confirms with a popup in the middle of the screen (with the company logo)
+    // that closes by itself, as the team asked. Errors and small notices ('info') stay as the corner toast.
+    let successTimer = null;
+    function showSuccessPopup(message) {
+      document.getElementById('success-popup-text').textContent = message;
+      document.getElementById('success-popup').classList.remove('hidden');
+      lucide.createIcons();
+      clearTimeout(successTimer);
+      successTimer = setTimeout(hideSuccessPopup, 1500);
+    }
+
+    function hideSuccessPopup() {
+      clearTimeout(successTimer);
+      document.getElementById('success-popup').classList.add('hidden');
+    }
+
     let toastTimer = null;
     function showToast(message, type = 'success') {
+      if (type === 'success') {
+        showSuccessPopup(message);
+        return;
+      }
       const container = document.getElementById('toast-container');
       const box = document.getElementById('toast-box');
       const icon = document.getElementById('toast-icon');
@@ -880,7 +892,7 @@
       applyBootstrap(data);
       showShell();
       renderApp();
-      if (showMessage) showToast('โหลดข้อมูลล่าสุดจาก Google Sheets แล้ว');
+      if (showMessage) showToast('โหลดข้อมูลล่าสุดจาก Google Sheets แล้ว', 'info');
       return true;
     }
 
@@ -1092,89 +1104,60 @@
     }
 
     // ------------------------------------------------------------------------
-    // VIEW: DASHBOARD (ADMIN ONLY) — work count per client for the month
+    // WORK COUNTS — "Banner 7 · VDO 1": the simple numbers the team asked for
+    // ------------------------------------------------------------------------
+    function typeCounts(items) {
+      return DELIVERABLE_TYPES
+        .map(type => ({ type, count: items.filter(d => d.type === type.id).length }))
+        .filter(row => row.count > 0);
+    }
+
+    // Big number per work type. `size` 'lg' for the client page header, 'md' for dashboard cards.
+    function renderTypeCounts(items, size) {
+      const rows = typeCounts(items);
+      if (!rows.length) return `<p class="text-sm text-slate-400">ยังไม่มีงานเดือนนี้</p>`;
+      const big = size === 'lg' ? 'text-3xl' : 'text-2xl';
+      return `
+        <div class="flex flex-wrap gap-2.5">
+          ${rows.map(row => `
+            <div class="min-w-[84px] px-3.5 py-2.5 rounded-xl bg-[#F5F7FA] border border-slate-200/80">
+              <p class="${big} font-bold text-[#061D42] leading-none">${row.count}</p>
+              <p class="mt-1.5 text-xs font-semibold text-slate-500 inline-flex items-center gap-1"><i data-lucide="${row.type.icon}" class="w-3.5 h-3.5"></i>${escapeHtml(row.type.short)}</p>
+            </div>`).join('')}
+        </div>`;
+    }
+
+    // ------------------------------------------------------------------------
+    // VIEW: DASHBOARD (ADMIN ONLY) — how many pieces each client needs this month, numbers only
     // ------------------------------------------------------------------------
     function renderDashboardView() {
       const items = monthDeliverables();
-      const countStatus = status => items.filter(d => d.status === status).length;
-      const usedTypes = DELIVERABLE_TYPES.filter(t => items.some(d => d.type === t.id));
-      const columns = usedTypes.length ? usedTypes : DELIVERABLE_TYPES.filter(t => t.id === 'banner' || t.id === 'video');
       // Clients with work this month first, then the rest (so new clients are easy to find and fill in).
       const clients = state.clients.filter(c => !c.archived)
         .map(c => ({ client: c, items: items.filter(d => d.client_id === c.client_id) }))
         .sort((a, b) => (b.items.length > 0) - (a.items.length > 0) || a.client.client_name.localeCompare(b.client.client_name, 'th'));
 
-      const stat = (label, value, cls, icon) => `
-        <div class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs">
-          <div class="flex items-center justify-between">
-            <p class="text-xs font-semibold text-slate-500">${label}</p>
-            <i data-lucide="${icon}" class="w-4 h-4 ${cls}"></i>
+      const cards = clients.map(({ client, items: clientItems }) => `
+        <div onclick="openClientWorkspace(${jsArg(client.client_id)})" class="bg-white rounded-2xl border border-slate-200/80 hover:border-[#2585E8] p-5 shadow-xs cursor-pointer transition flex flex-col gap-4">
+          <div class="flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3 min-w-0">
+              ${clientLogoHtml(client, 'w-10 h-10')}
+              <h3 class="text-base font-bold text-[#061D42] truncate">${escapeHtml(client.client_name)}</h3>
+            </div>
+            ${clientItems.length ? `<span class="text-xs font-semibold text-slate-500 whitespace-nowrap">รวม ${clientItems.length} ชิ้น</span>` : ''}
           </div>
-          <p class="text-3xl font-bold text-[#061D42] mt-2">${value}</p>
-        </div>`;
-
-      const rowsHtml = clients.map(({ client, items: clientItems }) => {
-        const cells = columns.map(type => {
-          const ofType = clientItems.filter(d => d.type === type.id);
-          if (!ofType.length) return `<td class="py-3.5 px-4 text-center text-slate-300">—</td>`;
-          const done = ofType.filter(d => d.status === 'APPROVED').length;
-          const pct = Math.round(done / ofType.length * 100);
-          return `
-            <td class="py-3.5 px-4 text-center">
-              <span class="font-bold text-[#061D42]">${done}</span><span class="text-slate-400">/${ofType.length}</span>
-              <div class="mt-1 h-1 w-14 mx-auto rounded-full bg-slate-100 overflow-hidden"><div class="h-full bg-[#50D6B0]" style="width:${pct}%"></div></div>
-            </td>`;
-        }).join('');
-        const waiting = clientItems.filter(d => d.status === 'REVIEW').length;
-        const unassigned = clientItems.filter(d => !d.assignee_id).length;
-        const flags = [
-          waiting ? `<span class="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-800 whitespace-nowrap">รอตรวจ ${waiting}</span>` : '',
-          unassigned ? `<span class="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-600 whitespace-nowrap">ยังไม่ระบุคน ${unassigned}</span>` : '',
-          !clientItems.length ? `<span class="text-xs text-slate-400">ยังไม่มีงานเดือนนี้</span>` : ''
-        ].join(' ');
-        return `
-          <tr class="hover:bg-[#F5F7FA]/60 transition-colors">
-            <td class="py-3.5 px-5">
-              <button onclick="openClientWorkspace(${jsArg(client.client_id)})" class="flex items-center gap-2.5 text-left font-semibold text-[#061D42] hover:text-[#2585E8] cursor-pointer">
-                ${clientLogoHtml(client, 'w-8 h-8')}
-                <span>${escapeHtml(client.client_name)}</span>
-              </button>
-            </td>
-            ${cells}
-            <td class="py-3.5 px-4"><div class="flex flex-wrap gap-1.5">${flags}</div></td>
-            <td class="py-3.5 px-5 text-right whitespace-nowrap">
-              <button onclick="openAddDeliverableModal(${jsArg(client.client_id)})" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 hover:border-[#2585E8] text-xs font-semibold text-[#2585E8] transition cursor-pointer">
-                <i data-lucide="plus" class="w-3 h-3"></i><span>เพิ่มงาน</span>
-              </button>
-            </td>
-          </tr>`;
-      }).join('');
-
-      const waitingList = items.filter(d => d.status === 'REVIEW');
-      const waitingHtml = waitingList.length ? `
-        <div class="bg-white rounded-2xl border border-amber-200 shadow-xs overflow-hidden">
-          <div class="px-5 py-3.5 bg-amber-50 border-b border-amber-200 flex items-center gap-2">
-            <i data-lucide="inbox" class="w-4 h-4 text-amber-700"></i>
-            <h2 class="text-sm font-bold text-amber-900">รอตรวจ (${waitingList.length})</h2>
-          </div>
-          <div class="divide-y divide-slate-100">
-            ${waitingList.map(d => `
-              <div class="px-5 py-3 flex flex-wrap items-center justify-between gap-3">
-                <div class="min-w-0">
-                  <p class="text-sm font-semibold text-[#061D42]">${escapeHtml(clientName(d.client_id))} · ${escapeHtml(deliverableTitle(d))}</p>
-                  <p class="text-xs text-slate-500">ส่งโดย ${escapeHtml(memberName(d.submitted_by) || '-')} · ${escapeHtml(d.submitted_at || '')}</p>
-                </div>
-                <button onclick="openReviewModal(${jsArg(d.deliverable_id)})" class="px-3.5 py-1.5 rounded-lg bg-[#061D42] hover:bg-[#2585E8] text-white text-xs font-semibold cursor-pointer">ตรวจงาน</button>
-              </div>`).join('')}
-          </div>
-        </div>` : '';
+          ${renderTypeCounts(clientItems, 'md')}
+          <button onclick="event.stopPropagation(); openAddDeliverableModal(${jsArg(client.client_id)})" class="self-start inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 hover:border-[#2585E8] text-xs font-semibold text-[#2585E8] transition cursor-pointer">
+            <i data-lucide="plus" class="w-3 h-3"></i><span>เพิ่มงาน</span>
+          </button>
+        </div>`).join('');
 
       return `
         <div class="space-y-6">
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-[#061D42]">Dashboard งาน</h1>
-              <p class="text-sm text-slate-500 mt-1">จำนวนงานที่ต้องทำให้ลูกค้าแต่ละรายในเดือนนี้ (ตัวเลข = ผ่านแล้ว / ทั้งหมด)</p>
+              <p class="text-sm text-slate-500 mt-1">จำนวนงานที่ต้องทำให้ลูกค้าแต่ละรายในเดือนที่เลือก</p>
             </div>
             <div class="flex flex-wrap items-center gap-2">
               ${renderMonthPicker()}
@@ -1187,32 +1170,14 @@
             </div>
           </div>
 
-          <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            ${stat('งานทั้งหมด', items.length, 'text-[#2585E8]', 'layers')}
-            ${stat('ผ่านแล้ว', countStatus('APPROVED'), 'text-[#0F766E]', 'check-circle-2')}
-            ${stat('รอตรวจ', countStatus('REVIEW'), 'text-amber-600', 'inbox')}
-            ${stat('ยังไม่เสร็จ / ต้องแก้', countStatus('TODO') + countStatus('REVISE'), 'text-red-500', 'clock')}
+          <div class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs">
+            <p class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">งานทั้งหมดเดือนนี้${items.length ? ` · ${items.length} ชิ้น` : ''}</p>
+            ${renderTypeCounts(items, 'lg')}
           </div>
 
-          ${waitingHtml}
-
-          <div class="bg-white rounded-2xl border border-slate-200/80 overflow-hidden shadow-xs">
-            <div class="overflow-x-auto">
-              <table class="w-full text-left border-collapse">
-                <thead>
-                  <tr class="border-b border-slate-200/80 bg-[#F5F7FA]/70 text-[11px] font-bold uppercase tracking-wider text-slate-500">
-                    <th class="py-3.5 px-5">ลูกค้า</th>
-                    ${columns.map(t => `<th class="py-3.5 px-4 text-center whitespace-nowrap">${escapeHtml(t.short)}</th>`).join('')}
-                    <th class="py-3.5 px-4">สถานะ</th>
-                    <th class="py-3.5 px-5"></th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100 text-sm">
-                  ${rowsHtml || `<tr><td colspan="${columns.length + 3}" class="py-10 text-center text-sm text-slate-400">ยังไม่มีลูกค้า — เพิ่มลูกค้าที่หน้า Clients ก่อน</td></tr>`}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          ${clients.length
+            ? `<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">${cards}</div>`
+            : `<div class="bg-white rounded-2xl border border-slate-200/80 p-10 text-center text-sm text-slate-400">ยังไม่มีลูกค้า — เพิ่มลูกค้าที่หน้า Clients ก่อน</div>`}
         </div>`;
     }
 
@@ -1221,17 +1186,17 @@
     // ------------------------------------------------------------------------
     function renderMyWorkView() {
       const me = state.currentUser.user_id;
-      const order = { REVISE: 0, TODO: 1, REVIEW: 2, APPROVED: 3 };
+      const order = { TODO: 0, DONE: 1 };
       const mine = state.deliverables
-        .filter(d => d.assignee_id === me && (d.month === state.month || (d.month < state.month && d.status !== 'APPROVED')))
-        .sort((a, b) => (order[a.status] - order[b.status]) || a.month.localeCompare(b.month) || clientName(a.client_id).localeCompare(clientName(b.client_id), 'th'));
+        .filter(d => d.assignee_id === me && (d.month === state.month || (d.month < state.month && d.status !== 'DONE')))
+        .sort((a, b) => ((order[a.status] || 0) - (order[b.status] || 0)) || a.month.localeCompare(b.month) || clientName(a.client_id).localeCompare(clientName(b.client_id), 'th'));
+      const todo = mine.filter(d => d.status !== 'DONE').length;
 
       const cards = mine.map(d => {
         const client = state.clients.find(c => c.client_id === d.client_id);
-        const canSubmit = d.status !== 'APPROVED';
         const resultUrl = safeUrl(d.result_url);
         return `
-          <div class="bg-white rounded-2xl border ${d.status === 'REVISE' ? 'border-red-200' : 'border-slate-200/80'} p-5 shadow-xs flex flex-col gap-3">
+          <div class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-xs flex flex-col gap-3">
             <div class="flex items-start justify-between gap-3">
               <div class="flex items-center gap-3 min-w-0">
                 ${clientLogoHtml(client, 'w-10 h-10')}
@@ -1246,13 +1211,12 @@
               <span class="inline-flex items-center gap-1"><i data-lucide="${typeMeta(d.type).icon}" class="w-3.5 h-3.5"></i>${escapeHtml(typeMeta(d.type).label)}</span>
               ${d.month !== state.month ? `<span class="px-2 py-0.5 rounded-full bg-red-50 text-red-700 font-semibold">ค้างจาก ${escapeHtml(monthLabel(d.month))}</span>` : ''}
             </div>
-            ${d.review_note && d.status !== 'APPROVED' ? `<div class="p-3 rounded-xl ${d.status === 'REVISE' ? 'bg-red-50 border border-red-200 text-red-800' : 'bg-slate-50 border border-slate-200 text-slate-600'} text-xs whitespace-pre-line"><span class="font-semibold">ความเห็นจากแอดมิน:</span> ${escapeHtml(d.review_note)}</div>` : ''}
             <div class="mt-auto pt-2 flex flex-wrap gap-2">
               <button onclick="openClientWorkspace(${jsArg(d.client_id)})" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 hover:border-[#2585E8] text-xs font-semibold text-[#061D42] cursor-pointer">
                 <i data-lucide="folder-open" class="w-3.5 h-3.5"></i><span>ไฟล์/บรีฟลูกค้า</span>
               </button>
               ${resultUrl ? `<button onclick="openExternalLink(${jsArg(resultUrl)})" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 hover:border-[#2585E8] text-xs font-semibold text-slate-600 cursor-pointer"><i data-lucide="external-link" class="w-3.5 h-3.5"></i><span>ลิงก์ที่ส่ง</span></button>` : ''}
-              ${canSubmit ? `<button onclick="openSubmitModal(${jsArg(d.deliverable_id)})" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#2585E8] hover:bg-[#1d6fc4] text-white text-xs font-semibold cursor-pointer"><i data-lucide="send" class="w-3.5 h-3.5"></i><span>${resultUrl ? 'ส่งงานใหม่' : 'ส่งงาน'}</span></button>` : ''}
+              <button onclick="openSubmitModal(${jsArg(d.deliverable_id)})" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl ${resultUrl ? 'border border-slate-200 text-slate-600 hover:border-[#2585E8]' : 'bg-[#2585E8] hover:bg-[#1d6fc4] text-white'} text-xs font-semibold cursor-pointer"><i data-lucide="${resultUrl ? 'pencil' : 'send'}" class="w-3.5 h-3.5"></i><span>${resultUrl ? 'แก้ลิงก์' : 'ส่งงาน'}</span></button>
             </div>
           </div>`;
       }).join('');
@@ -1262,7 +1226,7 @@
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-[#061D42]">งานของฉัน</h1>
-              <p class="text-sm text-slate-500 mt-1">ทำเสร็จแล้วกด "ส่งงาน" แล้ววางลิงก์ผลงาน แอดมินจะตรวจจากลิงก์นั้น</p>
+              <p class="text-sm text-slate-500 mt-1">${mine.length ? `ยังไม่ส่ง ${todo} จาก ${mine.length} ชิ้น — ` : ''}ทำเสร็จแล้วกด "ส่งงาน" แล้ววางลิงก์ผลงาน</p>
             </div>
             ${renderMonthPicker()}
           </div>
@@ -1279,28 +1243,29 @@
     // ------------------------------------------------------------------------
     // CLIENT PAGE SECTION: work for this client in the selected month
     // ------------------------------------------------------------------------
+    function clientPageItems(client, isAdmin) {
+      const items = monthDeliverables(client.client_id);
+      return isAdmin ? items : items.filter(d => d.assignee_id === state.currentUser.user_id);
+    }
+
     function renderClientDeliverablesSection(client, isAdmin) {
       const me = state.currentUser.user_id;
-      let items = monthDeliverables(client.client_id);
-      if (!isAdmin) items = items.filter(d => d.assignee_id === me);
+      const items = clientPageItems(client, isAdmin);
 
       const groups = DELIVERABLE_TYPES.map(type => ({ type, items: items.filter(d => d.type === type.id) })).filter(g => g.items.length);
       const assigneeOptions = selected => `<option value="">— ยังไม่ระบุ —</option>` + state.team.map(u =>
         `<option value="${escapeHtml(u.user_id)}" ${u.user_id === selected ? 'selected' : ''}>${escapeHtml(u.name)}</option>`).join('');
 
       const groupsHtml = groups.map(group => {
-        const done = group.items.filter(d => d.status === 'APPROVED').length;
+        const sent = group.items.filter(d => d.status === 'DONE').length;
         const rows = group.items.map(d => {
           const resultUrl = safeUrl(d.result_url);
           const mine = d.assignee_id === me;
           return `
             <div class="py-3 flex flex-col lg:flex-row lg:items-center gap-3">
-              <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-2">
-                  <p class="text-sm font-semibold text-[#061D42] truncate">${escapeHtml(deliverableTitle(d))}</p>
-                  ${isAdmin ? `<button onclick="renameDeliverable(${jsArg(d.deliverable_id)})" title="แก้ชื่องาน" class="p-1 rounded text-slate-400 hover:text-[#2585E8] cursor-pointer"><i data-lucide="pencil" class="w-3 h-3"></i></button>` : ''}
-                </div>
-                ${d.review_note && d.status !== 'APPROVED' ? `<p class="text-xs ${d.status === 'REVISE' ? 'text-red-600' : 'text-slate-500'} mt-0.5 line-clamp-2">ความเห็น: ${escapeHtml(d.review_note)}</p>` : ''}
+              <div class="flex-1 min-w-0 flex items-center gap-2">
+                <p class="text-sm font-semibold text-[#061D42] truncate">${escapeHtml(deliverableTitle(d))}</p>
+                ${isAdmin ? `<button onclick="renameDeliverable(${jsArg(d.deliverable_id)})" title="แก้ชื่องาน" class="p-1 rounded text-slate-400 hover:text-[#2585E8] cursor-pointer"><i data-lucide="pencil" class="w-3 h-3"></i></button>` : ''}
               </div>
               <div class="flex flex-wrap items-center gap-2">
                 ${isAdmin
@@ -1308,8 +1273,7 @@
                   : `<span class="text-xs text-slate-500">${escapeHtml(memberName(d.assignee_id) || 'ยังไม่ระบุ')}</span>`}
                 ${statusBadge(d.status)}
                 ${resultUrl ? `<button onclick="openExternalLink(${jsArg(resultUrl)})" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 hover:border-[#2585E8] text-xs font-semibold text-slate-600 cursor-pointer"><i data-lucide="external-link" class="w-3 h-3"></i>ผลงาน</button>` : ''}
-                ${isAdmin && resultUrl ? `<button onclick="openReviewModal(${jsArg(d.deliverable_id)})" class="px-2.5 py-1.5 rounded-lg bg-[#061D42] hover:bg-[#2585E8] text-white text-xs font-semibold cursor-pointer">ตรวจ</button>` : ''}
-                ${(mine || isAdmin) && d.status !== 'APPROVED' ? `<button onclick="openSubmitModal(${jsArg(d.deliverable_id)})" class="px-2.5 py-1.5 rounded-lg bg-[#2585E8] hover:bg-[#1d6fc4] text-white text-xs font-semibold cursor-pointer">ส่งงาน</button>` : ''}
+                ${mine || isAdmin ? `<button onclick="openSubmitModal(${jsArg(d.deliverable_id)})" class="px-2.5 py-1.5 rounded-lg ${resultUrl ? 'border border-slate-200 text-slate-600 hover:border-[#2585E8]' : 'bg-[#2585E8] hover:bg-[#1d6fc4] text-white'} text-xs font-semibold cursor-pointer">${resultUrl ? 'แก้ลิงก์' : 'ส่งงาน'}</button>` : ''}
                 ${isAdmin ? `<button onclick="confirmDeleteDeliverable(${jsArg(d.deliverable_id)})" title="ลบงานชิ้นนี้" class="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 cursor-pointer"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>` : ''}
               </div>
             </div>`;
@@ -1317,8 +1281,8 @@
         return `
           <div class="bg-white rounded-2xl border border-slate-200/80 px-5 py-2 shadow-xs">
             <div class="py-2 flex items-center justify-between border-b border-slate-100">
-              <h3 class="text-sm font-bold text-[#061D42] inline-flex items-center gap-2"><i data-lucide="${group.type.icon}" class="w-4 h-4 text-[#2585E8]"></i>${escapeHtml(group.type.label)}</h3>
-              <span class="text-xs font-semibold text-slate-500">ผ่าน ${done}/${group.items.length}</span>
+              <h3 class="text-sm font-bold text-[#061D42] inline-flex items-center gap-2"><i data-lucide="${group.type.icon}" class="w-4 h-4 text-[#2585E8]"></i>${escapeHtml(group.type.label)} · ${group.items.length} ชิ้น</h3>
+              <span class="text-xs font-semibold text-slate-500">ส่งแล้ว ${sent}</span>
             </div>
             <div class="divide-y divide-slate-100">${rows}</div>
           </div>`;
@@ -1337,7 +1301,7 @@
       return `
         <div>
           <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
-            <h2 class="text-sm font-bold uppercase tracking-wider text-slate-500">งานประจำเดือน (${items.length})</h2>
+            <h2 class="text-sm font-bold uppercase tracking-wider text-slate-500">รายการงาน (${items.length})</h2>
             <div class="flex flex-wrap items-center gap-2">
               ${renderMonthPicker()}
               ${isAdmin && items.length ? `<button onclick="openAddDeliverableModal(${jsArg(client.client_id)})" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#061D42] hover:bg-[#0d2d63] text-white text-xs font-semibold cursor-pointer"><i data-lucide="plus" class="w-4 h-4 text-[#50D6B0]"></i>เพิ่มงาน</button>` : ''}
@@ -1454,9 +1418,6 @@
       document.getElementById('submit-form-id').value = deliverableId;
       document.getElementById('submit-form-title').textContent = deliverableTitle(item);
       document.getElementById('submit-form-client').textContent = clientName(item.client_id) + ' · ' + typeMeta(item.type).label + ' · ' + monthLabel(item.month);
-      const note = document.getElementById('submit-form-note');
-      note.textContent = item.review_note ? 'ความเห็นจากแอดมิน: ' + item.review_note : '';
-      note.classList.toggle('hidden', !(item.review_note && item.status === 'REVISE'));
       document.getElementById('submit-form-url').value = item.result_url || '';
       openModal('submit-modal');
       document.getElementById('submit-form-url').focus();
@@ -1480,43 +1441,10 @@
         saveState();
         closeModal('submit-modal');
         renderApp();
-        showToast('ส่งงานแล้ว รอแอดมินตรวจ');
+        showToast('ส่งงานเรียบร้อย');
       });
     });
 
-    function openReviewModal(deliverableId) {
-      const item = state.deliverables.find(d => d.deliverable_id === deliverableId);
-      if (!item) return;
-      document.getElementById('review-form-id').value = deliverableId;
-      document.getElementById('review-form-title').textContent = clientName(item.client_id) + ' · ' + deliverableTitle(item);
-      document.getElementById('review-form-meta').textContent =
-        'ผู้รับผิดชอบ: ' + (memberName(item.assignee_id) || 'ยังไม่ระบุ') + (item.submitted_at ? ' · ส่งเมื่อ ' + item.submitted_at : '');
-      document.getElementById('review-form-open').onclick = () => openExternalLink(item.result_url);
-      document.getElementById('review-form-note').value = item.status === 'REVISE' ? (item.review_note || '') : '';
-      openModal('review-modal');
-    }
-
-    function submitReview(decision) {
-      const box = document.querySelector('#review-modal > div');
-      withFormBusy(box, async () => {
-        const note = document.getElementById('review-form-note').value.trim();
-        if (decision === 'REVISE' && !note) {
-          showToast('ส่งกลับแก้ต้องใส่ความเห็นว่าให้แก้อะไร', 'error');
-          return;
-        }
-        const updated = await callAppsScript('reviewDeliverable', {
-          deliverable_id: document.getElementById('review-form-id').value,
-          decision,
-          note
-        });
-        if (!updated) return;
-        replaceDeliverable(updated);
-        saveState();
-        closeModal('review-modal');
-        renderApp();
-        showToast(decision === 'APPROVED' ? 'บันทึกว่าผ่านแล้ว' : 'ส่งกลับให้แก้แล้ว');
-      });
-    }
 
     // ------------------------------------------------------------------------
     // VIEW 1: CLIENTS DIRECTORY
@@ -1650,7 +1578,7 @@
             class="group relative bg-white rounded-2xl border transition-all duration-200 p-6 flex flex-col justify-between ${hasLink ? 'border-slate-200/90 hover:border-[#2585E8] hover:shadow-lg hover:shadow-[#061D42]/5 cursor-pointer' : 'border-slate-200/80 bg-slate-50/40'} ${!hasLink && isAdmin ? 'cursor-pointer hover:border-slate-300' : ''}">
             ${adminWsControls}
             <div>
-              <div class="flex items-center justify-between mb-5">
+              <div class="flex items-center justify-between mb-5 ${isAdmin ? 'pt-8 sm:pt-0' : ''}">
                 <div class="w-12 h-12 rounded-xl ${theme.bg} ${theme.text} border ${theme.border} flex items-center justify-center">
                   <i data-lucide="${escapeHtml(ws.icon || 'folder-open')}" class="w-6 h-6"></i>
                 </div>
@@ -1709,6 +1637,10 @@
                 ${client.archived ? `<span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">Archived</span>` : ''}
               </div>
               <p class="mt-2 text-slate-600 text-sm sm:text-base max-w-3xl leading-relaxed">${escapeHtml(client.description) || 'No client description provided.'}</p>
+              <div class="mt-4">
+                <p class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">${isAdmin ? 'งานที่ต้องทำ' : 'งานของคุณ'} · ${escapeHtml(monthLabel(state.month))}</p>
+                ${renderTypeCounts(clientPageItems(client, isAdmin), 'lg')}
+              </div>
             </div>
           </div>
 
@@ -1867,8 +1799,10 @@
     // ------------------------------------------------------------------------
     // CRUD HANDLERS: CLIENTS
     // ------------------------------------------------------------------------
-    // A new logo picked in the form waits here (already shrunk) until the form is saved.
+    // A picked logo starts uploading to Drive right away (the slowest step), so pressing Save
+    // usually finds it already done. pendingLogoUpload = that upload's promise (resolves to {url} or null).
     let pendingLogoDataUrl = '';
+    let pendingLogoUpload = null;
 
     function setClientLogoPreview(url) {
       const preview = document.getElementById('client-logo-preview');
@@ -1882,6 +1816,7 @@
 
     function clearClientLogo() {
       pendingLogoDataUrl = '';
+      pendingLogoUpload = null;
       document.getElementById('client-form-logo').value = '';
       document.getElementById('client-form-logo-file').value = '';
       setClientLogoPreview('');
@@ -1926,6 +1861,7 @@
       try {
         pendingLogoDataUrl = await shrinkImage(file, 400);
         setClientLogoPreview(pendingLogoDataUrl);
+        pendingLogoUpload = callAppsScript('uploadClientLogo', { data_url: pendingLogoDataUrl });
       } catch (err) {
         showToast(err.message, 'error');
       }
@@ -1971,12 +1907,17 @@
         let logo = document.getElementById('client-form-logo').value.trim();
         const today = new Date().toISOString().split('T')[0];
 
-        // Upload the new logo to the company Drive first; save the client only if that worked.
+        // The logo upload started when the file was picked; wait for it (usually done by now).
+        // Save the client only if the upload worked.
         if (pendingLogoDataUrl) {
-          const uploaded = await callAppsScript('uploadClientLogo', { data_url: pendingLogoDataUrl });
-          if (!uploaded || !uploaded.url) return;
+          const uploaded = await (pendingLogoUpload || callAppsScript('uploadClientLogo', { data_url: pendingLogoDataUrl }));
+          if (!uploaded || !uploaded.url) {
+            pendingLogoUpload = null; // let the next Save try the upload again
+            return;
+          }
           logo = uploaded.url;
           pendingLogoDataUrl = '';
+          pendingLogoUpload = null;
           document.getElementById('client-form-logo').value = logo;
         }
 

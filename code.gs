@@ -19,6 +19,7 @@
  * - All data operations except login/health checks require a short-lived session.
  * - Client/workspace/deliverable management and user administration require an ADMIN session.
  * - STAFF can only read, and submit a result link for deliverables assigned to them.
+ *   Sending the link finishes the piece (no separate review step — decided 21 Nov 2026).
  * - Each user has an individual salted, iterated password hash; plaintext passwords are never stored.
  */
 
@@ -86,7 +87,9 @@ const GTT_SCHEMAS = [
 
 // Work types and statuses are fixed lists so the sheet can never hold a value the page cannot show.
 const GTT_DELIVERABLE_TYPES = ['banner', 'video', 'influencer', 'content', 'other'];
-const GTT_STATUS = Object.freeze({ TODO: 'TODO', REVIEW: 'REVIEW', REVISE: 'REVISE', APPROVED: 'APPROVED' });
+// A piece is either not sent yet, or done (its result link was sent). The earlier review statuses
+// (REVIEW / REVISE / APPROVED) may still sit in old rows; getDeliverables_() reads them as these two.
+const GTT_STATUS = Object.freeze({ TODO: 'TODO', DONE: 'DONE' });
 const GTT_MAX_PIECES_PER_ADD = 30;
 
 // -----------------------------------------------------------------------------
@@ -512,10 +515,6 @@ function doPost(e) {
         requireAdmin_(actor);
         data = withLock_(() => copyDeliverables_(payload));
         break;
-      case 'reviewDeliverable':
-        requireAdmin_(actor);
-        data = withLock_(() => reviewDeliverable_(payload));
-        break;
       case 'createUser':
         requireAdmin_(actor);
         data = withLock_(() => createUser_(payload));
@@ -853,6 +852,8 @@ function appendObject_(sheetName, object) {
   appendObjects_(sheetName, [object]);
 }
 
+// Reads the row once and writes it back in one call (one call per cell was noticeably slower).
+// Only the cells being changed get a new number format, so untouched cells keep theirs.
 function updateObject_(sheetName, idColumn, id, patch) {
   const sheet = getSheet_(sheetName);
   const rowNumber = findRowById_(sheetName, idColumn, id);
@@ -863,9 +864,20 @@ function updateObject_(sheetName, idColumn, id, patch) {
   Object.keys(patch).forEach(key => {
     if (map[key] && key !== idColumn) values[key] = toCellValue_(patch[key]);
   });
-  Object.keys(values).forEach(key => {
-    sheet.getRange(rowNumber, map[key]).setNumberFormat(cellFormat_(values[key])).setValue(values[key]);
-  });
+  const keys = Object.keys(values);
+  if (keys.length) {
+    const cols = keys.map(key => map[key]);
+    const first = Math.min.apply(null, cols), last = Math.max.apply(null, cols);
+    const range = sheet.getRange(rowNumber, first, 1, last - first + 1);
+    const row = range.getValues()[0];
+    const formats = range.getNumberFormats()[0];
+    keys.forEach(key => {
+      row[map[key] - first] = values[key];
+      formats[map[key] - first] = cellFormat_(values[key]);
+    });
+    range.setNumberFormats([formats]);
+    range.setValues([row]);
+  }
   invalidateRows_(sheetName);
   return rowNumber;
 }
@@ -1006,9 +1018,10 @@ function createClient_(payload) {
   // cannot leave a client saved without its workspaces.
   const workspaces = (Array.isArray(payload.defaultWorkspaces) ? payload.defaultWorkspaces : [])
     .map(workspace => buildWorkspace_(Object.assign({}, workspace, { client_id: id })));
+  const existingIds = new Set(getAllWorkspaces_().map(ws => String(ws.workspace_id)));
   const workspaceIds = new Set();
   workspaces.forEach(ws => {
-    if (workspaceIds.has(ws.workspace_id) || findRowById_(GTT_CONFIG.SHEETS.WORKSPACES, 'workspace_id', ws.workspace_id) >= 0) {
+    if (workspaceIds.has(ws.workspace_id) || existingIds.has(ws.workspace_id)) {
       throw new Error('Workspace ID already exists.');
     }
     workspaceIds.add(ws.workspace_id);
@@ -1113,7 +1126,7 @@ function getDeliverables_() {
   return sheetRows_(GTT_CONFIG.SHEETS.DELIVERABLES).map(item => {
     // If someone typed a month by hand, Sheets may have turned it into a date ('2026-11-01').
     item.month = String(item.month || '').slice(0, 7);
-    item.status = cleanChoice_(item.status, Object.keys(GTT_STATUS), GTT_STATUS.TODO);
+    item.status = String(item.result_url || '').trim() ? GTT_STATUS.DONE : GTT_STATUS.TODO;
     return item;
   });
 }
@@ -1126,12 +1139,12 @@ function findDeliverable_(deliverableId) {
 }
 
 // ADMIN sees every piece in the month. STAFF sees only their own pieces: the chosen month,
-// plus anything older that is not approved yet, so unfinished work is never hidden.
+// plus anything older that is not sent yet, so unfinished work is never hidden.
 function deliverablesForUser_(actor, month) {
   const all = getDeliverables_();
   if (actor.role === 'ADMIN') return all.filter(item => item.month === month);
   return all.filter(item => String(item.assignee_id) === String(actor.user_id) &&
-    (item.month === month || (item.month < month && item.status !== GTT_STATUS.APPROVED)));
+    (item.month === month || (item.month < month && item.status !== GTT_STATUS.DONE)));
 }
 
 function cleanDeliverableType_(value) {
@@ -1248,38 +1261,24 @@ function copyDeliverables_(payload) {
 }
 
 // The only write STAFF can do: attach the finished link to a piece assigned to them.
+// Sending the link marks the piece done. Sending again replaces the link (e.g. a wrong link was pasted).
 function submitDeliverable_(payload, actor) {
   const item = findDeliverable_(payload.deliverable_id);
   const isAdmin = actor.role === 'ADMIN';
   if (!isAdmin && String(item.assignee_id) !== String(actor.user_id)) {
     throw new Error('งานชิ้นนี้ไม่ได้มอบหมายให้คุณ');
   }
-  if (item.status === GTT_STATUS.APPROVED) throw new Error('งานชิ้นนี้ผ่านการตรวจแล้ว แก้ลิงก์ไม่ได้');
   const url = cleanUrl_(payload.result_url, 'ลิงก์ผลงาน');
   if (!url) throw new Error('กรุณาวางลิงก์ผลงาน');
 
   const now = nowText_();
   const patch = {
-    status: GTT_STATUS.REVIEW,
+    status: GTT_STATUS.DONE,
     result_url: url,
     submitted_by: actor.user_id,
     submitted_at: now,
     updated_at: now
   };
-  updateObject_(GTT_CONFIG.SHEETS.DELIVERABLES, 'deliverable_id', item.deliverable_id, patch);
-  return Object.assign({}, item, patch);
-}
-
-// ADMIN decision on a submitted piece: approve, or send back with a note saying what to fix.
-function reviewDeliverable_(payload) {
-  const item = findDeliverable_(payload.deliverable_id);
-  const decision = String(payload.decision || '').trim();
-  if (decision !== GTT_STATUS.APPROVED && decision !== GTT_STATUS.REVISE) throw new Error('ผลการตรวจไม่ถูกต้อง');
-  if (!item.result_url) throw new Error('งานชิ้นนี้ยังไม่ได้ส่งลิงก์ผลงาน');
-  const note = cleanText_(payload.note, 'ความเห็น', 1000, decision === GTT_STATUS.REVISE);
-
-  const now = nowText_();
-  const patch = { status: decision, review_note: note, reviewed_at: now, updated_at: now };
   updateObject_(GTT_CONFIG.SHEETS.DELIVERABLES, 'deliverable_id', item.deliverable_id, patch);
   return Object.assign({}, item, patch);
 }
