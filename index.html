@@ -1540,6 +1540,23 @@
       }
     }
 
+    // iPhone Safari keeps the page in memory while you use another app or tab. If the phone menu
+    // was open, coming back showed the menu instead of the page. Close it as the page goes to the
+    // background (visual only: changing history while leaving is unsafe), then drop the menu's
+    // extra history entry once the page is visible again, so Back still works normally.
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') {
+        if (state.mobileMenuOpen) toggleMobileMenu(true);
+      } else {
+        syncOverlayHistory();
+      }
+    });
+    window.addEventListener('pageshow', e => {
+      if (!e.persisted) return; // restored from the back/forward cache
+      if (state.mobileMenuOpen) toggleMobileMenu(true);
+      syncOverlayHistory();
+    });
+
     // ------------------------------------------------------------------------
     // MAIN RENDER CONTROLLER
     // ------------------------------------------------------------------------
