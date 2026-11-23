@@ -48,7 +48,7 @@ const GTT_CONFIG = Object.freeze({
   // or after this many seconds at most.
   CACHE_SECONDS: 300,
   // Bump this when GTT_SCHEMAS changes so every deployment re-checks the sheet columns once.
-  SCHEMA_VERSION: '2026-11-21e',
+  SCHEMA_VERSION: '2026-11-23a',
   DEFAULT_ADMIN: {
     user_id: 'usr_admin_01',
     name: 'GO TO TARGET Admin',
@@ -72,8 +72,10 @@ const GTT_SCHEMAS = [
   },
   {
     name: GTT_CONFIG.SHEETS.WORKSPACES,
-    headers: ['workspace_id', 'client_id', 'workspace_name', 'description', 'icon', 'color', 'external_url', 'created_at', 'updated_at'],
-    widths: [140, 140, 160, 320, 120, 110, 340, 130, 130]
+    // external_url = the first (main) link, kept as plain text so the sheet stays easy to read.
+    // links_json = every link with its name: [{label, url}], up to GTT_MAX_LINKS.
+    headers: ['workspace_id', 'client_id', 'workspace_name', 'description', 'icon', 'color', 'external_url', 'created_at', 'updated_at', 'links_json'],
+    widths: [140, 140, 160, 320, 120, 110, 340, 130, 130, 360]
   },
   {
     name: GTT_CONFIG.SHEETS.USERS,
@@ -86,8 +88,10 @@ const GTT_SCHEMAS = [
     // `quantity`. Extra work later is added as a new row. Older rows without quantity count as 1.
     name: GTT_CONFIG.SHEETS.DELIVERABLES,
     headers: ['deliverable_id', 'client_id', 'month', 'type', 'title', 'assignee_id', 'status', 'result_url',
-      'review_note', 'submitted_by', 'submitted_at', 'reviewed_at', 'created_at', 'updated_at', 'quantity', 'package_id'],
-    widths: [150, 140, 90, 110, 220, 140, 100, 320, 280, 140, 140, 140, 140, 140, 90, 150]
+      'review_note', 'submitted_by', 'submitted_at', 'reviewed_at', 'created_at', 'updated_at', 'quantity', 'package_id',
+      'result_links_json'],
+    // result_url = first result link (status is DONE when it is filled); result_links_json = all of them.
+    widths: [150, 140, 90, 110, 220, 140, 100, 320, 280, 140, 140, 140, 140, 140, 90, 150, 360]
   },
   {
     // A client's contract: from start_month for <months> months, the same work every month.
@@ -107,6 +111,7 @@ const GTT_STATUS = Object.freeze({ TODO: 'TODO', DONE: 'DONE' });
 const GTT_MAX_PIECES_PER_ADD = 30;
 const GTT_MAX_PACKAGE_MONTHS = 36;
 const GTT_MAX_PACKAGE_ITEMS = 20;
+const GTT_MAX_LINKS = 10;
 
 // -----------------------------------------------------------------------------
 // SHEET SETUP
@@ -1160,6 +1165,52 @@ function cleanEmail_(value) {
 }
 
 // -----------------------------------------------------------------------------
+// LINK LISTS — a workspace or a sent piece of work can have several named links
+// -----------------------------------------------------------------------------
+// Reads links_json and checks it against the plain main-link column. That column is what people see
+// and may edit by hand in the sheet, so it wins: a changed cell replaces the first link, and an
+// emptied cell means "no links" (the same as clearing it on the website).
+function parseLinks_(json, mainUrl) {
+  const main = String(mainUrl == null ? '' : mainUrl).trim();
+  if (!main) return [];
+  let list = [];
+  try { list = JSON.parse(String(json || '[]')); } catch (err) { list = []; }
+  const links = (Array.isArray(list) ? list : [])
+    .filter(link => link && /^https?:\/\/\S+$/i.test(String(link.url || '')))
+    .slice(0, GTT_MAX_LINKS)
+    .map(link => ({ label: String(link.label || '').slice(0, 60), url: String(link.url) }));
+  if (!links.length) return [{ label: '', url: main }];
+  if (links[0].url !== main) links[0] = { label: links[0].label, url: main };
+  return links;
+}
+
+// Checks a list of {label, url} sent by the page. Rows with neither are skipped; a name without
+// a link is an error (the person probably forgot to paste it).
+function cleanLinks_(value) {
+  const list = Array.isArray(value) ? value : [];
+  if (list.length > GTT_MAX_LINKS * 2) throw new Error('ลิงก์มีได้ไม่เกิน ' + GTT_MAX_LINKS + ' ลิงก์');
+  const links = [];
+  list.forEach((item, index) => {
+    const label = cleanText_(item && item.label, 'ชื่อลิงก์', 60, false);
+    const url = cleanUrl_(item && item.url, 'ลิงก์ที่ ' + (index + 1));
+    if (!url) {
+      if (label) throw new Error('ลิงก์ "' + label + '" ยังไม่ได้ใส่ลิงก์');
+      return;
+    }
+    links.push({ label: label, url: url });
+  });
+  if (links.length > GTT_MAX_LINKS) throw new Error('ลิงก์มีได้ไม่เกิน ' + GTT_MAX_LINKS + ' ลิงก์');
+  return links;
+}
+
+// Pages that only know the single link (older page versions) send external_url / result_url only.
+function linksFromPayload_(payload, listKey, urlKey, label) {
+  if (payload[listKey] !== undefined) return cleanLinks_(payload[listKey]);
+  const url = cleanUrl_(payload[urlKey], label);
+  return url ? [{ label: '', url: url }] : [];
+}
+
+// -----------------------------------------------------------------------------
 // CLIENTS
 // -----------------------------------------------------------------------------
 function getClients_() {
@@ -1322,16 +1373,32 @@ function uploadClientLogo_(payload) {
 // -----------------------------------------------------------------------------
 // WORKSPACES
 // -----------------------------------------------------------------------------
-function getAllWorkspaces_() { return sheetRows_(GTT_CONFIG.SHEETS.WORKSPACES); }
+function getAllWorkspaces_() {
+  return sheetRows_(GTT_CONFIG.SHEETS.WORKSPACES).map(ws => {
+    ws.links = parseLinks_(ws.links_json, ws.external_url);
+    delete ws.links_json;
+    return ws;
+  });
+}
 
 function cleanWorkspaceFields_(workspace) {
+  const links = linksFromPayload_(workspace, 'links', 'external_url', 'Workspace link');
   return {
     workspace_name: cleanText_(workspace.workspace_name, 'Workspace name', 60, true),
     description: cleanText_(workspace.description, 'Description', 500, false),
     icon: cleanChoice_(workspace.icon, GTT_ALLOWED_ICONS, 'folder-open'),
     color: cleanChoice_(workspace.color, GTT_ALLOWED_COLORS, 'blue'),
-    external_url: cleanUrl_(workspace.external_url, 'Workspace link')
+    external_url: links.length ? links[0].url : '',
+    links_json: links.length ? JSON.stringify(links) : ''
   };
+}
+
+// What the page gets back after a save: the links as a list, not the stored JSON text.
+function workspaceForPage_(ws) {
+  const out = Object.assign({}, ws);
+  out.links = parseLinks_(ws.links_json, ws.external_url);
+  delete out.links_json;
+  return out;
 }
 
 // Validates a workspace and returns the row to save (does not write or check for duplicates).
@@ -1351,14 +1418,14 @@ function createWorkspace_(workspace) {
   if (findRowById_(GTT_CONFIG.SHEETS.CLIENTS, 'client_id', saved.client_id) < 0) throw new Error('The selected client does not exist.');
   if (findRowById_(GTT_CONFIG.SHEETS.WORKSPACES, 'workspace_id', saved.workspace_id) >= 0) throw new Error('Workspace ID already exists.');
   appendObject_(GTT_CONFIG.SHEETS.WORKSPACES, saved);
-  return saved;
+  return workspaceForPage_(saved);
 }
 
 function updateWorkspace_(workspace) {
   if (!workspace || !workspace.workspace_id) throw new Error('Workspace ID is required.');
   const patch = Object.assign(cleanWorkspaceFields_(workspace), { updated_at: today_() });
   updateObject_(GTT_CONFIG.SHEETS.WORKSPACES, 'workspace_id', workspace.workspace_id, patch);
-  return Object.assign({}, workspace, patch);
+  return workspaceForPage_(Object.assign({}, workspace, patch));
 }
 
 function deleteWorkspace_(workspaceId) {
@@ -1376,6 +1443,8 @@ function getDeliverables_() {
     item.month = String(item.month || '').slice(0, 7);
     item.status = String(item.result_url || '').trim() ? GTT_STATUS.DONE : GTT_STATUS.TODO;
     item.quantity = quantityOf_(item.quantity);
+    item.result_links = parseLinks_(item.result_links_json, item.result_url);
+    delete item.result_links_json;
     return item;
   });
 }
@@ -1535,19 +1604,22 @@ function submitDeliverable_(payload, actor) {
   if (!isAdmin && (String(item.assignee_id) !== String(actor.user_id) || !visibleClientIdSet_(actor).has(String(item.client_id)))) {
     throw new Error('งานชิ้นนี้ไม่ได้มอบหมายให้คุณ');
   }
-  const url = cleanUrl_(payload.result_url, 'ลิงก์ผลงาน');
-  if (!url) throw new Error('กรุณาวางลิงก์ผลงาน');
+  const links = linksFromPayload_(payload, 'result_links', 'result_url', 'ลิงก์ผลงาน');
+  if (!links.length) throw new Error('กรุณาวางลิงก์ผลงาน');
 
   const now = nowText_();
   const patch = {
     status: GTT_STATUS.DONE,
-    result_url: url,
+    result_url: links[0].url,
+    result_links_json: JSON.stringify(links),
     submitted_by: actor.user_id,
     submitted_at: now,
     updated_at: now
   };
   updateObject_(GTT_CONFIG.SHEETS.DELIVERABLES, 'deliverable_id', item.deliverable_id, patch);
-  return Object.assign({}, item, patch);
+  const saved = Object.assign({}, item, patch, { result_links: links });
+  delete saved.result_links_json;
+  return saved;
 }
 
 // -----------------------------------------------------------------------------

@@ -369,13 +369,12 @@
             class="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-[#0B1F44] focus:outline-none focus:ring-2 focus:ring-[#1E6FFF]" />
         </div>
         <div>
-          <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Connected URL (Google Drive, Sheets, Docs, or External Link)</label>
-          <input id="ws-form-url" type="text" placeholder="https://drive.google.com/drive/folders/..."
-            class="w-full px-4 py-2.5 rounded-xl border border-[#1E6FFF]/50 bg-[#1E6FFF]/5 text-sm text-[#0B1F44] focus:outline-none focus:ring-2 focus:ring-[#1E6FFF]" />
-          <div id="ws-url-helper" class="hidden mt-1.5 flex items-center justify-between text-xs">
-            <span id="ws-detected-service" class="text-[#0F766E] font-medium"></span>
-            <button type="button" onclick="clearWsUrl()" class="text-red-500 hover:underline cursor-pointer">Clear Link</button>
-          </div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Links (Google Drive, Sheets, Docs, YouTube ฯลฯ)</label>
+          <div id="ws-links" data-kind="ws" class="space-y-2"></div>
+          <button type="button" id="ws-links-add" onclick="addLinkRow('ws-links')" class="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold text-[#1E6FFF] hover:bg-[#1E6FFF]/10 cursor-pointer">
+            <i data-lucide="plus" class="w-4 h-4"></i><span>เพิ่มลิงก์</span>
+          </button>
+          <p class="text-[11px] text-slate-400 mt-1">ลิงก์แรกคือลิงก์หลัก · มีหลายลิงก์ ปุ่ม Open Workspace จะให้เลือกลิงก์ (สูงสุด 10 ลิงก์)</p>
         </div>
         <div>
           <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">Short Description</label>
@@ -415,6 +414,23 @@
   </div>
 
   <!-- Confirmation Dialog Modal -->
+ <!-- Link picker: one "Open" button, then choose which link. A bottom sheet on phones. -->
+  <div id="links-modal" onclick="if (event.target === this) closeModal('links-modal')" class="hidden fixed inset-0 z-50 bg-[#0B1F44]/50 backdrop-blur-xs flex items-end sm:items-center justify-center sm:p-4">
+    <div class="bg-white w-full sm:max-w-sm rounded-t-3xl sm:rounded-2xl max-h-[80vh] overflow-y-auto shadow-2xl border border-slate-200">
+      <div class="sm:hidden pt-2.5 flex justify-center"><span class="w-10 h-1.5 rounded-full bg-slate-200"></span></div>
+      <div class="px-5 pt-4 pb-2 flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <p id="links-modal-title" class="text-base font-bold text-[#0B1F44] truncate"></p>
+          <p class="text-xs text-slate-500 mt-0.5">เลือกลิงก์ที่ต้องการเปิด</p>
+        </div>
+        <button onclick="closeModal('links-modal')" class="text-slate-400 hover:text-[#0B1F44] p-1 rounded-lg cursor-pointer">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <div id="links-modal-list" class="px-3 pb-[calc(env(safe-area-inset-bottom)+1rem)] space-y-1"></div>
+    </div>
+  </div>
+
   <div id="confirm-modal" class="hidden fixed inset-0 z-50 bg-[#0B1F44]/50 backdrop-blur-xs flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200">
       <h3 id="confirm-title" class="text-lg font-bold text-[#0B1F44]">Confirm Action</h3>
@@ -486,9 +502,15 @@
         </div>
         <div>
           <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5">ลิงก์ผลงาน *</label>
-          <input id="submit-form-url" type="text" required placeholder="https://drive.google.com/..."
-            class="w-full px-4 py-2.5 rounded-xl border border-[#1E6FFF]/50 bg-[#1E6FFF]/5 text-sm text-[#0B1F44] focus:outline-none focus:ring-2 focus:ring-[#1E6FFF]" />
-          <p class="text-[11px] text-slate-400 mt-1">ตรวจว่าตั้งค่าแชร์ลิงก์ให้แอดมินเปิดดูได้แล้ว</p>
+          <div id="submit-links" data-kind="submit" class="space-y-2"></div>
+          <button type="button" id="submit-links-add" onclick="addLinkRow('submit-links')" class="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold text-[#1E6FFF] hover:bg-[#1E6FFF]/10 cursor-pointer">
+            <i data-lucide="plus" class="w-4 h-4"></i><span>เพิ่มลิงก์</span>
+          </button>
+          <ul class="text-[11px] text-slate-500 mt-2 space-y-0.5 list-disc pl-4">
+            <li>ส่งเมื่อทำครบทั้งชุดแล้ว (ส่งซ้ำเพื่อแก้หรือเพิ่มลิงก์ได้)</li>
+            <li>ใส่ลิงก์โฟลเดอร์เดียวก็พอ — เพิ่มลิงก์เมื่องานอยู่หลายที่ เช่น Drive + YouTube</li>
+            <li>ตรวจว่าตั้งค่าแชร์ทุกลิงก์ให้แอดมินเปิดดูได้แล้ว</li>
+          </ul>
         </div>
         <div class="pt-2 flex items-center justify-end gap-3">
           <button type="button" onclick="closeModal('submit-modal')" class="px-4 py-2.5 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 hover:bg-slate-50 cursor-pointer">ยกเลิก</button>
@@ -798,7 +820,189 @@
       if (lower.includes('docs.google.com/forms')) return 'Google Forms';
       if (lower.includes('figma.com')) return 'Figma';
       if (lower.includes('notion.so') || lower.includes('notion.site')) return 'Notion';
+      if (lower.includes('youtube.com') || lower.includes('youtu.be')) return 'YouTube';
+      if (lower.includes('canva.com')) return 'Canva';
       return 'External Link';
+    }
+
+    // ------------------------------------------------------------------------
+    // LINK LISTS — a workspace and a sent piece of work can each hold several named links.
+    // The sheet also keeps the first link in the old single-link column (external_url / result_url).
+    // ------------------------------------------------------------------------
+    const MAX_LINKS = 10;
+    const LINK_ICONS = {
+      'Google Drive': 'folder', 'Google Sheets': 'file-spreadsheet', 'Google Docs': 'file-text', 'Google Forms': 'clipboard-list',
+      'Figma': 'pen-tool', 'Notion': 'notebook', 'YouTube': 'play', 'Canva': 'palette', 'External Link': 'link'
+    };
+    // Quick names to tap, so the team names links the same way (typing your own is still fine).
+    const LINK_CHIPS = {
+      ws: ['บรีฟ', 'ไฟล์งาน', 'ไฟล์ต้นฉบับ', 'ตัวอย่าง/Reference'],
+      submit: ['ไฟล์งาน', 'ไฟล์ต้นฉบับ', 'ตัวอย่าง', 'ลิงก์โพสต์']
+    };
+
+    // Normalises a stored list; data cached by an older page version only has the single link.
+    function linkList(links, mainUrl) {
+      const out = (Array.isArray(links) ? links : [])
+        .map(link => ({ label: String(link && link.label || '').trim(), url: safeUrl(link && link.url) }))
+        .filter(link => link.url);
+      if (!out.length && safeUrl(mainUrl)) out.push({ label: '', url: safeUrl(mainUrl) });
+      return out;
+    }
+    function wsLinks(ws) { return linkList(ws.links, ws.external_url); }
+    function resultLinks(d) { return linkList(d.result_links, d.result_url); }
+    function linkName(link, index) { return link.label || 'ลิงก์ ' + (index + 1); }
+
+    // Badge text on a card: the service when there is one link, the number when there are more.
+    function linksBadgeText(links) {
+      return links.length > 1 ? links.length + ' ลิงก์' : detectLinkService(links[0].url);
+    }
+
+    // One link opens straight away; several open the picker.
+    let pickerLinks = [];
+    function openLinks(title, links) {
+      if (!links.length) return;
+      if (links.length === 1) { openExternalLink(links[0].url); return; }
+      pickerLinks = links;
+      document.getElementById('links-modal-title').textContent = title;
+      document.getElementById('links-modal-list').innerHTML = links.map((link, i) => {
+        const service = detectLinkService(link.url);
+        return `
+          <button onclick="openPickedLink(${i})" class="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-[#F3F6FA] active:bg-[#F3F6FA] text-left cursor-pointer">
+            <span class="w-10 h-10 rounded-xl bg-[#1E6FFF]/10 text-[#1E6FFF] flex items-center justify-center shrink-0"><i data-lucide="${LINK_ICONS[service] || 'link'}" class="w-5 h-5"></i></span>
+            <span class="min-w-0 flex-1">
+              <span class="block text-sm font-semibold text-[#0B1F44] truncate">${escapeHtml(linkName(link, i))}</span>
+              <span class="block text-xs text-slate-500 truncate">${escapeHtml(service)}</span>
+            </span>
+            <i data-lucide="external-link" class="w-4 h-4 text-slate-400 shrink-0"></i>
+          </button>`;
+      }).join('');
+      openModal('links-modal');
+    }
+
+    function openPickedLink(index) {
+      const link = pickerLinks[index];
+      if (link) openExternalLink(link.url);
+      closeModal('links-modal');
+    }
+
+    function openWorkspaceLinks(wsId) {
+      const ws = state.workspaces.find(w => w.workspace_id === wsId);
+      if (ws) openLinks(ws.workspace_name, wsLinks(ws));
+    }
+
+    function openResultLinks(deliverableId) {
+      const d = state.deliverables.find(item => item.deliverable_id === deliverableId);
+      if (d) openLinks('ผลงาน: ' + deliverableTitle(d), resultLinks(d));
+    }
+
+    // ---- Link editor used by the workspace form and the "ส่งงาน" form ----
+    function linkRowHtml(kind, link) {
+      const chips = (LINK_CHIPS[kind] || []).map(name =>
+        `<button type="button" onclick="pickLinkLabel(this, ${jsArg(name)})" class="px-2.5 py-1 rounded-full bg-[#F3F6FA] hover:bg-[#1E6FFF]/10 text-[11px] font-medium text-slate-600 cursor-pointer">${escapeHtml(name)}</button>`).join('');
+      return `
+        <div data-link-row class="rounded-xl border border-slate-200 p-2.5 space-y-2">
+          <div class="flex items-center gap-2">
+            <input data-link-label type="text" maxlength="60" value="${escapeHtml(link.label || '')}" placeholder="ชื่อลิงก์ (ไม่บังคับ)"
+              class="flex-1 min-w-0 px-3 py-2 rounded-lg border border-slate-200 text-sm font-semibold text-[#0B1F44] focus:outline-none focus:ring-2 focus:ring-[#1E6FFF]" />
+            <button type="button" onclick="removeLinkRow(this)" title="ลบลิงก์นี้" class="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 cursor-pointer shrink-0"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+          </div>
+          <div data-link-chips class="flex flex-wrap gap-1.5">${chips}</div>
+          <input data-link-url type="text" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" value="${escapeHtml(link.url || '')}" placeholder="https://drive.google.com/..."
+            class="w-full px-3 py-2 rounded-lg border border-[#1E6FFF]/50 bg-[#1E6FFF]/5 text-sm text-[#0B1F44] focus:outline-none focus:ring-2 focus:ring-[#1E6FFF]" />
+          <p data-link-hint class="hidden text-[11px] font-medium"></p>
+        </div>`;
+    }
+
+    function setLinkRows(boxId, links) {
+      const box = document.getElementById(boxId);
+      const rows = links.length ? links : [{ label: '', url: '' }];
+      box.innerHTML = rows.map(link => linkRowHtml(box.dataset.kind, link)).join('');
+      box.querySelectorAll('[data-link-row]').forEach(row => refreshLinkRow(row));
+      refreshLinkAddButton(boxId);
+      lucide.createIcons();
+    }
+
+    function addLinkRow(boxId) {
+      const box = document.getElementById(boxId);
+      if (box.querySelectorAll('[data-link-row]').length >= MAX_LINKS) return;
+      box.insertAdjacentHTML('beforeend', linkRowHtml(box.dataset.kind, { label: '', url: '' }));
+      const row = box.lastElementChild;
+      refreshLinkRow(row);
+      refreshLinkAddButton(boxId);
+      lucide.createIcons();
+      row.querySelector('[data-link-url]').focus();
+    }
+
+    // Removing the only row just empties it, so there is always a place to paste a link.
+    function removeLinkRow(button) {
+      const row = button.closest('[data-link-row]');
+      const box = row.parentElement;
+      if (box.querySelectorAll('[data-link-row]').length > 1) {
+        row.remove();
+      } else {
+        row.querySelector('[data-link-label]').value = '';
+        row.querySelector('[data-link-url]').value = '';
+        refreshLinkRow(row);
+      }
+      refreshLinkAddButton(box.id);
+    }
+
+    function pickLinkLabel(button, name) {
+      const row = button.closest('[data-link-row]');
+      row.querySelector('[data-link-label]').value = name;
+      refreshLinkRow(row);
+      const url = row.querySelector('[data-link-url]');
+      if (!url.value.trim()) url.focus();
+    }
+
+    function refreshLinkAddButton(boxId) {
+      const count = document.getElementById(boxId).querySelectorAll('[data-link-row]').length;
+      document.getElementById(boxId + '-add').classList.toggle('hidden', count >= MAX_LINKS);
+    }
+
+    // Name chips show only while the name is empty; the hint under the link says what it is,
+    // or what is wrong with it after a failed save.
+    function refreshLinkRow(row, error) {
+      const label = row.querySelector('[data-link-label]').value.trim();
+      const raw = row.querySelector('[data-link-url]').value.trim();
+      const hint = row.querySelector('[data-link-hint]');
+      row.querySelector('[data-link-chips]').classList.toggle('hidden', Boolean(label));
+      row.classList.toggle('border-red-400', Boolean(error));
+      row.classList.toggle('bg-red-50/40', Boolean(error));
+      row.classList.toggle('border-slate-200', !error);
+      if (error) {
+        hint.textContent = error;
+        hint.className = 'text-[11px] font-medium text-red-600';
+      } else if (raw) {
+        const url = safeUrl(formatUrl(raw));
+        hint.textContent = url ? 'ตรวจพบ: ' + detectLinkService(url) : '';
+        hint.className = 'text-[11px] font-medium text-[#0F766E]' + (url ? '' : ' hidden');
+      } else {
+        hint.className = 'hidden';
+      }
+    }
+
+    document.addEventListener('input', e => {
+      const row = e.target.closest && e.target.closest('[data-link-row]');
+      if (row) refreshLinkRow(row);
+    });
+
+    // Returns the filled links, or null after marking the rows that need fixing.
+    function readLinkRows(boxId) {
+      const links = [];
+      let ok = true;
+      document.getElementById(boxId).querySelectorAll('[data-link-row]').forEach(row => {
+        const label = row.querySelector('[data-link-label]').value.trim();
+        const raw = row.querySelector('[data-link-url]').value.trim();
+        if (!raw && !label) { refreshLinkRow(row); return; }
+        const url = safeUrl(formatUrl(raw));
+        if (!raw) { ok = false; refreshLinkRow(row, 'วางลิงก์ด้วย หรือกดถังขยะเพื่อลบแถวนี้'); return; }
+        if (!url || /\s/.test(raw)) { ok = false; refreshLinkRow(row, 'ลิงก์ไม่ถูกต้อง — ต้องเป็นลิงก์เว็บ เช่น https://drive.google.com/...'); return; }
+        refreshLinkRow(row);
+        links.push({ label, url });
+      });
+      if (!ok) showToast('มีลิงก์ที่ต้องแก้ (กรอบสีแดง)', 'error');
+      return ok ? links : null;
     }
 
     function formatUrl(url) {
@@ -1552,7 +1756,8 @@
 
       const cards = mine.map(d => {
         const client = state.clients.find(c => c.client_id === d.client_id);
-        const resultUrl = safeUrl(d.result_url);
+        const sent = resultLinks(d);
+        const resultUrl = sent.length > 0;
         return `
           <div class="gtt-card p-5 flex flex-col gap-3">
             <div class="flex items-start justify-between gap-3">
@@ -1573,7 +1778,7 @@
               <button onclick="openClientWorkspace(${jsArg(d.client_id)})" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 hover:border-[#1E6FFF] text-xs font-semibold text-[#0B1F44] cursor-pointer">
                 <i data-lucide="folder-open" class="w-3.5 h-3.5"></i><span>ไฟล์/บรีฟลูกค้า</span>
               </button>
-              ${resultUrl ? `<button onclick="openExternalLink(${jsArg(resultUrl)})" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 hover:border-[#1E6FFF] text-xs font-semibold text-slate-600 cursor-pointer"><i data-lucide="external-link" class="w-3.5 h-3.5"></i><span>ลิงก์ที่ส่ง</span></button>` : ''}
+              ${resultUrl ? `<button onclick="openResultLinks(${jsArg(d.deliverable_id)})" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 hover:border-[#1E6FFF] text-xs font-semibold text-slate-600 cursor-pointer"><i data-lucide="${sent.length > 1 ? 'chevron-down' : 'external-link'}" class="w-3.5 h-3.5"></i><span>ลิงก์ที่ส่ง${sent.length > 1 ? ' (' + sent.length + ')' : ''}</span></button>` : ''}
               <button onclick="openSubmitModal(${jsArg(d.deliverable_id)})" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl ${resultUrl ? 'border border-slate-200 text-slate-600 hover:border-[#1E6FFF]' : 'bg-[#1E6FFF] hover:bg-[#1557D6] text-white'} text-xs font-semibold cursor-pointer"><i data-lucide="${resultUrl ? 'pencil' : 'send'}" class="w-3.5 h-3.5"></i><span>${resultUrl ? 'แก้ลิงก์' : 'ส่งงาน'}</span></button>
             </div>
           </div>`;
@@ -1584,7 +1789,7 @@
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-[#0B1F44]">งานของฉัน</h1>
-              <p class="text-sm text-slate-500 mt-1">${mine.length ? `ยังไม่ส่ง ${todo} จาก ${sumQty(mine)} ชิ้น — ` : ''}ทำครบทั้งชุดแล้วกด "ส่งงาน" วางลิงก์เดียว (เช่น โฟลเดอร์ Drive)</p>
+              <p class="text-sm text-slate-500 mt-1">${mine.length ? `ยังไม่ส่ง ${todo} จาก ${sumQty(mine)} ชิ้น — ` : ''}ทำครบทั้งชุดแล้วกด "ส่งงาน" วางลิงก์ผลงาน (เช่น โฟลเดอร์ Drive)</p>
             </div>
             ${renderMonthPicker()}
           </div>
@@ -1617,7 +1822,8 @@
       const groupsHtml = groups.map(group => {
         const sent = sumQty(group.items.filter(d => d.status === 'DONE'));
         const rows = group.items.map(d => {
-          const resultUrl = safeUrl(d.result_url);
+          const sent = resultLinks(d);
+          const resultUrl = sent.length > 0;
           const mine = d.assignee_id === me;
           return `
             <div class="py-3 flex flex-col lg:flex-row lg:items-center gap-3">
@@ -1633,7 +1839,7 @@
                   ? `<select onchange="assignDeliverable(${jsArg(d.deliverable_id)}, this.value)" class="px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs bg-white text-[#0B1F44] max-w-[180px]">${assigneeOptions(d.assignee_id)}</select>`
                   : `<span class="text-xs text-slate-500">${escapeHtml(memberName(d.assignee_id) || 'ยังไม่ระบุ')}</span>`}
                 ${statusBadge(d.status)}
-                ${resultUrl ? `<button onclick="openExternalLink(${jsArg(resultUrl)})" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 hover:border-[#1E6FFF] text-xs font-semibold text-slate-600 cursor-pointer"><i data-lucide="external-link" class="w-3 h-3"></i>ผลงาน</button>` : ''}
+                ${resultUrl ? `<button onclick="openResultLinks(${jsArg(d.deliverable_id)})" class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 hover:border-[#1E6FFF] text-xs font-semibold text-slate-600 cursor-pointer"><i data-lucide="${sent.length > 1 ? 'chevron-down' : 'external-link'}" class="w-3 h-3"></i>ผลงาน${sent.length > 1 ? ' (' + sent.length + ')' : ''}</button>` : ''}
                 ${mine || isAdmin ? `<button onclick="openSubmitModal(${jsArg(d.deliverable_id)})" class="px-2.5 py-1.5 rounded-lg ${resultUrl ? 'border border-slate-200 text-slate-600 hover:border-[#1E6FFF]' : 'bg-[#1E6FFF] hover:bg-[#1557D6] text-white'} text-xs font-semibold cursor-pointer">${resultUrl ? 'แก้ลิงก์' : 'ส่งงาน'}</button>` : ''}
                 ${isAdmin ? `<button onclick="confirmDeleteDeliverable(${jsArg(d.deliverable_id)})" title="ลบงานชุดนี้" class="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 cursor-pointer"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>` : ''}
               </div>
@@ -2049,25 +2255,29 @@
       document.getElementById('submit-form-id').value = deliverableId;
       document.getElementById('submit-form-title').textContent = deliverableTitle(item);
       document.getElementById('submit-form-client').textContent = clientName(item.client_id) + ' · ' + typeMeta(item.type).label + ' ×' + qty(item) + ' ชิ้น · ' + monthLabel(item.month);
-      document.getElementById('submit-form-url').value = item.result_url || '';
+      setLinkRows('submit-links', resultLinks(item));
       openModal('submit-modal');
-      document.getElementById('submit-form-url').focus();
+      document.querySelector('#submit-links [data-link-url]').focus();
     }
 
     document.getElementById('submit-form').addEventListener('submit', function (e) {
       e.preventDefault();
       const form = this;
       withFormBusy(form, async () => {
-        const url = safeUrl(formatUrl(document.getElementById('submit-form-url').value));
-        if (!url) {
-          showToast('กรุณาวางลิงก์ที่ขึ้นต้นด้วย https://', 'error');
+        const links = readLinkRows('submit-links');
+        if (!links) return;
+        if (!links.length) {
+          refreshLinkRow(document.querySelector('#submit-links [data-link-row]'), 'วางลิงก์ผลงานอย่างน้อย 1 ลิงก์');
+          showToast('กรุณาวางลิงก์ผลงาน', 'error');
           return;
         }
         const updated = await callAppsScript('submitDeliverable', {
           deliverable_id: document.getElementById('submit-form-id').value,
-          result_url: url
+          result_links: links,
+          result_url: links[0].url // read by an Apps Script that is not updated yet
         });
         if (!updated) return;
+        if (!Array.isArray(updated.result_links)) updated.result_links = links;
         replaceDeliverable(updated);
         saveState();
         closeModal('submit-modal');
@@ -2097,7 +2307,7 @@
         : `<div class="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
             ${filtered.map((client, index) => {
               const clientWs = state.workspaces.filter(w => w.client_id === client.client_id);
-              const connected = clientWs.filter(w => safeUrl(w.external_url)).length;
+              const connected = clientWs.filter(w => wsLinks(w).length).length;
               // Alternate blue / mint like the mockup: bar, link pill and Open button share the colour.
               const mint = index % 2 === 1;
               const accent = mint ? '#00C7A7' : '#1E6FFF';
@@ -2201,8 +2411,9 @@
 
       const wsCardsHtml = clientWorkspaces.map(ws => {
         const theme = COLOR_STYLES[ws.color] || COLOR_STYLES.blue;
-        const hasLink = Boolean(safeUrl(ws.external_url));
-        const serviceName = detectLinkService(ws.external_url);
+        const links = wsLinks(ws);
+        const hasLink = links.length > 0;
+        const many = links.length > 1;
 
         const adminWsControls = isAdmin ? `
           <div onclick="event.stopPropagation()" class="absolute top-3 right-3 z-10 flex items-center gap-1.5">
@@ -2215,7 +2426,7 @@
           </div>` : '';
 
         const clickHandler = hasLink
-          ? `openExternalLink(${jsArg(ws.external_url)})`
+          ? `openWorkspaceLinks(${jsArg(ws.workspace_id)})`
           : (isAdmin ? `openEditWorkspaceModal(${jsArg(ws.workspace_id)})` : '');
 
         const tone = CARD_TONES[ws.color] || CARD_TONES.blue;
@@ -2233,7 +2444,7 @@
                   <div class="flex flex-wrap items-center justify-between gap-2">
                     <h3 class="text-xl font-extrabold tracking-tight text-[#0B1F44]">${escapeHtml(ws.workspace_name)}</h3>
                     ${hasLink
-                      ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[#00C7A7]/15 text-[#0B8F74]"><span class="w-1.5 h-1.5 rounded-full bg-[#00C7A7]"></span>${serviceName}</span>`
+                      ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[#00C7A7]/15 text-[#0B8F74]"><span class="w-1.5 h-1.5 rounded-full bg-[#00C7A7]"></span>${escapeHtml(linksBadgeText(links))}</span>`
                       : `<span class="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-medium bg-slate-100 text-slate-500">Not Linked</span>`}
                   </div>
                   <p class="mt-1 text-sm text-slate-500 leading-relaxed">${escapeHtml(ws.description)}</p>
@@ -2244,7 +2455,7 @@
               ${hasLink
                 ? `<div class="gtt-btn-dark w-[80%] sm:max-w-[260px] py-3 px-5 rounded-full text-white text-sm font-semibold flex items-center justify-center gap-2 transition-colors">
                     <span>Open Workspace</span>
-                    <i data-lucide="external-link" class="w-4 h-4"></i>
+                    <i data-lucide="${many ? 'chevron-down' : 'external-link'}" class="w-4 h-4"></i>
                   </div>`
                 : `<p class="text-xs text-slate-400">ยังไม่ได้เพิ่มลิงก์สำหรับพื้นที่ทำงานนี้${isAdmin ? ' · <span class="text-[#1E6FFF] font-semibold">+ กดเพื่อเพิ่มลิงก์</span>' : ''}</p>`}
             </div>
@@ -2313,7 +2524,8 @@
       }).map(ws => {
         const client = state.clients.find(c => c.client_id === ws.client_id);
         const theme = COLOR_STYLES[ws.color] || COLOR_STYLES.blue;
-        const hasLink = Boolean(safeUrl(ws.external_url));
+        const links = wsLinks(ws);
+        const hasLink = links.length > 0;
 
         return `
           <tr class="hover:bg-[#F3F6FA]/60 transition-colors">
@@ -2331,12 +2543,12 @@
             <td class="py-3.5 px-5 text-slate-500 hidden md:table-cell">${escapeHtml(ws.description)}</td>
             <td class="py-3.5 px-5">
               ${hasLink
-                ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#00C7A7]/15 text-[#0F766E]"><span class="w-1.5 h-1.5 rounded-full bg-[#00C7A7]"></span>${detectLinkService(ws.external_url)}</span>`
+                ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#00C7A7]/15 text-[#0F766E]"><span class="w-1.5 h-1.5 rounded-full bg-[#00C7A7]"></span>${escapeHtml(linksBadgeText(links))}</span>`
                 : `<span class="text-xs text-slate-400">ยังไม่ได้เพิ่มลิงก์</span>`}
             </td>
             <td class="py-3.5 px-5 text-right">
               ${hasLink
-                ? `<a href="${escapeHtml(safeUrl(ws.external_url))}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0B1F44] hover:bg-[#1E6FFF] text-white text-xs font-semibold transition"><span>Open</span><i data-lucide="external-link" class="w-3 h-3"></i></a>`
+                ? `<button onclick="openWorkspaceLinks(${jsArg(ws.workspace_id)})" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0B1F44] hover:bg-[#1E6FFF] text-white text-xs font-semibold transition cursor-pointer"><span>Open</span><i data-lucide="${links.length > 1 ? 'chevron-down' : 'external-link'}" class="w-3 h-3"></i></button>`
                 : isAdmin
                   ? `<button onclick="openEditWorkspaceModal(${jsArg(ws.workspace_id)})" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 hover:border-[#1E6FFF] text-xs font-semibold text-[#1E6FFF] transition cursor-pointer"><i data-lucide="plus" class="w-3 h-3"></i><span>Add Link</span></button>`
                   : `<span class="text-xs text-slate-300">—</span>`}
@@ -2659,11 +2871,10 @@
       document.getElementById('ws-form-id').value = '';
       document.getElementById('ws-form-client-id').value = clientId;
       document.getElementById('ws-form-name').value = '';
-      document.getElementById('ws-form-url').value = '';
+      setLinkRows('ws-links', []);
       document.getElementById('ws-form-desc').value = '';
       document.getElementById('ws-form-icon').value = 'video';
       document.getElementById('ws-form-color').value = 'blue';
-      updateWsUrlHelper('');
       document.getElementById('workspace-modal').classList.remove('hidden');
     }
 
@@ -2674,37 +2885,16 @@
       document.getElementById('ws-form-id').value = ws.workspace_id;
       document.getElementById('ws-form-client-id').value = ws.client_id;
       document.getElementById('ws-form-name').value = ws.workspace_name;
-      document.getElementById('ws-form-url').value = ws.external_url || '';
+      setLinkRows('ws-links', wsLinks(ws));
       document.getElementById('ws-form-desc').value = ws.description || '';
       document.getElementById('ws-form-icon').value = ws.icon || 'folder-open';
       document.getElementById('ws-form-color').value = ws.color || 'blue';
-      updateWsUrlHelper(ws.external_url || '');
       document.getElementById('workspace-modal').classList.remove('hidden');
     }
 
     function closeWorkspaceModal() {
       document.getElementById('workspace-modal').classList.add('hidden');
     }
-
-    function clearWsUrl() {
-      document.getElementById('ws-form-url').value = '';
-      updateWsUrlHelper('');
-    }
-
-    function updateWsUrlHelper(val) {
-      const helper = document.getElementById('ws-url-helper');
-      const label = document.getElementById('ws-detected-service');
-      if (val && val.trim()) {
-        label.textContent = 'Detected: ' + detectLinkService(val);
-        helper.classList.remove('hidden');
-      } else {
-        helper.classList.add('hidden');
-      }
-    }
-
-    document.getElementById('ws-form-url').addEventListener('input', function () {
-      updateWsUrlHelper(this.value);
-    });
 
     document.getElementById('workspace-form').addEventListener('submit', function (e) {
       e.preventDefault();
@@ -2715,7 +2905,9 @@
       const wsId = document.getElementById('ws-form-id').value;
       const clientId = document.getElementById('ws-form-client-id').value;
       const name = document.getElementById('ws-form-name').value.trim().toUpperCase();
-      const url = formatUrl(document.getElementById('ws-form-url').value);
+      const links = readLinkRows('ws-links');
+      if (!links) return;
+      const url = links.length ? links[0].url : '';
       const desc = document.getElementById('ws-form-desc').value.trim();
       const icon = document.getElementById('ws-form-icon').value;
       const color = document.getElementById('ws-form-color').value;
@@ -2730,6 +2922,7 @@
           icon,
           color,
           external_url: url,
+          links,
           created_at: today,
           updated_at: today
         };
@@ -2752,6 +2945,7 @@
             icon,
             color,
             external_url: url,
+            links,
             updated_at: today
           };
           if (state.apiEndpoint) {
